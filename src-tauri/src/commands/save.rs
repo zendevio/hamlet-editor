@@ -111,6 +111,11 @@ pub fn save_profile(profile_path: String, data: serde_json::Value) -> Result<(),
             let filename = name_val
                 .as_str()
                 .ok_or_else(|| "_deleted entries must be strings".to_string())?;
+            if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
+                return Err(format!(
+                    "Invalid filename in _deleted (path traversal detected): {filename}"
+                ));
+            }
             if !super::is_save_file(filename) {
                 return Err(format!("Invalid save filename in _deleted: {filename}"));
             }
