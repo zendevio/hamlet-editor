@@ -33,8 +33,13 @@
 	import Archive from 'phosphor-svelte/lib/Archive';
 	import Moon from 'phosphor-svelte/lib/Moon';
 	import Sun from 'phosphor-svelte/lib/Sun';
+	import SetupWizard from '$lib/components/SetupWizard.svelte';
+	import { getSettings } from '$lib/stores/settings.svelte';
 
 	let { children } = $props();
+
+	const settings = getSettings();
+	let showSetupWizard = $derived(!settings.isSetupComplete);
 
 	const navItems = [
 		{ href: '/heroes', label: 'Heroes', icon: UsersThree },
@@ -59,6 +64,10 @@
 <ModeWatcher />
 <Toaster />
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+
+{#if showSetupWizard}
+	<SetupWizard />
+{/if}
 
 <SidebarProvider>
 	<Sidebar>
