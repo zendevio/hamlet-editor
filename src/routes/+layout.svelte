@@ -50,8 +50,16 @@
 		getDirtyData,
 		clearAllDirty,
 		discardAllChanges,
-		loadProfileFromBackend
+		loadProfileFromBackend,
+		getHeroes,
+		CLASS_DISPLAY_NAMES
 	} from '$lib/stores/save-data.svelte';
+	import {
+		Select,
+		SelectContent,
+		SelectItem,
+		SelectTrigger
+	} from '$lib/components/ui/select';
 	import { isGameRunning } from '$lib/api/detect';
 	import { saveProfile } from '$lib/api/save';
 	import { createBackup } from '$lib/api/backup';
@@ -121,6 +129,25 @@
 	let isDirty = $derived(hasDirtyFiles());
 	let isGameBlocking = $derived(gameRunning || gameDetectionUncertain);
 	let saveDisabled = $derived(!saveData.isLoaded || isGameBlocking || !isDirty || isSaving);
+
+	// C1: Steam Cloud warning
+	let isSteamCloud = $derived(settings.savePath.includes('/userdata/'));
+
+	// C2: Modded content detection
+	let hasModdedContent = $derived.by(() => {
+		if (!saveData.isLoaded) return false;
+		const heroes = getHeroes();
+		return heroes.some((h) => !(h.heroClass in CLASS_DISPLAY_NAMES));
+	});
+
+	// C3: Raid status badges
+	let raidActive = $derived(saveData.raid !== null && saveData.gameInRaid);
+	let raidInconsistent = $derived(
+		(saveData.raid !== null) !== saveData.gameInRaid
+	);
+
+	// C7: Last backup timestamp
+	let lastBackupTime = $state<Date | null>(null);
 
 	let saveTooltip = $derived.by(() => {
 		if (!saveData.isLoaded) return 'No profile loaded';
@@ -230,6 +257,17 @@
 	async function executeSave() {
 		isSaving = true;
 		try {
+			// C6: Auto-backup before saving if enabled
+			if (settings.autoBackup && settings.savePath) {
+				try {
+					await createBackup(settings.savePath);
+					lastBackupTime = new Date();
+				} catch (err) {
+					const message = err instanceof Error ? err.message : String(err);
+					toast.error(`Auto-backup failed: ${message}`);
+					// Don't abort the save — backup failure is non-fatal
+				}
+			}
 			const dirtyData = getDirtyData();
 			await saveProfile(settings.savePath, dirtyData);
 			clearAllDirty();
@@ -323,6 +361,7 @@
 		}
 		try {
 			await createBackup(settings.savePath);
+			lastBackupTime = new Date();
 			toast.success('Backup created');
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
@@ -333,11 +372,11 @@
 	// ── Navigation ──
 
 	const navItems = [
-		{ href: '/heroes', label: 'Heroes', icon: UsersThreeIcon },
-		{ href: '/estate', label: 'Estate', icon: BankIcon },
-		{ href: '/town', label: 'Town', icon: BuildingsIcon },
-		{ href: '/raid', label: 'Raid', icon: CompassIcon },
-		{ href: '/settings', label: 'Settings', icon: GearIcon }
+		{ href: '/heroes', label: 'Heroes', icon: UsersThreeIcon, isRaid: false },
+		{ href: '/estate', label: 'Estate', icon: BankIcon, isRaid: false },
+		{ href: '/town', label: 'Town', icon: BuildingsIcon, isRaid: false },
+		{ href: '/raid', label: 'Raid', icon: CompassIcon, isRaid: true },
+		{ href: '/settings', label: 'Settings', icon: GearIcon, isRaid: false }
 	];
 
 	const viewTitles: Record<string, string> = {
@@ -387,6 +426,19 @@
 			<div class="flex items-center gap-2 px-2 py-1">
 				<span class="text-lg font-bold tracking-tight">Hamlet Editor</span>
 			</div>
+			<!-- C5: Profile selector -->
+			{#if settings.isSetupComplete && settings.profileId}
+				<div class="px-2 pb-1">
+					<Select type="single" value={settings.profileId} disabled>
+						<SelectTrigger class="h-7 text-xs">
+							<span class="text-xs">Profile: {settings.profileId}</span>
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={settings.profileId}>{settings.profileId}</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			{/if}
 		</SidebarHeader>
 
 		<SidebarContent>
@@ -395,14 +447,34 @@
 					<SidebarMenu>
 						{#each navItems as item}
 							<SidebarMenuItem>
-								<SidebarMenuButton isActive={currentPath === item.href}>
-									{#snippet child({ props })}
-										<a href={item.href} {...props}>
-											<item.icon size={20} />
-											<span>{item.label}</span>
-										</a>
-									{/snippet}
-								</SidebarMenuButton>
+								{#if item.isRaid}
+									<!-- C4: Raid nav with conditional indicator/dim -->
+									<SidebarMenuButton
+										isActive={currentPath === item.href}
+										class={saveData.raid === null ? 'opacity-50' : ''}
+									>
+										{#snippet child({ props })}
+											<a href={item.href} {...props} class:pointer-events-none={saveData.raid === null}>
+												<span class="relative inline-flex">
+													<item.icon size={20} />
+													{#if raidActive}
+														<span class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500"></span>
+													{/if}
+												</span>
+												<span>{item.label}</span>
+											</a>
+										{/snippet}
+									</SidebarMenuButton>
+								{:else}
+									<SidebarMenuButton isActive={currentPath === item.href}>
+										{#snippet child({ props })}
+											<a href={item.href} {...props}>
+												<item.icon size={20} />
+												<span>{item.label}</span>
+											</a>
+										{/snippet}
+									</SidebarMenuButton>
+								{/if}
 							</SidebarMenuItem>
 						{/each}
 					</SidebarMenu>
@@ -411,6 +483,14 @@
 		</SidebarContent>
 
 		<SidebarFooter>
+			<!-- C7: Last backup timestamp -->
+			{#if lastBackupTime}
+				<div class="px-2 pt-1">
+					<span class="text-xs text-muted-foreground">
+						Last backup: {lastBackupTime.toLocaleTimeString()}
+					</span>
+				</div>
+			{/if}
 			<div class="flex items-center justify-between px-2">
 				<Tooltip>
 					<TooltipTrigger>
@@ -465,6 +545,35 @@
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
 						Game Status Unknown — Save Blocked
+					</Badge>
+				{/if}
+
+				<!-- C1: Steam Cloud warning -->
+				{#if isSteamCloud}
+					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
+						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
+						Steam Cloud Active
+					</Badge>
+				{/if}
+
+				<!-- C2: Modded content -->
+				{#if hasModdedContent}
+					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
+						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
+						Modded Content
+					</Badge>
+				{/if}
+
+				<!-- C3: Raid status -->
+				{#if raidActive}
+					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
+						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
+						Raid Active
+					</Badge>
+				{:else if raidInconsistent}
+					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
+						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
+						Raid State Inconsistent
 					</Badge>
 				{/if}
 

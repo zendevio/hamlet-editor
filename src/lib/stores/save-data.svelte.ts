@@ -95,6 +95,15 @@ export interface EstateData {
 	};
 }
 
+export interface GameData {
+	base_root: {
+		estatename: string;
+		inraid: boolean;
+		game_mode: string;
+		[key: string]: unknown;
+	};
+}
+
 // ── Town & Upgrade Types ──
 
 export interface UpgradePurchase {
@@ -327,6 +336,7 @@ let estate = $state<EstateData | null>(null);
 let town = $state<TownData | null>(null);
 let upgrades = $state<UpgradesData | null>(null);
 let raid = $state<RaidData | null>(null);
+let game = $state<GameData | null>(null);
 let gameInRaid = $state(false);
 let isLoaded = $state(false);
 // Svelte 5 requires immutable replacement to trigger reactivity on Sets.
@@ -360,6 +370,9 @@ export interface HeroSummary {
 	visitedDeathsDoor: boolean;
 	buildingName: string;
 	quirks: Record<string, HeroQuirk>;
+	selectedCombatSkills: Record<string, unknown>;
+	selectedCampingSkills: Record<string, unknown>;
+	trinkets: Record<string, unknown>;
 }
 
 /** Convert resolveXp to a resolve level (0-6). */
@@ -413,7 +426,10 @@ function heroEntryToSummary(guid: string, entry: HeroEntry): HeroSummary {
 		virtueTypeId: root.virtue_type_id,
 		visitedDeathsDoor: root.visited_deaths_door,
 		buildingName: root['roster.building_name'] ?? '',
-		quirks: root.quirks
+		quirks: root.quirks,
+		selectedCombatSkills: root.skills?.selected_combat_skills ?? {},
+		selectedCampingSkills: root.skills?.selected_camping_skills ?? {},
+		trinkets: root.trinkets?.items ?? {}
 	};
 }
 
@@ -435,6 +451,9 @@ export function getSaveData() {
 		},
 		get raid() {
 			return raid;
+		},
+		get game() {
+			return game;
 		},
 		get gameInRaid() {
 			return gameInRaid;
@@ -591,7 +610,28 @@ export function reviveHero(guid: string) {
 	raw.actor.current_hp = 1;
 	raw.m_Stress = 0;
 	markDirty('persist.roster.json');
-	// Note: full revival also requires campaign_log and progression edits
+
+	// TODO: clearDiedFlag(guid) — clear the died flag in campaign_log mission event history
+	markDirty('persist.campaign_log.json');
+
+	// TODO: clearGraveyardFlag(guid) — clear the graveyard achievement flag in progression
+	markDirty('persist.progression.json');
+
+	// If a raid is active and this hero was in the raid party, mark raid dirty too
+	if (raid) {
+		const heroGuid = parseInt(guid, 10);
+		if (raid.base_root.party.heroes.includes(heroGuid)) {
+			// TODO: restore hero to raid party once raid party mutation is implemented
+			markDirty('persist.raid.json');
+		}
+	}
+}
+
+/** Update the estate name in persist.game.json. */
+export function setEstateName(name: string) {
+	if (!game) return;
+	game.base_root.estatename = name;
+	markDirty('persist.game.json');
 }
 
 /** Dismiss a hero (remove from roster). */
@@ -751,6 +791,11 @@ export function loadRaid(data: RaidData) {
 	raid = data;
 }
 
+/** Load game data into the store. */
+export function loadGame(data: GameData) {
+	game = data;
+}
+
 /** Set whether the game is currently in a raid (from persist.game.json). */
 export function setGameInRaid(value: boolean) {
 	gameInRaid = value;
@@ -779,9 +824,10 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 	if (data['persist.raid.json']) {
 		loadRaid(data['persist.raid.json'] as RaidData);
 	}
-	// persist.game.json carries the inraid flag
+	// persist.game.json carries estate name, inraid flag, game mode, etc.
 	if (data['persist.game.json']) {
-		const gameData = data['persist.game.json'] as { base_root?: { inraid?: boolean } };
+		const gameData = data['persist.game.json'] as GameData;
+		loadGame(gameData);
 		setGameInRaid(gameData?.base_root?.inraid ?? false);
 	}
 
@@ -839,6 +885,9 @@ export function getDirtyData(): Record<string, unknown> {
 	if (dirtyFiles.has('persist.raid.json') && raid) {
 		data['persist.raid.json'] = raid;
 	}
+	if (dirtyFiles.has('persist.game.json') && game) {
+		data['persist.game.json'] = game;
+	}
 	return data;
 }
 
@@ -849,6 +898,7 @@ export function resetSaveData() {
 	town = null;
 	upgrades = null;
 	raid = null;
+	game = null;
 	gameInRaid = false;
 	isLoaded = false;
 	dirtyFiles = new Set();

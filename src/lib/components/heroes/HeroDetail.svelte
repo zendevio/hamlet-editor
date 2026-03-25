@@ -18,6 +18,15 @@
 		CollapsibleTrigger
 	} from '$lib/components/ui/collapsible';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	import {
+		Dialog,
+		DialogContent,
+		DialogHeader,
+		DialogTitle,
+		DialogDescription,
+		DialogFooter
+	} from '$lib/components/ui/dialog';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
@@ -30,10 +39,12 @@
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
 	import PencilIcon from 'phosphor-svelte/lib/PencilIcon';
 	import TrashIcon from 'phosphor-svelte/lib/TrashIcon';
+	import DropIcon from 'phosphor-svelte/lib/DropIcon';
 	import type { HeroSummary, HeroQuirk } from '$lib/stores/save-data.svelte';
 	import {
 		getMaxHp,
 		maxGearRank,
+		getHeroRawData,
 		setHeroHp,
 		setHeroStress,
 		setHeroName,
@@ -49,12 +60,14 @@
 		toggleQuirkLock,
 		addHeroQuirk,
 		revertHero,
+		markDirty,
 		RESOLVE_LEVEL_NAMES,
 		RESOLVE_XP_THRESHOLDS
 	} from '$lib/stores/save-data.svelte';
 	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '$lib/data/quirks';
 	import { snakeToTitle } from '$lib/utils';
 	import RevivalWizard from './RevivalWizard.svelte';
+	import TrinketPicker from './TrinketPicker.svelte';
 
 	let {
 		hero,
@@ -68,7 +81,9 @@
 	let identityOpen = $state(true);
 	let vitalsOpen = $state(true);
 	let quirksOpen = $state(false);
+	let skillsOpen = $state(false);
 	let equipmentOpen = $state(false);
+	let bloodCurseOpen = $state(false);
 	let actionsOpen = $state(true);
 
 	// ── Quirk picker ──
@@ -83,8 +98,13 @@
 	// ── Revival wizard ──
 	let revivalWizardOpen = $state(false);
 
-	// ── Dismiss confirmation ──
+	// ── Dismiss dialog ──
+	let dismissDialogOpen = $state(false);
 	let dismissConfirmChecked = $state(false);
+
+	// ── Level change gear confirmation ──
+	let pendingLevel = $state<number | null>(null);
+	let pendingMaxGear = $state(0);
 
 	// ── Derived ──
 	let isDead = $derived(hero.status === 3);
@@ -105,6 +125,37 @@
 	let negativeCount = $derived(negativeQuirks.length + diseaseQuirks.length);
 	let canAddPositive = $derived(positiveQuirks.length < 5);
 	let canAddNegative = $derived(negativeCount < 5);
+
+	// ── Blood Curse derived ──
+	const VAMPIRE_QUIRK_IDS = [
+		'disease_vampire_passive',
+		'disease_vampire_crave',
+		'disease_vampire_wasting',
+		'disease_vampire_blood_lust'
+	] as const;
+	const VAMPIRE_STATE_LABELS: Record<string, string> = {
+		disease_vampire_passive: 'Sated',
+		disease_vampire_crave: 'Craving',
+		disease_vampire_wasting: 'Wasting',
+		disease_vampire_blood_lust: 'Blood Lust'
+	};
+
+	let vampireQuirkId = $derived(
+		Object.keys(hero.quirks).find((id) => id.startsWith('disease_vampire_')) ?? null
+	);
+	let hasBloodCurse = $derived(vampireQuirkId !== null);
+
+	// ── Skills derived ──
+	let combatSkillIds = $derived(Object.keys(hero.selectedCombatSkills));
+	let campingSkillIds = $derived(Object.keys(hero.selectedCampingSkills));
+
+	// ── Trinket slots derived ──
+	let trinketSlot0 = $derived(
+		hero.trinkets['0'] as { id?: string } | undefined
+	);
+	let trinketSlot1 = $derived(
+		hero.trinkets['1'] as { id?: string } | undefined
+	);
 
 	// All quirks for the picker, filtered
 	let allQuirks = getAllQuirks();
@@ -140,15 +191,34 @@
 		}
 	}
 
+	// D7: Level change with inline gear confirmation
 	function handleLevelChange(value: string) {
 		const level = parseInt(value);
-		if (!isNaN(level)) {
-			setHeroLevel(hero.guid, level);
-			// Also constrain gear to max for the new level
-			const newMaxGear = maxGearRank(level);
-			if (hero.weaponRank > newMaxGear) setHeroWeaponRank(hero.guid, newMaxGear);
-			if (hero.armourRank > newMaxGear) setHeroArmourRank(hero.guid, newMaxGear);
+		if (isNaN(level)) return;
+
+		setHeroLevel(hero.guid, level);
+
+		const newMaxGear = maxGearRank(level);
+		// Constrain if current ranks exceed the new max
+		if (hero.weaponRank > newMaxGear) setHeroWeaponRank(hero.guid, newMaxGear);
+		if (hero.armourRank > newMaxGear) setHeroArmourRank(hero.guid, newMaxGear);
+
+		// Show inline gear-match prompt if both ranks are below the new max
+		if (hero.weaponRank < newMaxGear || hero.armourRank < newMaxGear) {
+			pendingLevel = level;
+			pendingMaxGear = newMaxGear;
 		}
+	}
+
+	function confirmGearMatch() {
+		if (pendingLevel === null) return;
+		setHeroWeaponRank(hero.guid, pendingMaxGear);
+		setHeroArmourRank(hero.guid, pendingMaxGear);
+		pendingLevel = null;
+	}
+
+	function declineGearMatch() {
+		pendingLevel = null;
 	}
 
 	function handleHpSlider(value: number) {
@@ -178,9 +248,40 @@
 		showQuirkPicker = false;
 	}
 
-	function handleDismiss() {
+	// D2: Blood Curse state change
+	function handleBloodCurseChange(newStateId: string) {
+		if (!vampireQuirkId) return;
+		// Remove old vampire quirk
+		removeHeroQuirk(hero.guid, vampireQuirkId);
+		// Add new vampire quirk
+		const newQuirk: HeroQuirk = {
+			is_locked: false,
+			is_new: false,
+			mission_count: 0,
+			replaces_quirk: 0,
+			replaces_quirk_viewed: false,
+			evolution_duration_remaining: 0
+		};
+		addHeroQuirk(hero.guid, newStateId, newQuirk);
+	}
+
+	// D3: Trinket slot equip via TrinketPicker
+	function handleTrinketSelect(slot: '0' | '1', trinketId: string) {
+		const raw = getHeroRawData(hero.guid);
+		if (!raw) return;
+		if (trinketId) {
+			raw.trinkets.items[slot] = { id: trinketId, type: 'trinket', amount: 1 };
+		} else {
+			delete raw.trinkets.items[slot];
+		}
+		markDirty('persist.roster.json');
+	}
+
+	// D8: Dismiss confirmation dialog
+	function handleDismissConfirm() {
 		dismissHero(hero.guid);
 		dismissConfirmChecked = false;
+		dismissDialogOpen = false;
 		onDismiss?.();
 	}
 
@@ -326,6 +427,32 @@
 								{/each}
 							</SelectContent>
 						</Select>
+						<!-- D7: Inline gear match confirmation -->
+						{#if pendingLevel !== null}
+							<div class="mt-2 rounded-none border border-amber-500/30 bg-amber-500/5 p-2 text-[11px]">
+								<p class="mb-1.5 font-medium text-amber-700 dark:text-amber-400">
+									Update weapon &amp; armour rank to {pendingMaxGear}?
+								</p>
+								<div class="flex gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										class="h-6 flex-1 text-[11px]"
+										onclick={confirmGearMatch}
+									>
+										Yes
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-6 flex-1 text-[11px]"
+										onclick={declineGearMatch}
+									>
+										No
+									</Button>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</CollapsibleContent>
@@ -621,6 +748,67 @@
 
 		<Separator />
 
+		<!-- ═══════ D1: Skills Section ═══════ -->
+		<Collapsible bind:open={skillsOpen}>
+			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
+				{#if skillsOpen}
+					<CaretDownIcon size={14} class="text-muted-foreground" />
+				{:else}
+					<CaretRightIcon size={14} class="text-muted-foreground" />
+				{/if}
+				<span class="text-xs font-semibold uppercase tracking-wider">Skills</span>
+				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
+					{combatSkillIds.length}C / {campingSkillIds.length}K
+				</Badge>
+			</CollapsibleTrigger>
+			<CollapsibleContent>
+				<div class="mt-2 space-y-3">
+					<!-- Combat Skills -->
+					<div>
+						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
+							Combat Skills ({combatSkillIds.length})
+						</span>
+						{#if combatSkillIds.length > 0}
+							<div class="space-y-0.5">
+								{#each combatSkillIds as skillId (skillId)}
+									<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
+										<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
+										<span class="font-mono">{skillId}</span>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-muted-foreground text-[11px]">No combat skills selected.</p>
+						{/if}
+					</div>
+
+					<!-- Camping Skills -->
+					<div>
+						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
+							Camping Skills ({campingSkillIds.length})
+						</span>
+						{#if campingSkillIds.length > 0}
+							<div class="space-y-0.5">
+								{#each campingSkillIds as skillId (skillId)}
+									<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
+										<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
+										<span class="font-mono">{skillId}</span>
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-muted-foreground text-[11px]">No camping skills selected.</p>
+						{/if}
+					</div>
+					<p class="text-muted-foreground/60 text-[10px]">
+						Read-only — skill editing requires game data to be loaded.
+					</p>
+				</div>
+			</CollapsibleContent>
+		</Collapsible>
+
+		<Separator />
+
 		<!-- ═══════ Equipment Section ═══════ -->
 		<Collapsible bind:open={equipmentOpen}>
 			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
@@ -680,9 +868,91 @@
 							Max HP at current armour rank: {maxHp}
 						</p>
 					</div>
+
+					<!-- D3: Trinket Slots -->
+					<div>
+						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">Trinkets</span>
+						<div class="grid grid-cols-2 gap-2">
+							<!-- Slot 0 -->
+							<div>
+								<span class="text-muted-foreground mb-1 block text-[10px]">Slot 1</span>
+								<div class="rounded-none border px-2 py-1.5 text-[11px] {trinketSlot0?.id ? '' : 'text-muted-foreground'}">
+									{#if trinketSlot0?.id}
+										<span class="font-mono">{trinketSlot0.id}</span>
+									{:else}
+										<span class="italic">Empty</span>
+									{/if}
+								</div>
+								<TrinketPicker
+									value={trinketSlot0?.id ?? ''}
+									onselect={(id) => handleTrinketSelect('0', id)}
+								/>
+							</div>
+							<!-- Slot 1 -->
+							<div>
+								<span class="text-muted-foreground mb-1 block text-[10px]">Slot 2</span>
+								<div class="rounded-none border px-2 py-1.5 text-[11px] {trinketSlot1?.id ? '' : 'text-muted-foreground'}">
+									{#if trinketSlot1?.id}
+										<span class="font-mono">{trinketSlot1.id}</span>
+									{:else}
+										<span class="italic">Empty</span>
+									{/if}
+								</div>
+								<TrinketPicker
+									value={trinketSlot1?.id ?? ''}
+									onselect={(id) => handleTrinketSelect('1', id)}
+								/>
+							</div>
+						</div>
+					</div>
 				</div>
 			</CollapsibleContent>
 		</Collapsible>
+
+		<!-- D2: Blood Curse Section (visible only if hero has disease_vampire_* quirk) -->
+		{#if hasBloodCurse}
+			<Separator />
+			<Collapsible bind:open={bloodCurseOpen}>
+				<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
+					{#if bloodCurseOpen}
+						<CaretDownIcon size={14} class="text-muted-foreground" />
+					{:else}
+						<CaretRightIcon size={14} class="text-muted-foreground" />
+					{/if}
+					<DropIcon size={14} class="text-red-500" />
+					<span class="text-xs font-semibold uppercase tracking-wider">Blood Curse</span>
+					{#if vampireQuirkId}
+						<Badge variant="outline" class="ml-auto h-4 text-[10px] text-red-600 dark:text-red-400">
+							{VAMPIRE_STATE_LABELS[vampireQuirkId] ?? vampireQuirkId}
+						</Badge>
+					{/if}
+				</CollapsibleTrigger>
+				<CollapsibleContent>
+					<div class="mt-2 space-y-2">
+						<div>
+							<span class="text-muted-foreground mb-1 block text-[11px]">Current State</span>
+							<Select
+								type="single"
+								value={vampireQuirkId ?? ''}
+								onValueChange={(v: string) => handleBloodCurseChange(v)}
+							>
+								<SelectTrigger class="h-8 text-xs">
+									<span>{vampireQuirkId ? VAMPIRE_STATE_LABELS[vampireQuirkId] : 'Unknown'}</span>
+								</SelectTrigger>
+								<SelectContent>
+									{#each VAMPIRE_QUIRK_IDS as id (id)}
+										<SelectItem value={id}>{VAMPIRE_STATE_LABELS[id]}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
+						<p class="text-muted-foreground text-[10px]">
+							Only one Blood Curse state can be active at a time. Changing state replaces the current quirk.
+						</p>
+					</div>
+				</CollapsibleContent>
+			</Collapsible>
+		{/if}
 
 		<Separator />
 
@@ -713,28 +983,17 @@
 						</p>
 					{/if}
 
-					<!-- Dismiss Hero -->
+					<!-- D8: Dismiss Hero — triggers AlertDialog -->
 					<div class="rounded-none border border-red-500/20 p-3">
 						<p class="mb-2 text-xs font-medium text-red-600 dark:text-red-400">Dismiss Hero</p>
 						<p class="text-muted-foreground mb-2 text-[11px]">
 							Permanently remove {hero.name} from the roster. This cannot be undone after saving.
 						</p>
-						<label class="mb-2 flex items-center gap-2">
-							<input
-								type="checkbox"
-								bind:checked={dismissConfirmChecked}
-								class="h-3.5 w-3.5"
-							/>
-							<span class="text-[11px]">
-								I understand this hero will be permanently removed from the roster
-							</span>
-						</label>
 						<Button
 							variant="destructive"
 							size="sm"
 							class="w-full gap-2 text-xs"
-							disabled={!dismissConfirmChecked}
-							onclick={handleDismiss}
+							onclick={() => (dismissDialogOpen = true)}
 						>
 							<TrashIcon size={14} />
 							Dismiss {hero.name}
@@ -745,6 +1004,48 @@
 		</Collapsible>
 	</div>
 </ScrollArea>
+
+<!-- D8: Dismiss confirmation dialog (outside ScrollArea) -->
+<Dialog bind:open={dismissDialogOpen}>
+	<DialogContent class="sm:max-w-sm">
+		<DialogHeader>
+			<DialogTitle class="flex items-center gap-2 text-sm">
+				<TrashIcon size={16} class="text-destructive" />
+				Dismiss {hero.name}?
+			</DialogTitle>
+			<DialogDescription>
+				This will permanently remove the hero from your roster.
+			</DialogDescription>
+		</DialogHeader>
+		<div class="space-y-3 py-2">
+			<label class="flex cursor-pointer items-start gap-2">
+				<Checkbox bind:checked={dismissConfirmChecked} class="mt-0.5" />
+				<span class="text-[11px] leading-relaxed">
+					I understand this cannot be undone.
+				</span>
+			</label>
+		</div>
+		<DialogFooter class="gap-2 sm:justify-end">
+			<Button
+				variant="outline"
+				size="sm"
+				onclick={() => { dismissDialogOpen = false; dismissConfirmChecked = false; }}
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				size="sm"
+				disabled={!dismissConfirmChecked}
+				onclick={handleDismissConfirm}
+				class="gap-1"
+			>
+				<TrashIcon size={14} />
+				Dismiss
+			</Button>
+		</DialogFooter>
+	</DialogContent>
+</Dialog>
 
 <!-- Revival Wizard (rendered outside ScrollArea to avoid z-index issues) -->
 {#if isDead}

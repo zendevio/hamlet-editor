@@ -16,7 +16,7 @@
 	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
-	import { getSaveData, markDirty } from '$lib/stores/save-data.svelte';
+	import { getSaveData, markDirty, setEstateName } from '$lib/stores/save-data.svelte';
 
 	// ----- Types -----
 
@@ -53,6 +53,34 @@
 				})
 			: null
 	);
+
+	// D6: Estate name
+	let estateNameValue = $state('');
+	let estateNameEditing = $state(false);
+
+	$effect(() => {
+		if (!estateNameEditing) {
+			estateNameValue = saveData.game?.base_root?.estatename ?? '';
+		}
+	});
+
+	function handleEstateNameBlur() {
+		const trimmed = estateNameValue.trim();
+		if (trimmed && trimmed !== (saveData.game?.base_root?.estatename ?? '')) {
+			setEstateName(trimmed);
+		}
+		estateNameEditing = false;
+	}
+
+	function handleEstateNameKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			(e.target as HTMLElement)?.blur();
+		}
+		if (e.key === 'Escape') {
+			estateNameValue = saveData.game?.base_root?.estatename ?? '';
+			estateNameEditing = false;
+		}
+	}
 
 	// DLC flags — will come from persist.game.json once wired
 	let hasCrimsonCourt = $state(false);
@@ -156,6 +184,26 @@
 	/>
 {:else}
 	<div class="space-y-8">
+		<!-- D6: Estate Name Section -->
+		<section>
+			<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+				Estate Name
+			</h2>
+			<div class="max-w-sm space-y-1">
+				<Input
+					bind:value={estateNameValue}
+					onfocus={() => (estateNameEditing = true)}
+					onblur={handleEstateNameBlur}
+					onkeydown={handleEstateNameKeydown}
+					placeholder="Enter estate name..."
+					class="h-9 text-sm"
+				/>
+				<p class="text-[10px] text-muted-foreground">
+					{estateNameValue.length} bytes
+				</p>
+			</div>
+		</section>
+
 		<!-- Wallet Section -->
 		<section>
 			<h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
