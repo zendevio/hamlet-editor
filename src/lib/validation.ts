@@ -6,6 +6,7 @@
  * be auto-fixed.
  */
 
+import { invoke } from '@tauri-apps/api/core';
 import {
 	getSaveData,
 	getHeroes,
@@ -18,6 +19,13 @@ import {
 // ── Types ──
 
 export type ValidationSeverity = 'error' | 'warning';
+
+/** Represents a known DLC installation state. */
+export interface GameInstall {
+	hasCrimsonCourt: boolean;
+	hasColorOfMadness: boolean;
+	hasShieldbreaker: boolean;
+}
 
 export interface ValidationIssue {
 	severity: ValidationSeverity;
@@ -178,6 +186,79 @@ function checkDuplicateTrinkets(): ValidationIssue[] {
 				message: `Trinket "${trinketId}" is equipped on multiple heroes: ${heroNames.join(', ')}.`
 			});
 		}
+	}
+
+	return issues;
+}
+
+// ── Round-Trip Validation ──
+
+/**
+ * Validate that a just-written save file decodes back to the expected data.
+ *
+ * Calls `decode_save_file` on the written file and performs a semantic
+ * comparison against the in-memory representation.
+ *
+ * @param profilePath - Absolute path to the profile directory.
+ * @param filename    - Name of the specific save file to check (e.g. `persist.roster.json`).
+ * @returns           - `true` if the decoded data matches, `false` otherwise.
+ *
+ * TODO: Implement actual semantic comparison. The comparison is non-trivial
+ * because ddsavelib may reorder fields or normalise numeric representations
+ * during the encode/decode cycle. A robust approach would be to normalise
+ * both sides to a canonical key-sorted form before comparing.
+ */
+export async function validateRoundTrip(profilePath: string, filename: string): Promise<boolean> {
+	const path = `${profilePath}/${filename}`;
+
+	try {
+		// Re-decode the file we just wrote to confirm it is parseable.
+		await invoke('decode_save_file', { path });
+	} catch {
+		// If decoding fails the file is corrupt — definite round-trip failure.
+		return false;
+	}
+
+	// TODO: Compare the decoded result against the in-memory store data.
+	// For now we only verify that the file decodes without error.
+	return true;
+}
+
+// ── DLC Field Injection Guards ──
+
+/**
+ * Check that save data does not contain fields from uninstalled DLC expansions.
+ *
+ * TODO: DLC detection is not yet wired to the settings store. Once
+ * `GameInstall` flags are populated from the detect commands, this function
+ * should be called from `runPreSaveValidation` and passed the current install
+ * state.
+ *
+ * Current checks (stubbed):
+ * - Crimson Court: hero quirks matching `disease_vampire_*`
+ * - Color of Madness: estate shard wallet entries
+ */
+export function checkDlcFieldInjection(
+	data: Record<string, unknown>,
+	gameInstall: GameInstall
+): ValidationIssue[] {
+	const issues: ValidationIssue[] = [];
+
+	// TODO: Wire up actual DLC detection before enabling these checks.
+	// The `gameInstall` flags will come from `commands::detect::detect_game_installations`
+	// once the store integration is complete.
+
+	if (!gameInstall.hasCrimsonCourt) {
+		// TODO: Scan hero quirks in `data` for keys matching `disease_vampire_*`.
+		// If any are found, push a warning — the quirk references Crimson Court
+		// content that the game cannot resolve without the DLC installed.
+		void data; // suppress unused-variable lint until implemented
+	}
+
+	if (!gameInstall.hasColorOfMadness) {
+		// TODO: Scan estate data for a shard wallet entry (key: `shard_dust_amount`
+		// or similar in `persist.estate.json`). If present, push a warning —
+		// shard currencies only exist in the Color of Madness DLC.
 	}
 
 	return issues;

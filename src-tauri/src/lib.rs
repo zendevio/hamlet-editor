@@ -31,6 +31,10 @@ pub fn run() {
             commands::backup::list_backups,
             commands::backup::restore_backup,
             commands::backup::restore_game_backup,
+            commands::assets::load_game_asset,
+            commands::names::generate_name_table,
+            commands::names::load_localization,
+            commands::mods::scan_mod_directories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

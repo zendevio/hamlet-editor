@@ -1,3 +1,6 @@
+<!-- TODO: For rosters with 30+ heroes, consider virtualizing this list
+     using a virtual scroll library compatible with Svelte 5.
+     Current implementation renders all heroes which is fine for typical rosters (< 30). -->
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';

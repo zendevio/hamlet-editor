@@ -43,9 +43,11 @@
 			title="No profile loaded"
 			description="Open Settings to configure your save file location, then select a profile to begin editing."
 		/>
-		<Button variant="outline" size="sm" onclick={loadMockData}>
-			Load Mock Data (Dev)
-		</Button>
+		{#if import.meta.env.DEV}
+			<Button variant="outline" size="sm" onclick={loadMockData}>
+				Load Mock Data (Dev)
+			</Button>
+		{/if}
 	</div>
 {:else}
 	<div class="flex h-[calc(100vh-4rem)] flex-col">

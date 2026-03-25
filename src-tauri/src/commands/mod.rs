@@ -1,5 +1,8 @@
+pub mod assets;
 pub mod backup;
 pub mod detect;
+pub mod mods;
+pub mod names;
 pub mod save;
 
 /// Check whether a filename matches the DD1 save file pattern:

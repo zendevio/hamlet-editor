@@ -88,9 +88,11 @@
 			title="No profile loaded"
 			description="Load a save profile to view and edit town buildings, upgrades, and treatment slots."
 		/>
-		<Button variant="outline" size="sm" onclick={loadMockData}>
-			Load Mock Data (Dev)
-		</Button>
+		{#if import.meta.env.DEV}
+			<Button variant="outline" size="sm" onclick={loadMockData}>
+				Load Mock Data (Dev)
+			</Button>
+		{/if}
 	</div>
 {:else}
 	<ScrollArea class="h-[calc(100vh-4rem)]">
