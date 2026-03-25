@@ -6,6 +6,8 @@
  * and to populate the "Add Quirk" combobox.
  */
 
+import { snakeToTitle } from '$lib/utils';
+
 export type QuirkCategory = 'positive' | 'negative' | 'disease';
 
 export interface QuirkInfo {
@@ -201,14 +203,6 @@ const DISEASE_IDS = [
 	'disease_vampire_blood_lust'
 ];
 
-/** Convert a quirk_id like "quick_reflexes" to "Quick Reflexes". */
-function idToDisplayName(id: string): string {
-	return id
-		.split('_')
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(' ');
-}
-
 const positiveSet = new Set(POSITIVE_QUIRK_IDS);
 const negativeSet = new Set(NEGATIVE_QUIRK_IDS);
 const diseaseSet = new Set(DISEASE_IDS);
@@ -227,13 +221,13 @@ export function getAllQuirks(): QuirkInfo[] {
 	const all: QuirkInfo[] = [];
 
 	for (const id of POSITIVE_QUIRK_IDS) {
-		all.push({ id, displayName: idToDisplayName(id), category: 'positive' });
+		all.push({ id, displayName: snakeToTitle(id), category: 'positive' });
 	}
 	for (const id of NEGATIVE_QUIRK_IDS) {
-		all.push({ id, displayName: idToDisplayName(id), category: 'negative' });
+		all.push({ id, displayName: snakeToTitle(id), category: 'negative' });
 	}
 	for (const id of DISEASE_IDS) {
-		all.push({ id, displayName: idToDisplayName(id), category: 'disease' });
+		all.push({ id, displayName: snakeToTitle(id), category: 'disease' });
 	}
 
 	return all;

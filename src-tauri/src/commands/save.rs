@@ -70,11 +70,7 @@ pub fn load_profile(profile_path: String) -> Result<serde_json::Value, String> {
         let file_name = entry.file_name();
         let name = file_name.to_string_lossy();
 
-        let dominated = |n: &str| {
-            (n.starts_with("persist.") && n.ends_with(".json")) || n == "novelty_tracker.json"
-        };
-
-        if !dominated(&name) {
+        if !super::is_save_file(&name) {
             continue;
         }
 

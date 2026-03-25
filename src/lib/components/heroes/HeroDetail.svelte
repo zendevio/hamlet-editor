@@ -53,6 +53,7 @@
 		RESOLVE_XP_THRESHOLDS
 	} from '$lib/stores/save-data.svelte';
 	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '$lib/data/quirks';
+	import { snakeToTitle } from '$lib/utils';
 	import RevivalWizard from './RevivalWizard.svelte';
 
 	let {
@@ -119,13 +120,6 @@
 			return true;
 		});
 	});
-
-	function quirkDisplayName(id: string): string {
-		return id
-			.split('_')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
-	}
 
 	function startEditName() {
 		nameValue = hero.name;
@@ -194,6 +188,34 @@
 		revertHero(hero.guid);
 	}
 </script>
+
+{#snippet quirkRow(id: string, quirk: HeroQuirk, colorClass: string)}
+	<div
+		class="flex items-center gap-1 rounded-none border px-2 py-1 {colorClass}"
+	>
+		<button
+			class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+			onclick={() => toggleQuirkLock(hero.guid, id)}
+			title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
+			aria-label={quirk.is_locked ? `Unlock ${snakeToTitle(id)}` : `Lock ${snakeToTitle(id)}`}
+		>
+			{#if quirk.is_locked}
+				<LockIcon size={11} class="text-yellow-500" />
+			{:else}
+				<LockOpenIcon size={11} />
+			{/if}
+		</button>
+		<span class="flex-1 truncate text-[11px]">{snakeToTitle(id)}</span>
+		<button
+			class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
+			onclick={() => removeHeroQuirk(hero.guid, id)}
+			title="Remove quirk"
+			aria-label="Remove {snakeToTitle(id)}"
+		>
+			<XIcon size={11} />
+		</button>
+	</div>
+{/snippet}
 
 <ScrollArea class="h-full">
 	<div class="space-y-4 p-4">
@@ -421,7 +443,7 @@
 							onValueChange={(v: string) => setHeroAffliction(hero.guid, v === '_none' ? '' : v)}
 						>
 							<SelectTrigger class="h-8 text-xs">
-								<span>{hero.afflictionTypeId ? quirkDisplayName(hero.afflictionTypeId) : 'None'}</span>
+								<span>{hero.afflictionTypeId ? snakeToTitle(hero.afflictionTypeId) : 'None'}</span>
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="_none">None</SelectItem>
@@ -491,29 +513,7 @@
 						</div>
 						<div class="space-y-1">
 							{#each positiveQuirks as [id, quirk] (id)}
-								<div
-									class="flex items-center gap-1 rounded-none border border-green-500/20 bg-green-500/5 px-2 py-1"
-								>
-									<button
-										class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-										onclick={() => toggleQuirkLock(hero.guid, id)}
-										title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
-									>
-										{#if quirk.is_locked}
-											<LockIcon size={11} class="text-yellow-500" />
-										{:else}
-											<LockOpenIcon size={11} />
-										{/if}
-									</button>
-									<span class="flex-1 truncate text-[11px]">{quirkDisplayName(id)}</span>
-									<button
-										class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
-										onclick={() => removeHeroQuirk(hero.guid, id)}
-										title="Remove quirk"
-									>
-										<XIcon size={11} />
-									</button>
-								</div>
+								{@render quirkRow(id, quirk, 'border-green-500/20 bg-green-500/5')}
 							{/each}
 						</div>
 						{#if canAddPositive}
@@ -544,29 +544,7 @@
 							</div>
 							<div class="space-y-1">
 								{#each diseaseQuirks as [id, quirk] (id)}
-									<div
-										class="flex items-center gap-1 rounded-none border border-amber-500/20 bg-amber-500/10 px-2 py-1"
-									>
-										<button
-											class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-											onclick={() => toggleQuirkLock(hero.guid, id)}
-											title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
-										>
-											{#if quirk.is_locked}
-												<LockIcon size={11} class="text-yellow-500" />
-											{:else}
-												<LockOpenIcon size={11} />
-											{/if}
-										</button>
-										<span class="flex-1 truncate text-[11px]">{quirkDisplayName(id)}</span>
-										<button
-											class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
-											onclick={() => removeHeroQuirk(hero.guid, id)}
-											title="Remove quirk"
-										>
-											<XIcon size={11} />
-										</button>
-									</div>
+									{@render quirkRow(id, quirk, 'border-amber-500/20 bg-amber-500/10')}
 								{/each}
 							</div>
 						{/if}
@@ -574,29 +552,7 @@
 						<!-- Negative (non-disease) -->
 						<div class="space-y-1 {diseaseQuirks.length > 0 ? 'mt-2' : ''}">
 							{#each negativeQuirks as [id, quirk] (id)}
-								<div
-									class="flex items-center gap-1 rounded-none border border-red-500/20 bg-red-500/5 px-2 py-1"
-								>
-									<button
-										class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
-										onclick={() => toggleQuirkLock(hero.guid, id)}
-										title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
-									>
-										{#if quirk.is_locked}
-											<LockIcon size={11} class="text-yellow-500" />
-										{:else}
-											<LockOpenIcon size={11} />
-										{/if}
-									</button>
-									<span class="flex-1 truncate text-[11px]">{quirkDisplayName(id)}</span>
-									<button
-										class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
-										onclick={() => removeHeroQuirk(hero.guid, id)}
-										title="Remove quirk"
-									>
-										<XIcon size={11} />
-									</button>
-								</div>
+								{@render quirkRow(id, quirk, 'border-red-500/20 bg-red-500/5')}
 							{/each}
 						</div>
 						{#if canAddNegative}
@@ -626,6 +582,7 @@
 							<button
 								class="text-muted-foreground cursor-pointer hover:text-foreground"
 								onclick={() => (showQuirkPicker = false)}
+								aria-label="Close quirk picker"
 							>
 								<XIcon size={14} />
 							</button>

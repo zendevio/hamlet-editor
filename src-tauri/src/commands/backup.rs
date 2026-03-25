@@ -1,5 +1,5 @@
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::path::Path;
 use tauri::Manager;
 
@@ -7,7 +7,7 @@ use tauri::Manager;
 // Data structures
 // ---------------------------------------------------------------------------
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct BackupEntry {
     pub path: String,
     pub timestamp: String, // ISO 8601
@@ -199,12 +199,6 @@ pub fn restore_game_backup(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/// Check whether a filename matches the save file pattern:
-/// `persist.*.json` or `novelty_tracker.json`.
-fn is_save_file(name: &str) -> bool {
-    (name.starts_with("persist.") && name.ends_with(".json")) || name == "novelty_tracker.json"
-}
-
 /// Copy all save files from `src_dir` to `dst_dir`.
 /// Returns the number of files copied.
 fn copy_save_files(src_dir: &Path, dst_dir: &Path) -> Result<usize, String> {
@@ -217,7 +211,7 @@ fn copy_save_files(src_dir: &Path, dst_dir: &Path) -> Result<usize, String> {
         let file_name = entry.file_name();
         let name = file_name.to_string_lossy();
 
-        if !is_save_file(&name) {
+        if !super::is_save_file(&name) {
             continue;
         }
 
@@ -251,7 +245,7 @@ fn count_save_files(dir: &Path) -> usize {
                 .filter(|e| {
                     let name = e.file_name();
                     let n = name.to_string_lossy();
-                    is_save_file(&n) && e.path().is_file()
+                    super::is_save_file(&n) && e.path().is_file()
                 })
                 .count()
         })

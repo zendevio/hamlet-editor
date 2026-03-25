@@ -270,8 +270,13 @@ let roster = $state<RosterData | null>(null);
 let estate = $state<EstateData | null>(null);
 let town = $state<TownData | null>(null);
 let upgrades = $state<UpgradesData | null>(null);
+// Svelte 5 requires immutable replacement to trigger reactivity on Sets.
 let dirtyFiles = $state<Set<string>>(new Set());
-let diskSnapshot = $state<string | null>(null); // JSON snapshot for revert
+// JSON snapshots of on-disk state, used for in-memory revert.
+let rosterSnapshot = $state<string | null>(null);
+let estateSnapshot = $state<string | null>(null);
+let townSnapshot = $state<string | null>(null);
+let upgradesSnapshot = $state<string | null>(null);
 
 // ── Derived Helpers ──
 
@@ -396,13 +401,6 @@ export function getHeroRawData(guid: string): HeroBaseRoot | null {
 /** Mark a file as having unsaved changes. */
 export function markDirty(filename: string) {
 	dirtyFiles = new Set([...dirtyFiles, filename]);
-}
-
-/** Clear dirty state for a file (e.g. after save). */
-export function clearDirty(filename: string) {
-	const next = new Set(dirtyFiles);
-	next.delete(filename);
-	dirtyFiles = next;
 }
 
 /** Check if any files are dirty. */
@@ -599,7 +597,7 @@ export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 	for (const purchase of Object.values(upgrades.base_root.purchases)) {
 		// Only building upgrades (instance_number === 0)
 		if (purchase.instance_number !== 0) continue;
-		const treeId = purchase.tree_id.replace(/^###/, '');
+		const treeId = stripDsonPrefix(purchase.tree_id);
 		const dotIndex = treeId.indexOf('.');
 		if (dotIndex === -1) continue;
 		const buildingName = treeId.substring(0, dotIndex);
@@ -624,7 +622,7 @@ export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 export function toggleUpgrade(purchase: UpgradePurchase) {
 	if (!upgrades) return;
 	const newState = !purchase.is_purchased;
-	const treeId = purchase.tree_id.replace(/^###/, '');
+	const treeId = stripDsonPrefix(purchase.tree_id);
 	const dotIndex = treeId.indexOf('.');
 	if (dotIndex === -1) return;
 	const buildingName = treeId.substring(0, dotIndex);
@@ -633,7 +631,7 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 		// Turning OFF: cascade — also turn off all higher-tier upgrades in same tree
 		for (const p of Object.values(upgrades.base_root.purchases)) {
 			if (p.instance_number !== 0) continue;
-			const pTreeId = p.tree_id.replace(/^###/, '');
+			const pTreeId = stripDsonPrefix(p.tree_id);
 			const pDotIndex = pTreeId.indexOf('.');
 			if (pDotIndex === -1) continue;
 			const pBuildingName = pTreeId.substring(0, pDotIndex);
@@ -652,9 +650,9 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 	markDirty('persist.upgrades.json');
 }
 
-/** Strip the ### prefix from a tree_id for display. */
-export function formatTreeId(treeId: string): string {
-	return treeId.replace(/^###/, '');
+/** Strip the ### prefix from a DSON identifier for display. */
+export function stripDsonPrefix(id: string): string {
+	return id.replace(/^###/, '');
 }
 
 // ── Load/Reset ──
@@ -662,51 +660,54 @@ export function formatTreeId(treeId: string): string {
 /** Load roster data into the store. */
 export function loadRoster(data: RosterData) {
 	roster = data;
-	diskSnapshot = JSON.stringify(data);
+	rosterSnapshot = JSON.stringify(data);
 }
 
 /** Load estate data into the store. */
 export function loadEstate(data: EstateData) {
 	estate = data;
+	estateSnapshot = JSON.stringify(data);
 }
 
 /** Load town data into the store. */
 export function loadTown(data: TownData) {
 	town = data;
+	townSnapshot = JSON.stringify(data);
 }
 
 /** Load upgrades data into the store. */
 export function loadUpgrades(data: UpgradesData) {
 	upgrades = data;
+	upgradesSnapshot = JSON.stringify(data);
 }
 
 /** Revert a single hero to on-disk state. */
 export function revertHero(guid: string) {
-	if (!diskSnapshot || !roster) return;
-	const snapshot = JSON.parse(diskSnapshot) as RosterData;
+	if (!rosterSnapshot || !roster) return;
+	const snapshot = JSON.parse(rosterSnapshot) as RosterData;
 	const original = snapshot.base_root.heroes[guid];
 	if (!original) return;
 	roster.base_root.heroes[guid] = JSON.parse(JSON.stringify(original));
 }
 
-/** Clear all dirty flags (e.g. after successful save). */
+/** Clear all dirty flags and update snapshots to current state (call after successful save). */
 export function clearAllDirty() {
 	dirtyFiles = new Set();
-	// Update disk snapshot to current state after save
-	if (roster) diskSnapshot = JSON.stringify(roster);
+	if (roster) rosterSnapshot = JSON.stringify(roster);
+	if (estate) estateSnapshot = JSON.stringify(estate);
+	if (town) townSnapshot = JSON.stringify(town);
+	if (upgrades) upgradesSnapshot = JSON.stringify(upgrades);
 }
 
 /**
- * Discard all in-memory changes by reverting to the disk snapshot.
- * Reloads roster from the snapshot; resets dirty state.
+ * Discard all in-memory changes by reverting every file to its disk snapshot.
+ * Resets dirty state.
  */
 export function discardAllChanges() {
-	if (diskSnapshot) {
-		roster = JSON.parse(diskSnapshot) as RosterData;
-	}
-	// For estate/town/upgrades we don't have snapshots yet,
-	// so we just clear dirty flags. Full reload from disk
-	// would be done by the caller via the Tauri reload command.
+	if (rosterSnapshot) roster = JSON.parse(rosterSnapshot) as RosterData;
+	if (estateSnapshot) estate = JSON.parse(estateSnapshot) as EstateData;
+	if (townSnapshot) town = JSON.parse(townSnapshot) as TownData;
+	if (upgradesSnapshot) upgrades = JSON.parse(upgradesSnapshot) as UpgradesData;
 	dirtyFiles = new Set();
 }
 
@@ -738,7 +739,10 @@ export function resetSaveData() {
 	town = null;
 	upgrades = null;
 	dirtyFiles = new Set();
-	diskSnapshot = null;
+	rosterSnapshot = null;
+	estateSnapshot = null;
+	townSnapshot = null;
+	upgradesSnapshot = null;
 }
 
 // ── Mock Data for Development ──
@@ -752,18 +756,18 @@ export function loadMockData() {
 			dismissed_hero_count: 1,
 			last_party: { last_party_guids: [96, 42, 7, 55] },
 			heroes: {
-				'96': createMockHero('Reynauld', 'crusader', 0, 4, 47, 54, 12, 3, 3),
-				'42': createMockHero('Dismas', 'highwayman', 0, 3, 35, 35, 45, 2, 2),
-				'7': createMockHero('Junia', 'vestal', 1, 5, 42, 42, 0, 4, 4),
-				'55': createMockHero('Sarmenti', 'jester', 2, 2, 15, 26, 120, 2, 2, 'tavern'),
-				'12': createMockHero('Barristan', 'man_at_arms', 2, 3, 42, 47, 30, 3, 3, 'abbey'),
-				'23': createMockHero('Paracelsus', 'plague_doctor', 0, 4, 34, 34, 5, 3, 3),
-				'34': createMockHero('Audrey', 'grave_robber', 2, 1, 24, 24, 67, 1, 1, 'sanitarium'),
-				'45': createMockHero('Bigby', 'bounty_hunter', 3, 6, 0, 43, 0, 4, 4),
-				'56': createMockHero('Boudica', 'hellion', 0, 3, 36, 36, 88, 2, 2),
-				'67': createMockHero('Tardif', 'bounty_hunter', 0, 0, 26, 26, 0, 0, 0),
-				'78': createMockHero('Damian', 'leper', 4, 2, 0, 49, 0, 2, 2),
-				'89': createMockHero('Missandei', 'occultist', 2, 4, 30, 30, 15, 3, 3, 'abbey')
+				'96': createMockHero('Reynauld', 'crusader', 0, 4, 47, 12, 3, 3),
+				'42': createMockHero('Dismas', 'highwayman', 0, 3, 35, 45, 2, 2),
+				'7': createMockHero('Junia', 'vestal', 1, 5, 42, 0, 4, 4),
+				'55': createMockHero('Sarmenti', 'jester', 2, 2, 15, 120, 2, 2, 'tavern'),
+				'12': createMockHero('Barristan', 'man_at_arms', 2, 3, 42, 30, 3, 3, 'abbey'),
+				'23': createMockHero('Paracelsus', 'plague_doctor', 0, 4, 34, 5, 3, 3),
+				'34': createMockHero('Audrey', 'grave_robber', 2, 1, 24, 67, 1, 1, 'sanitarium'),
+				'45': createMockHero('Bigby', 'bounty_hunter', 3, 6, 0, 0, 4, 4),
+				'56': createMockHero('Boudica', 'hellion', 0, 3, 36, 88, 2, 2),
+				'67': createMockHero('Tardif', 'bounty_hunter', 0, 0, 26, 0, 0, 0),
+				'78': createMockHero('Damian', 'leper', 4, 2, 0, 0, 2, 2),
+				'89': createMockHero('Missandei', 'occultist', 2, 4, 30, 15, 3, 3, 'abbey')
 			}
 		}
 	};
@@ -805,7 +809,6 @@ function createMockHero(
 	status: number,
 	level: number,
 	currentHp: number,
-	_maxHpOverride: number,
 	stress: number,
 	weaponRank: number,
 	armourRank: number,

@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
+	import { snakeToTitle } from '$lib/utils';
 
 	let {
 		id,
@@ -14,12 +15,7 @@
 		onremove?: (id: string) => void;
 	} = $props();
 
-	/** Format raw trinket ID into a readable display name. */
-	let displayName = $derived(
-		id
-			.replace(/_/g, ' ')
-			.replace(/\b\w/g, (c) => c.toUpperCase())
-	);
+	let displayName = $derived(snakeToTitle(id));
 </script>
 
 <Card.Root class="group relative p-3 gap-2">
@@ -42,6 +38,7 @@
 			class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
 			onclick={() => onremove?.(id)}
 			title="Remove trinket"
+			aria-label="Remove {displayName}"
 		>
 			<XIcon size={14} />
 		</Button>

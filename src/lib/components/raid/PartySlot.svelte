@@ -14,6 +14,8 @@
 
 <div
 	class="flex flex-col items-center gap-2 rounded-sm border p-3 min-w-[120px]"
+	role="group"
+	aria-label="Party slot {position}: {heroName ?? 'Empty'}"
 >
 	<!-- Portrait placeholder -->
 	<div

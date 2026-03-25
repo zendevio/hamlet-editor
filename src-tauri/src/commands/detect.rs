@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 // Data structures
 // ---------------------------------------------------------------------------
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct SaveLocation {
     pub path: String,
     pub source: String, // "Steam", "Gog", "Epic", "Manual"
@@ -16,7 +16,7 @@ pub struct SaveLocation {
     pub has_active_raid: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct GameInstall {
     pub path: String,
     pub source: String, // "Steam", "Gog", "Manual"
@@ -232,11 +232,6 @@ fn collect_profiles(
             continue;
         }
 
-        // Skip backup subdirectories (game creates these inside profile dirs)
-        if dir_name == "backup" {
-            continue;
-        }
-
         if !is_valid_save_directory(&profile_dir) {
             continue;
         }
@@ -291,7 +286,8 @@ fn gog_save_dirs() -> Vec<PathBuf> {
 
 /// Return platform-specific well-known GOG game installation directories.
 fn gog_game_dirs() -> Vec<PathBuf> {
-    let dirs_list = Vec::new();
+    #[allow(unused_mut)]
+    let mut dirs_list = Vec::new();
 
     #[cfg(target_os = "windows")]
     {

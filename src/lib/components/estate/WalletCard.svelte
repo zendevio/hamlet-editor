@@ -86,6 +86,7 @@
 				class="w-full cursor-pointer rounded-sm px-2.5 py-1 text-left text-lg font-bold tabular-nums transition-colors hover:bg-muted"
 				onclick={startEdit}
 				title="Click to edit"
+				aria-label="Edit {name}: {value.toLocaleString()}"
 			>
 				{value.toLocaleString()}
 			</button>

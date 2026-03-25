@@ -12,14 +12,14 @@
 	import {
 		getHeroes,
 		getSaveData,
-		BUILDING_DISPLAY_NAMES,
-		CLASS_DISPLAY_NAMES
+		BUILDING_DISPLAY_NAMES
 	} from '$lib/stores/save-data.svelte';
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
-	import BankIcon from 'phosphor-svelte/lib/BankIcon';
 	import BuildingsIcon from 'phosphor-svelte/lib/BuildingsIcon';
 	import FloppyDiskIcon from 'phosphor-svelte/lib/FloppyDiskIcon';
 	import ArchiveIcon from 'phosphor-svelte/lib/ArchiveIcon';
+	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
+	import type { Component } from 'svelte';
 
 	let open = $state(false);
 	let searchValue = $state('');
@@ -76,6 +76,7 @@
 	interface ActionResult {
 		label: string;
 		shortcut: string;
+		icon: Component<{ size?: number; class?: string }>;
 		action: () => void;
 	}
 
@@ -85,15 +86,16 @@
 			{
 				label: 'Save Changes',
 				shortcut: '\u2318S',
+				icon: FloppyDiskIcon,
 				action: () => {
 					open = false;
-					// Save action is handled by the layout; dispatch a custom event
 					window.dispatchEvent(new CustomEvent('hamlet:save'));
 				}
 			},
 			{
 				label: 'Create Backup',
 				shortcut: '\u2318B',
+				icon: ArchiveIcon,
 				action: () => {
 					open = false;
 					window.dispatchEvent(new CustomEvent('hamlet:backup'));
@@ -102,6 +104,7 @@
 			{
 				label: 'Discard Changes',
 				shortcut: '\u2318\u21E7Z',
+				icon: ArrowCounterClockwiseIcon,
 				action: () => {
 					open = false;
 					window.dispatchEvent(new CustomEvent('hamlet:discard'));
@@ -122,14 +125,6 @@
 		goto('/town');
 	}
 
-	function navigateToQuirk(heroGuid: string) {
-		open = false;
-		goto(`/heroes?select=${heroGuid}`);
-	}
-
-	export function toggle() {
-		open = !open;
-	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -143,7 +138,7 @@
 			<CommandGroup heading="Actions">
 				{#each actionResults as action (action.label)}
 					<CommandItem onSelect={action.action}>
-						<FloppyDiskIcon size={16} class="mr-2 shrink-0" />
+						<action.icon size={16} class="mr-2 shrink-0" />
 						<span>{action.label}</span>
 						<CommandShortcut>{action.shortcut}</CommandShortcut>
 					</CommandItem>
@@ -166,7 +161,7 @@
 		{#if quirkResults.length > 0}
 			<CommandGroup heading="Quirks">
 				{#each quirkResults as result (result.heroGuid + result.quirkId)}
-					<CommandItem onSelect={() => navigateToQuirk(result.heroGuid)}>
+					<CommandItem onSelect={() => navigateToHero(result.heroGuid)}>
 						<UsersThreeIcon size={16} class="mr-2 shrink-0" />
 						<span class="font-mono text-xs">{result.quirkId}</span>
 						<span class="text-muted-foreground ml-2 text-xs">on {result.heroName}</span>

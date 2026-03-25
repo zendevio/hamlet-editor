@@ -13,7 +13,8 @@
 	import {
 		getSaveData,
 		getHeroes,
-		CLASS_DISPLAY_NAMES
+		CLASS_DISPLAY_NAMES,
+		stripDsonPrefix
 	} from '$lib/stores/save-data.svelte';
 
 	// ── Types ──
@@ -138,7 +139,7 @@
 	);
 
 	let goalDisplay = $derived(
-		raidInstance ? raidInstance.goal_ids.map((g) => g.replace(/^###/, '')).join(', ') : ''
+		raidInstance ? raidInstance.goal_ids.map((g) => stripDsonPrefix(g)).join(', ') : ''
 	);
 
 	let locationDisplay = $derived(raidData?.base_root.in_area ?? '');
@@ -294,7 +295,7 @@
 					<span class="text-xs font-medium text-muted-foreground">Goals:</span>
 					{#each (raidInstance?.goal_ids ?? []) as goalId}
 						<Badge variant="outline" class="text-[11px] font-normal">
-							{goalId.replace(/^###/, '')}
+							{stripDsonPrefix(goalId)}
 						</Badge>
 					{/each}
 				</div>

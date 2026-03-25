@@ -6,10 +6,11 @@
 		TooltipTrigger
 	} from '$lib/components/ui/tooltip';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
+	import { snakeToTitle } from '$lib/utils';
 	import {
 		type BuildingUpgradeGroup,
 		type UpgradePurchase,
-		formatTreeId,
+		stripDsonPrefix,
 		toggleUpgrade
 	} from '$lib/stores/save-data.svelte';
 
@@ -23,7 +24,7 @@
 	let upgradesByKey = $derived.by(() => {
 		const map: Record<string, UpgradePurchase[]> = {};
 		for (const upgrade of group.upgrades) {
-			const treeId = formatTreeId(upgrade.tree_id);
+			const treeId = stripDsonPrefix(upgrade.tree_id);
 			const dotIndex = treeId.indexOf('.');
 			const key = dotIndex >= 0 ? treeId.substring(dotIndex + 1) : treeId;
 			if (!map[key]) map[key] = [];
@@ -36,15 +37,9 @@
 		return map;
 	});
 
-	function formatUpgradeKey(key: string): string {
-		return key
-			.replace(/_/g, ' ')
-			.replace(/\b\w/g, (c) => c.toUpperCase());
-	}
-
 	function hasCascadeRisk(purchase: UpgradePurchase): boolean {
 		if (!purchase.is_purchased) return false;
-		const treeId = formatTreeId(purchase.tree_id);
+		const treeId = stripDsonPrefix(purchase.tree_id);
 		const dotIndex = treeId.indexOf('.');
 		const key = dotIndex >= 0 ? treeId.substring(dotIndex + 1) : treeId;
 		const siblings = upgradesByKey[key] ?? [];
@@ -64,7 +59,7 @@
 
 	{#each Object.entries(upgradesByKey) as [key, upgrades] (key)}
 		<div class="space-y-1.5">
-			<p class="text-xs font-medium text-muted-foreground/80">{formatUpgradeKey(key)}</p>
+			<p class="text-xs font-medium text-muted-foreground/80">{snakeToTitle(key)}</p>
 			<div class="flex flex-wrap gap-3">
 				{#each upgrades as purchase (purchase.tree_id + purchase.requirement_code)}
 					<div class="flex items-center gap-2">

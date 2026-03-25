@@ -179,6 +179,7 @@
 					placeholder="Search heroes..."
 					bind:value={searchQuery}
 					class="h-8 pl-7 text-xs"
+					aria-label="Search heroes by name"
 				/>
 			</div>
 			<Tooltip>
@@ -188,6 +189,8 @@
 						size="sm"
 						class="h-8 w-8 p-0"
 						onclick={() => (showFilters = !showFilters)}
+						aria-label="Toggle filters"
+						aria-expanded={showFilters}
 					>
 						<FunnelSimpleIcon size={14} />
 					</Button>
