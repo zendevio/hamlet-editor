@@ -16,6 +16,7 @@
 	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
+	import { getSaveData, markDirty } from '$lib/stores/save-data.svelte';
 
 	// ----- Types -----
 
@@ -36,18 +37,22 @@
 		amount: number;
 	}
 
-	interface EstateData {
-		wallet: Record<string, WalletEntry>;
-		trinkets: { items: Record<string, TrinketEntry> };
-		estate_items: { items: Record<string, EstateItem> };
-		endless_wave_highscore?: number;
-	}
-
 	// ----- Props / State -----
 
-	// Data will be provided once the save loading pipeline is wired up.
-	// For now, this is null to show the empty state.
-	let estateData = $state<EstateData | null>(null);
+	const saveData = getSaveData();
+
+	// estateData reads from the shared store's estate field.
+	// The base_root is unwrapped to match the local EstateData shape expected by the UI.
+	let estateData = $derived(
+		saveData.estate
+			? (saveData.estate.base_root as {
+					wallet: Record<string, WalletEntry>;
+					trinkets: { items: Record<string, TrinketEntry> };
+					estate_items: { items: Record<string, EstateItem> };
+					endless_wave_highscore?: number;
+				})
+			: null
+	);
 
 	// DLC flags — will come from persist.game.json once wired
 	let hasCrimsonCourt = $state(false);
@@ -118,23 +123,23 @@
 	// ----- Handlers -----
 
 	function handleWalletChange(type: string, newValue: number) {
-		if (!estateData) return;
+		if (!estateData || !saveData.estate) return;
 		for (const [key, entry] of Object.entries(estateData.wallet)) {
 			if (entry.type === type) {
-				estateData.wallet[key].amount = newValue;
+				saveData.estate.base_root.wallet[key].amount = newValue;
+				markDirty('persist.estate.json');
 				break;
 			}
 		}
 	}
 
 	function handleRemoveTrinket(trinketId: string) {
-		if (!estateData) return;
+		if (!estateData || !saveData.estate) return;
 		const entries = Object.entries(estateData.trinkets.items);
 		const match = entries.find(([, item]) => item.id === trinketId);
 		if (match) {
-			delete estateData.trinkets.items[match[0]];
-			// Trigger reactivity by reassigning
-			estateData = estateData;
+			delete saveData.estate.base_root.trinkets.items[match[0]];
+			markDirty('persist.estate.json');
 		}
 	}
 

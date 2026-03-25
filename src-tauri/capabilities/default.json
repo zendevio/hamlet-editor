@@ -1,11 +1,18 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
+  "description": "Default capabilities",
+  "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "fs:default",
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    "fs:allow-exists",
+    "fs:allow-read-dir",
+    "dialog:default",
+    "dialog:allow-open",
+    "store:default",
+    "os:default"
   ]
 }

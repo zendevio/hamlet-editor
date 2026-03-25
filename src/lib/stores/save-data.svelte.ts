@@ -6,6 +6,8 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
+import { loadProfile } from '$lib/api/save';
+
 // ── Types ──
 
 export interface HeroQuirk {
@@ -120,6 +122,60 @@ export interface TownBuilding {
 export interface TownData {
 	base_root: {
 		buildings: Record<string, TownBuilding>;
+	};
+}
+
+export interface RaidInventoryItem {
+	id: string;
+	type: string;
+	amount: number;
+}
+
+export interface RaidParty {
+	heroes: number[];
+	start_heroes_size: number;
+	/** IMPORTANT: torchlight is a Float in DSON. Always write as float (75.0, not 75). */
+	torchlight: number;
+	'IsMovingLeft()': boolean;
+	retreat_room: string;
+	scoutChance_all: number;
+	scoutModifier_all: number;
+	inventory: {
+		system_config_type: string;
+		items: Record<string, RaidInventoryItem>;
+		hunger_room_buffer: number;
+	};
+}
+
+export interface RaidInstance {
+	id: string;
+	is_plot_quest: boolean;
+	type: string;
+	dungeon: string;
+	difficulty: number;
+	length: number;
+	goal_ids: string[];
+	completion_reward: {
+		resolve_xp: number;
+		items_definition: {
+			system_config_type: string;
+			items: Record<string, unknown>;
+		};
+	};
+}
+
+export interface RaidData {
+	base_root: {
+		raid_instance: RaidInstance;
+		in_area: string;
+		areatile: string;
+		last_room_id: string;
+		in_doorway: boolean;
+		start_elapsed_time: number;
+		inbattle: boolean;
+		stat_database: Record<string, unknown>;
+		raid_finish_quirk_monster_class_ids: unknown[];
+		party: RaidParty;
 	};
 }
 
@@ -270,6 +326,9 @@ let roster = $state<RosterData | null>(null);
 let estate = $state<EstateData | null>(null);
 let town = $state<TownData | null>(null);
 let upgrades = $state<UpgradesData | null>(null);
+let raid = $state<RaidData | null>(null);
+let gameInRaid = $state(false);
+let isLoaded = $state(false);
 // Svelte 5 requires immutable replacement to trigger reactivity on Sets.
 let dirtyFiles = $state<Set<string>>(new Set());
 // JSON snapshots of on-disk state, used for in-memory revert.
@@ -374,11 +433,17 @@ export function getSaveData() {
 		get upgrades() {
 			return upgrades;
 		},
+		get raid() {
+			return raid;
+		},
+		get gameInRaid() {
+			return gameInRaid;
+		},
 		get dirtyFiles() {
 			return dirtyFiles;
 		},
 		get isLoaded() {
-			return roster !== null;
+			return isLoaded;
 		}
 	};
 }
@@ -681,6 +746,48 @@ export function loadUpgrades(data: UpgradesData) {
 	upgradesSnapshot = JSON.stringify(data);
 }
 
+/** Load raid data into the store. */
+export function loadRaid(data: RaidData) {
+	raid = data;
+}
+
+/** Set whether the game is currently in a raid (from persist.game.json). */
+export function setGameInRaid(value: boolean) {
+	gameInRaid = value;
+}
+
+/**
+ * Load a full profile from the Rust backend.
+ * Calls the `load_profile` command and distributes data to each sub-store.
+ * The backend returns an object mapping filename → decoded JSON object.
+ */
+export async function loadProfileFromBackend(profilePath: string): Promise<void> {
+	const data = await loadProfile(profilePath);
+
+	if (data['persist.roster.json']) {
+		loadRoster(data['persist.roster.json'] as RosterData);
+	}
+	if (data['persist.estate.json']) {
+		loadEstate(data['persist.estate.json'] as EstateData);
+	}
+	if (data['persist.town.json']) {
+		loadTown(data['persist.town.json'] as TownData);
+	}
+	if (data['persist.upgrades.json']) {
+		loadUpgrades(data['persist.upgrades.json'] as UpgradesData);
+	}
+	if (data['persist.raid.json']) {
+		loadRaid(data['persist.raid.json'] as RaidData);
+	}
+	// persist.game.json carries the inraid flag
+	if (data['persist.game.json']) {
+		const gameData = data['persist.game.json'] as { base_root?: { inraid?: boolean } };
+		setGameInRaid(gameData?.base_root?.inraid ?? false);
+	}
+
+	isLoaded = true;
+}
+
 /** Revert a single hero to on-disk state. */
 export function revertHero(guid: string) {
 	if (!rosterSnapshot || !roster) return;
@@ -729,6 +836,9 @@ export function getDirtyData(): Record<string, unknown> {
 	if (dirtyFiles.has('persist.upgrades.json') && upgrades) {
 		data['persist.upgrades.json'] = upgrades;
 	}
+	if (dirtyFiles.has('persist.raid.json') && raid) {
+		data['persist.raid.json'] = raid;
+	}
 	return data;
 }
 
@@ -738,6 +848,9 @@ export function resetSaveData() {
 	estate = null;
 	town = null;
 	upgrades = null;
+	raid = null;
+	gameInRaid = false;
+	isLoaded = false;
 	dirtyFiles = new Set();
 	rosterSnapshot = null;
 	estateSnapshot = null;

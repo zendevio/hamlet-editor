@@ -2,14 +2,68 @@
  * Settings store — persists game/save paths and profile selection.
  *
  * Uses Svelte 5 runes for reactive state. Persistence via tauri-plugin-store
- * will be wired in once the Rust backend is available.
+ * (LazyStore). Falls back gracefully in dev/browser environments.
  */
+
+// ── Persistence helpers ──
+
+const STORE_FILE = 'settings.json';
+
+async function getStore() {
+	try {
+		const { LazyStore } = await import('@tauri-apps/plugin-store');
+		return new LazyStore(STORE_FILE);
+	} catch {
+		return null;
+	}
+}
+
+async function persistAll() {
+	try {
+		const store = await getStore();
+		if (!store) return;
+		await store.set('gamePath', gamePath);
+		await store.set('savePath', savePath);
+		await store.set('profileId', profileId);
+		await store.set('autoBackup', autoBackup);
+		await store.set('isSetupComplete', isSetupComplete);
+		await store.save();
+	} catch {
+		// Silently ignore persistence errors — they're non-fatal
+	}
+}
+
+// ── Reactive State ──
 
 let gamePath = $state<string>('');
 let savePath = $state<string>('');
 let profileId = $state<string>('');
 let autoBackup = $state(false);
 let isSetupComplete = $state(false);
+
+// ── Init: load persisted settings ──
+
+(async () => {
+	try {
+		const store = await getStore();
+		if (!store) return;
+		const savedGamePath = await store.get<string>('gamePath');
+		const savedSavePath = await store.get<string>('savePath');
+		const savedProfileId = await store.get<string>('profileId');
+		const savedAutoBackup = await store.get<boolean>('autoBackup');
+		const savedIsSetupComplete = await store.get<boolean>('isSetupComplete');
+
+		if (savedGamePath != null) gamePath = savedGamePath;
+		if (savedSavePath != null) savePath = savedSavePath;
+		if (savedProfileId != null) profileId = savedProfileId;
+		if (savedAutoBackup != null) autoBackup = savedAutoBackup;
+		if (savedIsSetupComplete != null) isSetupComplete = savedIsSetupComplete;
+	} catch {
+		// Silently ignore — store not available in dev/browser mode
+	}
+})();
+
+// ── Public API ──
 
 export function getSettings() {
 	return {
@@ -33,22 +87,27 @@ export function getSettings() {
 
 export function setGamePath(path: string) {
 	gamePath = path;
+	persistAll();
 }
 
 export function setSavePath(path: string) {
 	savePath = path;
+	persistAll();
 }
 
 export function setProfileId(id: string) {
 	profileId = id;
+	persistAll();
 }
 
 export function setAutoBackup(enabled: boolean) {
 	autoBackup = enabled;
+	persistAll();
 }
 
 export function completeSetup() {
 	isSetupComplete = true;
+	persistAll();
 }
 
 export function resetSetup() {
@@ -57,4 +116,5 @@ export function resetSetup() {
 	profileId = '';
 	autoBackup = false;
 	isSetupComplete = false;
+	persistAll();
 }

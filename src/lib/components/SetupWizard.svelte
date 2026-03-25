@@ -138,7 +138,7 @@
 
 <Dialog open={true}>
 	<DialogContent
-		class="sm:max-w-lg"
+		class="sm:max-w-lg overflow-hidden"
 		showCloseButton={false}
 		onInteractOutside={(e) => e.preventDefault()}
 		onEscapeKeydown={(e) => e.preventDefault()}
@@ -171,7 +171,7 @@
 					<GameControllerIcon size={20} />
 					Game Installation Path
 				</DialogTitle>
-				<DialogDescription>
+				<DialogDescription class="break-words">
 					Locate your Darkest Dungeon installation so the editor can read game data, icons, and
 					detect installed DLCs.
 				</DialogDescription>
@@ -289,7 +289,7 @@
 					<FolderOpenIcon size={20} />
 					Save File Location
 				</DialogTitle>
-				<DialogDescription>
+				<DialogDescription class="break-words">
 					Select a save profile to edit. Each profile is a separate campaign playthrough.
 				</DialogDescription>
 			</DialogHeader>
@@ -418,7 +418,7 @@
 					<CheckCircleIcon size={20} />
 					Confirmation
 				</DialogTitle>
-				<DialogDescription>
+				<DialogDescription class="break-words">
 					Review your selections and open the profile to start editing.
 				</DialogDescription>
 			</DialogHeader>
@@ -427,7 +427,7 @@
 				<!-- Game Install Summary -->
 				<div class="space-y-1">
 					<p class="text-xs font-medium text-muted-foreground">Game Installation</p>
-					<div class="border border-border bg-muted/30 p-3">
+					<div class="border border-border bg-muted/30 p-3 overflow-x-hidden">
 						<div class="flex items-center gap-2">
 							<CheckCircleIcon
 								size={14}
@@ -454,7 +454,7 @@
 				<!-- Save Profile Summary -->
 				<div class="space-y-1">
 					<p class="text-xs font-medium text-muted-foreground">Save Profile</p>
-					<div class="border border-border bg-muted/30 p-3">
+					<div class="border border-border bg-muted/30 p-3 overflow-x-hidden">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<CheckCircleIcon

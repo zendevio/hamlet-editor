@@ -14,7 +14,8 @@
 		getSaveData,
 		getHeroes,
 		CLASS_DISPLAY_NAMES,
-		stripDsonPrefix
+		stripDsonPrefix,
+		markDirty
 	} from '$lib/stores/save-data.svelte';
 
 	// ── Types ──
@@ -101,18 +102,11 @@
 
 	const saveData = getSaveData();
 
-	/**
-	 * Raid data from persist.raid.json.
-	 * Null when no raid file is loaded.
-	 * TODO: Wire to actual file loading pipeline.
-	 */
-	let raidData = $state<RaidData | null>(null);
+	/** Raid data from persist.raid.json — sourced from the shared save-data store. */
+	let raidData = $derived(saveData.raid as RaidData | null);
 
-	/**
-	 * Whether persist.game.json reports inraid: true.
-	 * TODO: Wire to actual game data store.
-	 */
-	let gameInRaid = $state(false);
+	/** Whether persist.game.json reports inraid: true — sourced from the shared save-data store. */
+	let gameInRaid = $derived(saveData.gameInRaid);
 
 	// ── Derived ──
 
@@ -184,37 +178,41 @@
 	// ── Handlers ──
 
 	function handleTorchlightChange(value: number[]) {
-		if (!raidData || !value.length) return;
+		if (!saveData.raid || !value.length) return;
 		// IMPORTANT: Store as float — DSON requires IEEE 754 float encoding
-		raidData.base_root.party.torchlight = value[0];
+		saveData.raid.base_root.party.torchlight = value[0];
+		markDirty('persist.raid.json');
 	}
 
 	function handleScoutChanceChange(e: Event) {
-		if (!raidData) return;
+		if (!saveData.raid) return;
 		const target = e.target as HTMLInputElement;
 		const parsed = parseFloat(target.value);
 		if (!isNaN(parsed)) {
-			raidData.base_root.party.scoutChance_all = parsed;
+			saveData.raid.base_root.party.scoutChance_all = parsed;
+			markDirty('persist.raid.json');
 		}
 	}
 
 	function handleHungerBufferChange(e: Event) {
-		if (!raidData) return;
+		if (!saveData.raid) return;
 		const target = e.target as HTMLInputElement;
 		const parsed = parseInt(target.value, 10);
 		if (!isNaN(parsed) && parsed >= 0) {
-			raidData.base_root.party.inventory.hunger_room_buffer = parsed;
+			saveData.raid.base_root.party.inventory.hunger_room_buffer = parsed;
+			markDirty('persist.raid.json');
 		}
 	}
 
 	function handleItemAmountChange(itemKey: string, e: Event) {
-		if (!raidData) return;
+		if (!saveData.raid) return;
 		const target = e.target as HTMLInputElement;
 		const parsed = parseInt(target.value, 10);
 		if (!isNaN(parsed) && parsed >= 0) {
-			const item = raidData.base_root.party.inventory.items[itemKey] as InventoryItem | undefined;
+			const item = saveData.raid.base_root.party.inventory.items[itemKey] as InventoryItem | undefined;
 			if (item) {
 				item.amount = parsed;
+				markDirty('persist.raid.json');
 			}
 		}
 	}

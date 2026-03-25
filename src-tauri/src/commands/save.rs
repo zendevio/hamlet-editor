@@ -103,6 +103,13 @@ pub fn save_profile(profile_path: String, data: serde_json::Value) -> Result<(),
         .ok_or_else(|| "Expected a JSON object for profile data".to_string())?;
 
     for (filename, value) in obj {
+        if filename.contains('/') || filename.contains('\\') {
+            return Err(format!("Invalid filename (path separators not allowed): {filename}"));
+        }
+        if !super::is_save_file(filename) {
+            return Err(format!("Invalid save filename: {filename}"));
+        }
+
         let file_path = dir.join(filename);
         let path_str = file_path.to_string_lossy().to_string();
 

@@ -49,7 +49,8 @@
 		hasDirtyFiles,
 		getDirtyData,
 		clearAllDirty,
-		discardAllChanges
+		discardAllChanges,
+		loadProfileFromBackend
 	} from '$lib/stores/save-data.svelte';
 	import { isGameRunning } from '$lib/api/detect';
 	import { saveProfile } from '$lib/api/save';
@@ -67,6 +68,24 @@
 	let gameRunning = $state(false);
 	let gameDetectionUncertain = $state(false);
 	let isSaving = $state(false);
+	let isProfileLoading = $state(false);
+
+	// ── Profile Loading ──
+
+	// When setup completes (or was already complete on startup), load the profile.
+	$effect(() => {
+		if (settings.isSetupComplete && !saveData.isLoaded && !isProfileLoading) {
+			isProfileLoading = true;
+			loadProfileFromBackend(settings.savePath)
+				.catch((err) => {
+					const message = err instanceof Error ? err.message : String(err);
+					toast.error(`Failed to load profile: ${message}`);
+				})
+				.finally(() => {
+					isProfileLoading = false;
+				});
+		}
+	});
 
 	// Poll game running status every 5 seconds
 	$effect(() => {
@@ -515,7 +534,14 @@
 		</header>
 
 		<main class="flex-1 overflow-auto p-4">
-			{@render children()}
+			{#if isProfileLoading}
+				<div class="flex h-full items-center justify-center gap-3 text-muted-foreground">
+					<CircleNotchIcon size={20} class="animate-spin" />
+					<span class="text-sm">Loading profile...</span>
+				</div>
+			{:else}
+				{@render children()}
+			{/if}
 		</main>
 	</SidebarInset>
 </SidebarProvider>

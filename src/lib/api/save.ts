@@ -20,9 +20,9 @@ export async function saveProfile(
 }
 
 /**
- * Reload all save data from disk for the active profile.
- * Returns the full parsed profile data.
+ * Load all save data from disk for the active profile.
+ * Returns the full parsed profile data (filename → decoded JSON).
  */
-export async function reloadProfile(profilePath: string): Promise<Record<string, unknown>> {
-	return await invoke<Record<string, unknown>>('reload_profile', { profilePath });
+export async function loadProfile(profilePath: string): Promise<Record<string, unknown>> {
+	return await invoke<Record<string, unknown>>('load_profile', { profilePath });
 }
