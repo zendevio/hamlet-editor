@@ -17,7 +17,7 @@
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 	import TrinketPicker from '$lib/components/heroes/TrinketPicker.svelte';
-import { getSaveData, markDirty, setEstateName, getDlcFlags } from '$lib/stores/save-data.svelte';
+	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData } from '$lib/stores/save-data.svelte';
 	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
 
 	// ----- Props / State -----
@@ -203,10 +203,22 @@ import { getSaveData, markDirty, setEstateName, getDlcFlags } from '$lib/stores/
 	}
 </script>
 
-{#if !estateData}
+{#if !saveData.isLoaded}
+	<div class="flex flex-col items-center gap-4">
+		<EmptyState
+			title="No profile loaded"
+			description="Load a save profile to view and edit your estate — wallet, trinkets, and currencies."
+		/>
+		{#if import.meta.env.DEV}
+			<Button variant="outline" size="sm" onclick={loadMockData}>
+				Load Mock Data (Dev)
+			</Button>
+		{/if}
+	</div>
+{:else if !estateData}
 	<EmptyState
-		title="No profile loaded"
-		description="Load a save profile to view and edit your estate — wallet, trinkets, and currencies."
+		title="No estate data"
+		description="The loaded profile does not contain estate data (persist.estate.json). The file may be missing or corrupted."
 	/>
 {:else}
 	<div class="space-y-8">
@@ -351,7 +363,7 @@ import { getSaveData, markDirty, setEstateName, getDlcFlags } from '$lib/stores/
 				</Card.Root>
 			{:else}
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-					{#each trinkets as trinket (trinket.id)}
+					{#each trinkets as trinket, i (i)}
 						<TrinketCard
 							id={trinket.id}
 							type={trinket.type}

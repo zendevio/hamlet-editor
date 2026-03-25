@@ -17,12 +17,17 @@
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import FunnelSimpleIcon from 'phosphor-svelte/lib/FunnelSimpleIcon';
+	import GameAssetImage from '$lib/components/GameAssetImage.svelte';
+	import { getSettings } from '$lib/stores/settings.svelte';
+	import { getPortraitPath } from '$lib/utils';
 	import type { HeroSummary } from '$lib/stores/save-data.svelte';
 	import {
 		STATUS_MAP,
 		RESOLVE_LEVEL_NAMES,
 		CLASS_DISPLAY_NAMES
 	} from '$lib/stores/save-data.svelte';
+
+	const settings = getSettings();
 
 	let {
 		heroes,
@@ -169,7 +174,7 @@
 	);
 </script>
 
-<div class="flex h-full flex-col">
+<div class="flex h-full min-h-0 flex-col">
 	<!-- Search & Controls -->
 	<div class="flex flex-col gap-2 border-b p-3">
 		<div class="flex items-center gap-2">
@@ -280,7 +285,7 @@
 	</div>
 
 	<!-- Hero List -->
-	<ScrollArea class="flex-1">
+	<ScrollArea class="flex-1 min-h-0">
 		{#if sortedHeroes.length === 0}
 			<div class="flex flex-col items-center justify-center gap-2 py-12">
 				<p class="text-muted-foreground text-sm">No heroes match your filters.</p>
@@ -313,22 +318,25 @@
 							/>
 						</div>
 
-						<!-- Portrait placeholder -->
-						<div
-							class="bg-muted flex h-10 w-10 shrink-0 items-center justify-center text-[10px] uppercase {isDead
-								? 'opacity-50'
-								: ''}"
-						>
+						<!-- Portrait -->
+						<div class="relative h-10 w-10 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
 							{#if isDead}
-								<SkullIcon size={18} class="text-muted-foreground" />
+								<div class="bg-muted flex h-10 w-10 items-center justify-center">
+									<SkullIcon size={18} class="text-muted-foreground" />
+								</div>
 							{:else}
-								<span class="text-muted-foreground font-medium">{hero.heroClass.slice(0, 2)}</span>
+								<GameAssetImage
+									gamePath={settings.gamePath}
+									relativePath={getPortraitPath(hero.heroClass)}
+									alt={hero.name}
+									class="h-10 w-10 object-cover"
+								/>
 							{/if}
 						</div>
 
-						<!-- Info -->
+						<!-- Name + Level -->
 						<div class="min-w-0 flex-1">
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-1.5">
 								<span class="truncate text-sm font-medium {isDead ? 'line-through' : ''}">
 									{hero.name}
 								</span>
@@ -336,26 +344,11 @@
 									Lv {hero.resolveLevel}
 								</Badge>
 							</div>
-							<div class="text-muted-foreground mt-0.5 flex items-center gap-2 text-xs">
-								<span>{hero.classDisplayName}</span>
-								<span class="text-muted-foreground/40">|</span>
-								<!-- HP -->
-								<span class={hero.currentHp < hero.maxHp * 0.5 ? 'text-red-500' : ''}>
-									{hero.currentHp}/{hero.maxHp} HP
-								</span>
-								<span class="text-muted-foreground/40">|</span>
-								<!-- Stress -->
-								<span class={hero.stress >= 100 ? 'text-red-500 font-medium' : ''}>
-									{hero.stress} stress
-								</span>
-							</div>
+							<span class="text-muted-foreground truncate text-xs">{hero.classDisplayName}</span>
 						</div>
 
-						<!-- Status Badge -->
-						<div class="flex shrink-0 items-center gap-1.5">
-							<span class="h-2 w-2 rounded-full {hero.statusDotClass}"></span>
-							<span class="text-muted-foreground text-[11px]">{hero.statusLabel}</span>
-						</div>
+						<!-- Status dot -->
+						<span class="h-2 w-2 shrink-0 rounded-full {hero.statusDotClass}"></span>
 					</button>
 				{/each}
 			</div>

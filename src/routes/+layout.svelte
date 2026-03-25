@@ -724,7 +724,7 @@
 			</div>
 		</header>
 
-		<main class="flex-1 overflow-auto p-4">
+		<main class="min-h-0 flex-1 overflow-hidden p-4">
 			{@render children()}
 		</main>
 	</SidebarInset>

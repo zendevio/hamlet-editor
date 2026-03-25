@@ -1098,6 +1098,33 @@ export function loadMockData() {
 		}
 	};
 	loadUpgrades(mockUpgrades);
+
+	const mockEstate: EstateData = {
+		base_root: {
+			wallet: {
+				'0': { amount: 12500, type: 'gold' },
+				'1': { amount: 4, type: 'bust' },
+				'2': { amount: 2, type: 'portrait' },
+				'3': { amount: 6, type: 'deed' },
+				'4': { amount: 3, type: 'crest' }
+			},
+			trinkets: { items: {} },
+			estate_items: { items: {} },
+			endless_wave_highscore: 0,
+			tampering: {},
+			darkest_dungeon_trinket_unlocks: {}
+		}
+	};
+	loadEstate(mockEstate);
+
+	const mockTown: TownData = {
+		base_root: {
+			buildings: {}
+		}
+	};
+	loadTown(mockTown);
+
+	isLoaded = true;
 }
 
 // Re-export stripDsonPrefix so consumers importing it from this module continue to work.

@@ -40,6 +40,9 @@
 	import PencilIcon from 'phosphor-svelte/lib/PencilIcon';
 	import TrashIcon from 'phosphor-svelte/lib/TrashIcon';
 	import DropIcon from 'phosphor-svelte/lib/DropIcon';
+	import GameAssetImage from '$lib/components/GameAssetImage.svelte';
+	import { getSettings } from '$lib/stores/settings.svelte';
+	import { getPortraitPath } from '$lib/utils';
 	import type { HeroSummary, HeroQuirk } from '$lib/stores/save-data.svelte';
 	import {
 		getMaxHp,
@@ -76,6 +79,8 @@
 		hero: HeroSummary;
 		onDismiss?: () => void;
 	} = $props();
+
+	const settings = getSettings();
 
 	// ── Section open states ──
 	let identityOpen = $state(true);
@@ -325,18 +330,19 @@
 		<!-- Header -->
 		<div class="flex items-start justify-between">
 			<div class="flex items-center gap-3">
-				<!-- Portrait placeholder -->
-				<div
-					class="bg-muted flex h-16 w-16 items-center justify-center text-lg uppercase {isDead
-						? 'opacity-50'
-						: ''}"
-				>
+				<!-- Portrait -->
+				<div class="relative h-16 w-16 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
 					{#if isDead}
-						<SkullIcon size={28} class="text-muted-foreground" />
+						<div class="bg-muted flex h-full w-full items-center justify-center">
+							<SkullIcon size={28} class="text-muted-foreground" />
+						</div>
 					{:else}
-						<span class="text-muted-foreground font-bold">
-							{hero.heroClass.slice(0, 2)}
-						</span>
+						<GameAssetImage
+							gamePath={settings.gamePath}
+							relativePath={getPortraitPath(hero.heroClass)}
+							alt="{hero.name} portrait"
+							class="h-full w-full object-cover"
+						/>
 					{/if}
 				</div>
 				<div>

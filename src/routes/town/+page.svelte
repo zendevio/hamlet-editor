@@ -97,6 +97,11 @@
 			</Button>
 		{/if}
 	</div>
+{:else if !saveData.town && !saveData.upgrades}
+	<EmptyState
+		title="No town data"
+		description="The loaded profile does not contain town or upgrade data. The files may be missing or corrupted."
+	/>
 {:else}
 	<ScrollArea class="h-[calc(100vh-4rem)]">
 		<div class="space-y-8 p-6">

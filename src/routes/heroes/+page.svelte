@@ -50,12 +50,12 @@
 		{/if}
 	</div>
 {:else}
-	<div class="flex h-[calc(100vh-4rem)] flex-col">
+	<div class="flex h-full min-h-0 flex-col">
 		<!-- Batch Toolbar -->
 		<BatchToolbar {selectedHeroes} totalCount={heroes.length} />
 
 		<!-- Master-Detail Layout -->
-		<ResizablePaneGroup direction="horizontal" class="flex-1">
+		<ResizablePaneGroup direction="horizontal" class="min-h-0 flex-1">
 			<!-- Hero List Pane -->
 			<ResizablePane defaultSize={40} minSize={30}>
 				<HeroList {heroes} bind:selectedGuids bind:activeGuid />

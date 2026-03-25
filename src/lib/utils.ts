@@ -14,8 +14,22 @@ export function snakeToTitle(id: string): string {
 }
 
 /** Strip the ### prefix from a DSON identifier (e.g. "###sanitarium.foo" → "sanitarium.foo"). */
-export function stripDsonPrefix(id: string): string {
+export function stripDsonPrefix(id: unknown): string {
+	if (typeof id !== 'string') return String(id ?? '');
 	return id.replace(/^###/, '');
+}
+
+/** DLC hero classes have different base paths than base game heroes. */
+const DLC_HERO_PATHS: Record<string, string> = {
+	flagellant: 'dlc/580100_crimson_court/features/flagellant/heroes/flagellant',
+	shieldbreaker: 'dlc/702540_shieldbreaker/heroes/shieldbreaker',
+	musketeer: 'dlc/445700_musketeer/heroes/musketeer'
+};
+
+/** Get the relative portrait path for a hero class (handles DLC classes). */
+export function getPortraitPath(heroClass: string): string {
+	const base = DLC_HERO_PATHS[heroClass] ?? `heroes/${heroClass}`;
+	return `${base}/${heroClass}_A/${heroClass}_portrait_roster.png`;
 }
 
 export type WithoutChild<T> = T extends { child?: unknown } ? Omit<T, "child"> : T;
