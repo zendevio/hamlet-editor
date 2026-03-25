@@ -1,0 +1,45 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Bucharest
+    commit-message:
+      prefix: "chore(deps):"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - minor
+          - patch
+      svelte-major:
+        patterns:
+          - "svelte"
+          - "@sveltejs/*"
+        update-types:
+          - major
+      tauri-major:
+        patterns:
+          - "@tauri-apps/*"
+        update-types:
+          - major
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Bucharest
+    commit-message:
+      prefix: "chore(deps):"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Bucharest
+    commit-message:
+      prefix: "chore(ci):"
