@@ -15,6 +15,7 @@
 		loadMockData,
 		getHeroesInBuilding,
 		getBuildingUpgrades,
+		getDlcFlags,
 		TREATMENT_BUILDINGS,
 		DISTRICT_IDS,
 		DISTRICT_DISPLAY_NAMES,
@@ -22,6 +23,8 @@
 	} from '$lib/stores/save-data.svelte';
 
 	const saveData = getSaveData();
+	const dlcFlags = getDlcFlags();
+	let hasColorOfMadness = $derived(dlcFlags.hasColorOfMadness);
 
 	// Derive building upgrade groups
 	let upgradeGroups = $derived(getBuildingUpgrades());
@@ -136,6 +139,7 @@
 				{/if}
 			</section>
 
+			{#if hasColorOfMadness}
 			<Separator />
 
 			<!-- Districts Section (Color of Madness DLC) -->
@@ -171,6 +175,7 @@
 					{/each}
 				</div>
 			</section>
+		{/if}
 		</div>
 	</ScrollArea>
 {/if}

@@ -9,6 +9,7 @@
 import { loadProfile } from '$lib/api/save';
 import { stripDsonPrefix } from '$lib/utils';
 import type { InventoryItem, RaidParty, RaidInstance, RaidData } from '$lib/types/save-data';
+import { getSettings } from '$lib/stores/settings.svelte';
 
 // ── Types ──
 
@@ -288,6 +289,8 @@ let town = $state<TownData | null>(null);
 let upgrades = $state<UpgradesData | null>(null);
 let raid = $state<RaidData | null>(null);
 let game = $state<GameData | null>(null);
+let campaignLog = $state<Record<string, unknown> | null>(null);
+let progression = $state<Record<string, unknown> | null>(null);
 let gameInRaid = $state(false);
 let isLoaded = $state(false);
 // Svelte 5 requires immutable replacement to trigger reactivity on Sets.
@@ -301,6 +304,79 @@ let townSnapshot = $state<string | null>(null);
 let upgradesSnapshot = $state<string | null>(null);
 let raidSnapshot = $state<string | null>(null);
 let gameSnapshot = $state<string | null>(null);
+let campaignLogSnapshot = $state<string | null>(null);
+let progressionSnapshot = $state<string | null>(null);
+
+// ── DLC Flags ──
+
+/**
+ * Derived DLC flags — prefer `settings.gameInstall` when available,
+ * fall back to save-data heuristics so the estate/town pages still work
+ * without a detected install.
+ */
+
+const _settings = getSettings();
+
+export function getDlcFlags() {
+	return {
+		/** True when Crimson Court DLC is detected. */
+		get hasCrimsonCourt(): boolean {
+			if (_settings.gameInstall !== null) return _settings.gameInstall.has_crimson_court;
+			// Fallback: look for CC evidence in save data
+			if (estate) {
+				for (const item of Object.values(estate.base_root.estate_items?.items ?? {})) {
+					const i = item as { id?: string };
+					if (i.id?.startsWith('crimson_court_invitation_')) return true;
+				}
+			}
+			if (roster) {
+				for (const entry of Object.values(roster.base_root.heroes)) {
+					const quirks = entry.hero_file_data.raw_data.base_root.quirks;
+					for (const quirkId of Object.keys(quirks)) {
+						if (quirkId.startsWith('disease_vampire_')) return true;
+					}
+				}
+			}
+			return false;
+		},
+		/** True when Color of Madness DLC is detected. */
+		get hasColorOfMadness(): boolean {
+			if (_settings.gameInstall !== null) return _settings.gameInstall.has_color_of_madness;
+			// Fallback: shard currency or endless_wave_highscore in estate
+			if (estate) {
+				for (const entry of Object.values(estate.base_root.wallet ?? {})) {
+					const e = entry as { type?: string };
+					if (e.type === 'shard') return true;
+				}
+				const highscore = (estate.base_root as Record<string, unknown>)['endless_wave_highscore'];
+				if (highscore !== undefined && highscore !== null) return true;
+			}
+			return false;
+		},
+		/** True when Shieldbreaker DLC is detected. */
+		get hasShieldbreaker(): boolean {
+			if (_settings.gameInstall !== null) return _settings.gameInstall.has_shieldbreaker;
+			// Fallback: any shieldbreaker hero in roster
+			if (roster) {
+				for (const entry of Object.values(roster.base_root.heroes)) {
+					if (entry.hero_file_data.raw_data.base_root.heroClass === 'shieldbreaker') return true;
+				}
+			}
+			return false;
+		},
+		/** True when Musketeer DLC is detected. */
+		get hasMusketeer(): boolean {
+			if (_settings.gameInstall !== null) return _settings.gameInstall.has_musketeer;
+			// Fallback: any musketeer hero in roster
+			if (roster) {
+				for (const entry of Object.values(roster.base_root.heroes)) {
+					if (entry.hero_file_data.raw_data.base_root.heroClass === 'musketeer') return true;
+				}
+			}
+			return false;
+		}
+	};
+}
 
 // ── Derived Helpers ──
 
@@ -409,6 +485,12 @@ export function getSaveData() {
 		},
 		get game() {
 			return game;
+		},
+		get campaignLog() {
+			return campaignLog;
+		},
+		get progression() {
+			return progression;
 		},
 		get gameInRaid() {
 			return gameInRaid;
@@ -790,6 +872,18 @@ export function loadGame(data: GameData) {
 	gameSnapshot = JSON.stringify(data);
 }
 
+/** Load campaign_log data into the store. */
+export function loadCampaignLog(data: Record<string, unknown>) {
+	campaignLog = data;
+	campaignLogSnapshot = JSON.stringify(data);
+}
+
+/** Load progression data into the store. */
+export function loadProgression(data: Record<string, unknown>) {
+	progression = data;
+	progressionSnapshot = JSON.stringify(data);
+}
+
 /** Set whether the game is currently in a raid (from persist.game.json). */
 export function setGameInRaid(value: boolean) {
 	gameInRaid = value;
@@ -828,6 +922,12 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 		loadGame(gameData);
 		setGameInRaid(gameData?.base_root?.inraid ?? false);
 	}
+	if (data['persist.campaign_log.json']) {
+		loadCampaignLog(data['persist.campaign_log.json'] as Record<string, unknown>);
+	}
+	if (data['persist.progression.json']) {
+		loadProgression(data['persist.progression.json'] as Record<string, unknown>);
+	}
 
 	isLoaded = true;
 }
@@ -852,6 +952,8 @@ export function clearAllDirty() {
 	if (raid) raidSnapshot = JSON.stringify(raid);
 	else raidSnapshot = null;
 	if (game) gameSnapshot = JSON.stringify(game);
+	if (campaignLog) campaignLogSnapshot = JSON.stringify(campaignLog);
+	if (progression) progressionSnapshot = JSON.stringify(progression);
 }
 
 /**
@@ -872,6 +974,10 @@ export function discardAllChanges() {
 		game = JSON.parse(gameSnapshot) as GameData;
 		gameInRaid = (game as GameData).base_root?.inraid ?? false;
 	}
+	if (campaignLogSnapshot) campaignLog = JSON.parse(campaignLogSnapshot) as Record<string, unknown>;
+	else campaignLog = null;
+	if (progressionSnapshot) progression = JSON.parse(progressionSnapshot) as Record<string, unknown>;
+	else progression = null;
 	dirtyFiles = new Set();
 	deletedFiles = new Set();
 }
@@ -900,6 +1006,12 @@ export function getDirtyData(): Record<string, unknown> {
 	if (dirtyFiles.has('persist.game.json') && game) {
 		data['persist.game.json'] = game;
 	}
+	if (dirtyFiles.has('persist.campaign_log.json') && campaignLog) {
+		data['persist.campaign_log.json'] = campaignLog;
+	}
+	if (dirtyFiles.has('persist.progression.json') && progression) {
+		data['persist.progression.json'] = progression;
+	}
 	if (deletedFiles.size > 0) {
 		data['_deleted'] = [...deletedFiles];
 	}
@@ -914,6 +1026,8 @@ export function resetSaveData() {
 	upgrades = null;
 	raid = null;
 	game = null;
+	campaignLog = null;
+	progression = null;
 	gameInRaid = false;
 	isLoaded = false;
 	dirtyFiles = new Set();
@@ -924,6 +1038,8 @@ export function resetSaveData() {
 	upgradesSnapshot = null;
 	raidSnapshot = null;
 	gameSnapshot = null;
+	campaignLogSnapshot = null;
+	progressionSnapshot = null;
 }
 
 // ── Mock Data for Development ──

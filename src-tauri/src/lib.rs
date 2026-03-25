@@ -25,6 +25,7 @@ pub fn run() {
             commands::detect::is_game_running,
             commands::detect::validate_save_directory,
             commands::detect::validate_game_directory,
+            commands::detect::list_profiles,
             commands::backup::create_backup,
             commands::backup::list_backups,
             commands::backup::restore_backup,

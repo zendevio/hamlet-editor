@@ -1418,6 +1418,7 @@ dependencies = [
  "ddsavelib",
  "dirs",
  "log",
+ "regex",
  "serde",
  "serde_json",
  "steamlocate",

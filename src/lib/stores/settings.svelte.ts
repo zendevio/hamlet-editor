@@ -5,6 +5,8 @@
  * (LazyStore). Falls back gracefully in dev/browser environments.
  */
 
+import type { GameInstall } from '$lib/api/detect';
+
 // ── Persistence helpers ──
 
 const STORE_FILE = 'settings.json';
@@ -27,6 +29,7 @@ async function persistAll() {
 		await store.set('profileId', profileId);
 		await store.set('autoBackup', autoBackup);
 		await store.set('isSetupComplete', isSetupComplete);
+		await store.set('gameInstall', gameInstall);
 		await store.save();
 	} catch {
 		// Silently ignore persistence errors — they're non-fatal
@@ -40,6 +43,7 @@ let savePath = $state<string>('');
 let profileId = $state<string>('');
 let autoBackup = $state(false);
 let isSetupComplete = $state(false);
+let gameInstall = $state<GameInstall | null>(null);
 
 // ── Init: load persisted settings ──
 
@@ -52,12 +56,14 @@ let isSetupComplete = $state(false);
 		const savedProfileId = await store.get<string>('profileId');
 		const savedAutoBackup = await store.get<boolean>('autoBackup');
 		const savedIsSetupComplete = await store.get<boolean>('isSetupComplete');
+		const savedGameInstall = await store.get<GameInstall>('gameInstall');
 
 		if (savedGamePath != null) gamePath = savedGamePath;
 		if (savedSavePath != null) savePath = savedSavePath;
 		if (savedProfileId != null) profileId = savedProfileId;
 		if (savedAutoBackup != null) autoBackup = savedAutoBackup;
 		if (savedIsSetupComplete != null) isSetupComplete = savedIsSetupComplete;
+		if (savedGameInstall != null) gameInstall = savedGameInstall;
 	} catch {
 		// Silently ignore — store not available in dev/browser mode
 	}
@@ -81,6 +87,9 @@ export function getSettings() {
 		},
 		get isSetupComplete() {
 			return isSetupComplete;
+		},
+		get gameInstall() {
+			return gameInstall;
 		}
 	};
 }
@@ -110,11 +119,17 @@ export function completeSetup() {
 	persistAll();
 }
 
+export function setGameInstall(install: GameInstall) {
+	gameInstall = install;
+	persistAll();
+}
+
 export function resetSetup() {
 	gamePath = '';
 	savePath = '';
 	profileId = '';
 	autoBackup = false;
 	isSetupComplete = false;
+	gameInstall = null;
 	persistAll();
 }

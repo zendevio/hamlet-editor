@@ -16,6 +16,7 @@
 	} from '$lib/stores/save-data.svelte';
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
 	import BuildingsIcon from 'phosphor-svelte/lib/BuildingsIcon';
+	import BankIcon from 'phosphor-svelte/lib/BankIcon';
 	import FloppyDiskIcon from 'phosphor-svelte/lib/FloppyDiskIcon';
 	import ArchiveIcon from 'phosphor-svelte/lib/ArchiveIcon';
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
@@ -55,6 +56,16 @@
 		return buildings.filter(
 			([id, name]) => name.toLowerCase().includes(q) || id.toLowerCase().includes(q)
 		);
+	});
+
+	let trinketResults = $derived.by(() => {
+		if (!saveData.isLoaded || !saveData.estate) return [];
+		const q = searchValue.toLowerCase();
+		if (!q) return [];
+		const items = Object.values(saveData.estate.base_root.trinkets.items) as { id: string; type?: string }[];
+		return items
+			.filter((item) => item.id && item.id.toLowerCase().includes(q))
+			.slice(0, 10);
 	});
 
 	let quirkResults = $derived.by(() => {
@@ -125,6 +136,11 @@
 		goto('/town');
 	}
 
+	function navigateToEstate() {
+		open = false;
+		goto('/estate');
+	}
+
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -165,6 +181,18 @@
 						<UsersThreeIcon size={16} class="mr-2 shrink-0" />
 						<span class="font-mono text-xs">{result.quirkId}</span>
 						<span class="text-muted-foreground ml-2 text-xs">on {result.heroName}</span>
+					</CommandItem>
+				{/each}
+			</CommandGroup>
+		{/if}
+
+		{#if trinketResults.length > 0}
+			<CommandGroup heading="Estate Trinkets">
+				{#each trinketResults as trinket (trinket.id)}
+					<CommandItem onSelect={navigateToEstate}>
+						<BankIcon size={16} class="mr-2 shrink-0" />
+						<span class="font-mono text-xs">{trinket.id}</span>
+						<span class="text-muted-foreground ml-2 text-xs">in storage</span>
 					</CommandItem>
 				{/each}
 			</CommandGroup>

@@ -17,12 +17,13 @@
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 	import TrinketPicker from '$lib/components/heroes/TrinketPicker.svelte';
-import { getSaveData, markDirty, setEstateName } from '$lib/stores/save-data.svelte';
+import { getSaveData, markDirty, setEstateName, getDlcFlags } from '$lib/stores/save-data.svelte';
 	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
 
 	// ----- Props / State -----
 
 	const saveData = getSaveData();
+	const dlcFlags = getDlcFlags();
 
 	// estateData reads from the shared store's estate field.
 	// The base_root is unwrapped to match the local EstateData shape expected by the UI.
@@ -65,33 +66,10 @@ import { getSaveData, markDirty, setEstateName } from '$lib/stores/save-data.sve
 		}
 	}
 
-	// DLC flags derived from save data content.
-	// hasCrimsonCourt: true if any hero has a disease_vampire_* quirk OR estate_items has a crimson_court_invitation_*.
-	let hasCrimsonCourt = $derived.by(() => {
-		if (!estateData) return false;
-		// Check estate_items for any crimson_court_invitation_*
-		for (const item of Object.values(estateData.estate_items.items) as EstateItem[]) {
-			if (item.id?.startsWith('crimson_court_invitation_')) return true;
-		}
-		// Check heroes for disease_vampire_* quirks
-		if (saveData.roster) {
-			for (const entry of Object.values(saveData.roster.base_root.heroes)) {
-				const quirks = entry.hero_file_data.raw_data.base_root.quirks;
-				for (const quirkId of Object.keys(quirks)) {
-					if (quirkId.startsWith('disease_vampire_')) return true;
-				}
-			}
-		}
-		return false;
-	});
-	// hasColorOfMadness: true if wallet contains type "shard" OR endless_wave_highscore exists.
-	let hasColorOfMadness = $derived.by(() => {
-		if (!estateData) return false;
-		for (const entry of Object.values(estateData.wallet)) {
-			if (entry.type === 'shard') return true;
-		}
-		return estateData.endless_wave_highscore !== undefined && estateData.endless_wave_highscore !== null;
-	});
+	// DLC flags — prefer GameInstall detection (set during setup), fall back to
+	// save-data heuristics. Both paths are handled inside getDlcFlags().
+	let hasCrimsonCourt = $derived(dlcFlags.hasCrimsonCourt);
+	let hasColorOfMadness = $derived(dlcFlags.hasColorOfMadness);
 
 	// Count of trinkets equipped on heroes (from roster data, wired later)
 	let equippedTrinketCount = $state(0);

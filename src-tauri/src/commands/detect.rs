@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
+use super::save::decode_save_file;
+
 // ---------------------------------------------------------------------------
 // Data structures
 // ---------------------------------------------------------------------------
@@ -25,6 +27,16 @@ pub struct GameInstall {
     pub has_color_of_madness: bool,
     pub has_musketeer: bool,
     pub has_mods: bool,
+}
+
+/// Metadata about a single save profile directory.
+#[derive(Serialize, Clone, Debug)]
+pub struct ProfileMeta {
+    pub profile_id: String,
+    pub path: String,
+    pub estate_name: Option<String>,
+    pub game_mode: Option<String>,
+    pub week_number: Option<u32>,
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +195,126 @@ pub fn validate_game_directory(path: String) -> Result<bool, String> {
     let p = PathBuf::from(&path);
     let resolved = resolve_data_root(&p);
     Ok(is_valid_game_directory(&resolved))
+}
+
+/// List all save profiles found under `save_root`.
+///
+/// For each `profile_*` directory, attempts to decode `persist.game.json` to
+/// extract `estatename` and `game_mode`, and `persist.campaign_log.json` to
+/// extract `total_weeks`. Fields are `None` when decoding fails.
+#[tauri::command]
+pub fn list_profiles(save_root: String) -> Result<Vec<ProfileMeta>, String> {
+    let root = Path::new(&save_root);
+    if !root.is_dir() {
+        return Err(format!("Not a directory: {save_root}"));
+    }
+
+    let entries = std::fs::read_dir(root)
+        .map_err(|e| format!("Failed to read directory {save_root}: {e}"))?;
+
+    let mut profiles: Vec<ProfileMeta> = Vec::new();
+
+    for entry in entries.flatten() {
+        let profile_dir = entry.path();
+        if !profile_dir.is_dir() {
+            continue;
+        }
+
+        let dir_name = match profile_dir.file_name().and_then(|n| n.to_str()) {
+            Some(n) => n.to_string(),
+            None => continue,
+        };
+
+        if !dir_name.starts_with("profile_") {
+            continue;
+        }
+
+        let path_str = profile_dir.to_string_lossy().to_string();
+
+        // Try to decode persist.game.json for estatename and game_mode.
+        let (estate_name, game_mode) = decode_game_json(&profile_dir);
+
+        // Try to decode persist.campaign_log.json for total_weeks.
+        let week_number = decode_campaign_log_json(&profile_dir);
+
+        profiles.push(ProfileMeta {
+            profile_id: dir_name,
+            path: path_str,
+            estate_name,
+            game_mode,
+            week_number,
+        });
+    }
+
+    profiles.sort_by(|a, b| a.profile_id.cmp(&b.profile_id));
+    Ok(profiles)
+}
+
+/// Attempt to decode `persist.game.json` from a profile directory and extract
+/// `estatename` and `game_mode` fields.
+fn decode_game_json(profile_dir: &Path) -> (Option<String>, Option<String>) {
+    let path = profile_dir.join("persist.game.json");
+    if !path.exists() {
+        return (None, None);
+    }
+
+    let value = match decode_save_file(path.to_string_lossy().to_string()) {
+        Ok(v) => v,
+        Err(_) => return (None, None),
+    };
+
+    // The DSON root is typically an object with a `base_root` key wrapping
+    // the actual data. Try both top-level and one level nested.
+    let estate_name = find_str_field(&value, "estatename");
+    let game_mode = find_str_field(&value, "game_mode");
+
+    (estate_name, game_mode)
+}
+
+/// Attempt to decode `persist.campaign_log.json` and extract `total_weeks`.
+fn decode_campaign_log_json(profile_dir: &Path) -> Option<u32> {
+    let path = profile_dir.join("persist.campaign_log.json");
+    if !path.exists() {
+        return None;
+    }
+
+    let value = decode_save_file(path.to_string_lossy().to_string()).ok()?;
+    find_u32_field(&value, "total_weeks")
+}
+
+/// Search for a string field by key, checking the root object and one level
+/// of nesting (to handle DSON's `base_root` wrapper).
+fn find_str_field(value: &serde_json::Value, key: &str) -> Option<String> {
+    // Direct field.
+    if let Some(s) = value.get(key).and_then(|v| v.as_str()) {
+        return Some(s.to_string());
+    }
+    // One level nested.
+    if let Some(obj) = value.as_object() {
+        for child in obj.values() {
+            if let Some(s) = child.get(key).and_then(|v| v.as_str()) {
+                return Some(s.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Search for a u32 field by key, checking root and one level of nesting.
+fn find_u32_field(value: &serde_json::Value, key: &str) -> Option<u32> {
+    // Direct field.
+    if let Some(n) = value.get(key).and_then(|v| v.as_u64()) {
+        return Some(n as u32);
+    }
+    // One level nested.
+    if let Some(obj) = value.as_object() {
+        for child in obj.values() {
+            if let Some(n) = child.get(key).and_then(|v| v.as_u64()) {
+                return Some(n as u32);
+            }
+        }
+    }
+    None
 }
 
 // ---------------------------------------------------------------------------

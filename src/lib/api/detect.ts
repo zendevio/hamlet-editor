@@ -89,3 +89,25 @@ export async function validateGameDirectory(path: string): Promise<boolean> {
 		return false;
 	}
 }
+
+// ── Profile listing ──
+
+export interface ProfileMeta {
+	profile_id: string;
+	path: string;
+	estate_name: string | null;
+	game_mode: string | null;
+	week_number: number | null;
+}
+
+/**
+ * List all profiles (campaigns) found under a given save root directory.
+ * Returns an empty array if the command is not yet implemented or fails.
+ */
+export async function listProfiles(saveRoot: string): Promise<ProfileMeta[]> {
+	try {
+		return await invoke<ProfileMeta[]>('list_profiles', { saveRoot });
+	} catch {
+		return [];
+	}
+}

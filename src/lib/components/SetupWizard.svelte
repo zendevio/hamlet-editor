@@ -13,6 +13,7 @@
 		setGamePath,
 		setSavePath,
 		setProfileId,
+		setGameInstall,
 		completeSetup
 	} from '$lib/stores/settings.svelte';
 	import {
@@ -159,6 +160,7 @@
 		setGamePath(selectedGameInstall.path);
 		setSavePath(selectedSave.path);
 		setProfileId(selectedSave.profile_id);
+		setGameInstall(selectedGameInstall);
 		completeSetup();
 	}
 
