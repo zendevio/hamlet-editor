@@ -53,6 +53,7 @@
 		RESOLVE_XP_THRESHOLDS
 	} from '$lib/stores/save-data.svelte';
 	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '$lib/data/quirks';
+	import RevivalWizard from './RevivalWizard.svelte';
 
 	let {
 		hero,
@@ -77,6 +78,9 @@
 	// ── Name editing ──
 	let editingName = $state(false);
 	let nameValue = $state('');
+
+	// ── Revival wizard ──
+	let revivalWizardOpen = $state(false);
 
 	// ── Dismiss confirmation ──
 	let dismissConfirmChecked = $state(false);
@@ -742,14 +746,13 @@
 							variant="outline"
 							size="sm"
 							class="w-full justify-start gap-2 text-xs"
-							onclick={() => reviveHero(hero.guid)}
+							onclick={() => (revivalWizardOpen = true)}
 						>
 							<Heart size={14} class="text-green-500" />
 							Revive Hero
 						</Button>
 						<p class="text-muted-foreground text-[10px]">
-							Sets status to Available, HP to 1, stress to 0. Full revival also requires
-							campaign_log edits (not yet implemented).
+							Opens the Revival Wizard to restore this hero across all required save files.
 						</p>
 					{/if}
 
@@ -785,3 +788,8 @@
 		</Collapsible>
 	</div>
 </ScrollArea>
+
+<!-- Revival Wizard (rendered outside ScrollArea to avoid z-index issues) -->
+{#if isDead}
+	<RevivalWizard {hero} bind:open={revivalWizardOpen} />
+{/if}

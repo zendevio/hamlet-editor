@@ -8,6 +8,7 @@
 let gamePath = $state<string>('');
 let savePath = $state<string>('');
 let profileId = $state<string>('');
+let autoBackup = $state(false);
 let isSetupComplete = $state(false);
 
 export function getSettings() {
@@ -20,6 +21,9 @@ export function getSettings() {
 		},
 		get profileId() {
 			return profileId;
+		},
+		get autoBackup() {
+			return autoBackup;
 		},
 		get isSetupComplete() {
 			return isSetupComplete;
@@ -39,6 +43,10 @@ export function setProfileId(id: string) {
 	profileId = id;
 }
 
+export function setAutoBackup(enabled: boolean) {
+	autoBackup = enabled;
+}
+
 export function completeSetup() {
 	isSetupComplete = true;
 }
@@ -47,5 +55,6 @@ export function resetSetup() {
 	gamePath = '';
 	savePath = '';
 	profileId = '';
+	autoBackup = false;
 	isSetupComplete = false;
 }

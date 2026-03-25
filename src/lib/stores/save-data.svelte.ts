@@ -32,6 +32,7 @@ export interface HeroActor {
 export interface HeroBaseRoot {
 	'roster.status': number;
 	'roster.before_on_start_town_visit_status': number;
+	'roster.building_name': string;
 	actor: HeroActor;
 	heroClass: string;
 	resolveXp: number;
@@ -91,6 +92,110 @@ export interface EstateData {
 		darkest_dungeon_trinket_unlocks: Record<string, unknown>;
 	};
 }
+
+// ── Town & Upgrade Types ──
+
+export interface UpgradePurchase {
+	instance_number: number;
+	tree_id: string;
+	requirement_code: string;
+	is_purchased: boolean;
+}
+
+export interface UpgradesData {
+	base_root: {
+		purchases: Record<string, UpgradePurchase>;
+	};
+}
+
+export interface TownBuildingSlot {
+	hero_guid: number;
+	activity_type: string;
+}
+
+export interface TownBuilding {
+	slots: Record<string, TownBuildingSlot>;
+}
+
+export interface TownData {
+	base_root: {
+		buildings: Record<string, TownBuilding>;
+	};
+}
+
+// ── Building Constants ──
+
+export const TREATMENT_BUILDINGS = ['abbey', 'tavern', 'sanitarium'] as const;
+export type TreatmentBuildingName = (typeof TREATMENT_BUILDINGS)[number];
+
+export const BUILDING_ACTIVITIES: Record<TreatmentBuildingName, string[]> = {
+	abbey: ['meditation', 'prayer', 'flagellation'],
+	tavern: ['bar', 'gambling', 'brothel'],
+	sanitarium: ['disease_treatment', 'quirk_treatment']
+};
+
+export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
+	sanitarium: 'Sanitarium',
+	tavern: 'Tavern',
+	abbey: 'Abbey',
+	blacksmith: 'Blacksmith',
+	guild: 'Guild',
+	stage_coach: 'Stage Coach',
+	survivalist: 'Survivalist',
+	barracks: 'Barracks',
+	nomad_wagon: 'Nomad Wagon'
+};
+
+export const ACTIVITY_DISPLAY_NAMES: Record<string, string> = {
+	meditation: 'Meditation',
+	prayer: 'Prayer',
+	flagellation: 'Flagellation',
+	bar: 'Bar',
+	gambling: 'Gambling',
+	brothel: 'Brothel',
+	disease_treatment: 'Disease Treatment',
+	quirk_treatment: 'Quirk Treatment'
+};
+
+/** Known district IDs (Color of Madness DLC). */
+export const DISTRICT_IDS = [
+	'district_bank',
+	'district_granary',
+	'district_inn',
+	'district_puppet_theatre',
+	'district_training_ring',
+	'district_cartographers_camp',
+	'district_sanguine_vintners',
+	'district_abbey_addition',
+	'district_tavern_addition',
+	'district_sanitarium_addition'
+] as const;
+
+export const DISTRICT_DISPLAY_NAMES: Record<string, string> = {
+	district_bank: 'Bank',
+	district_granary: 'Granary',
+	district_inn: 'Inn',
+	district_puppet_theatre: 'Puppet Theatre',
+	district_training_ring: 'Training Ring',
+	district_cartographers_camp: "Cartographer's Camp",
+	district_sanguine_vintners: 'Sanguine Vintners',
+	district_abbey_addition: 'Abbey Addition',
+	district_tavern_addition: 'Tavern Addition',
+	district_sanitarium_addition: 'Sanitarium Addition'
+};
+
+/** Known building name prefixes for upgrade tree_ids. */
+export const BUILDING_UPGRADE_PREFIXES = [
+	'sanitarium',
+	'tavern',
+	'abbey',
+	'blacksmith',
+	'guild',
+	'stage_coach',
+	'survivalist',
+	'barracks',
+	'nomad_wagon'
+] as const;
 
 /** Resolve level thresholds: index = level, value = min XP. */
 export const RESOLVE_XP_THRESHOLDS = [0, 2, 8, 14, 24, 36, 48];
@@ -163,6 +268,8 @@ export const CLASS_DISPLAY_NAMES: Record<string, string> = {
 
 let roster = $state<RosterData | null>(null);
 let estate = $state<EstateData | null>(null);
+let town = $state<TownData | null>(null);
+let upgrades = $state<UpgradesData | null>(null);
 let dirtyFiles = $state<Set<string>>(new Set());
 let diskSnapshot = $state<string | null>(null); // JSON snapshot for revert
 
@@ -187,6 +294,7 @@ export interface HeroSummary {
 	afflictionTypeId: string;
 	virtueTypeId: string;
 	visitedDeathsDoor: boolean;
+	buildingName: string;
 	quirks: Record<string, HeroQuirk>;
 }
 
@@ -240,6 +348,7 @@ function heroEntryToSummary(guid: string, entry: HeroEntry): HeroSummary {
 		afflictionTypeId: root.affliction_type_id,
 		virtueTypeId: root.virtue_type_id,
 		visitedDeathsDoor: root.visited_deaths_door,
+		buildingName: root['roster.building_name'] ?? '',
 		quirks: root.quirks
 	};
 }
@@ -253,6 +362,12 @@ export function getSaveData() {
 		},
 		get estate() {
 			return estate;
+		},
+		get town() {
+			return town;
+		},
+		get upgrades() {
+			return upgrades;
 		},
 		get dirtyFiles() {
 			return dirtyFiles;
@@ -424,6 +539,124 @@ export function dismissHero(guid: string) {
 	markDirty('persist.roster.json');
 }
 
+// ── Town & Upgrade Helpers ──
+
+/** Get heroes currently in treatment (status 2) with their building/activity info. */
+export interface TreatmentHero {
+	guid: string;
+	name: string;
+	heroClass: string;
+	classDisplayName: string;
+	buildingName: string;
+	activityType: string;
+}
+
+/** Get all heroes currently in treatment for a specific building. */
+export function getHeroesInBuilding(buildingName: TreatmentBuildingName): TreatmentHero[] {
+	if (!roster) return [];
+	const result: TreatmentHero[] = [];
+	for (const [guid, entry] of Object.entries(roster.base_root.heroes)) {
+		const root = entry.hero_file_data.raw_data.base_root;
+		if (root['roster.status'] === 2 && root['roster.building_name'] === buildingName) {
+			result.push({
+				guid,
+				name: root.actor.name,
+				heroClass: root.heroClass,
+				classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass,
+				buildingName: root['roster.building_name'],
+				activityType: '' // Activity type is stored in town data slots
+			});
+		}
+	}
+	return result;
+}
+
+/** Release a hero from treatment: clear building status in roster. */
+export function releaseHeroFromTreatment(guid: string) {
+	const raw = getHeroRawData(guid);
+	if (!raw) return;
+	raw['roster.status'] = 0;
+	raw['roster.building_name'] = '';
+	raw['roster.before_on_start_town_visit_status'] = 0;
+	markDirty('persist.roster.json');
+	// Also mark town dirty since the slot reference should be removed
+	markDirty('persist.town.json');
+}
+
+/** Get all building upgrades grouped by building name. */
+export interface BuildingUpgradeGroup {
+	buildingName: string;
+	displayName: string;
+	upgrades: UpgradePurchase[];
+	purchasedCount: number;
+	totalCount: number;
+}
+
+export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
+	if (!upgrades) return [];
+	const groups: Record<string, UpgradePurchase[]> = {};
+
+	for (const purchase of Object.values(upgrades.base_root.purchases)) {
+		// Only building upgrades (instance_number === 0)
+		if (purchase.instance_number !== 0) continue;
+		const treeId = purchase.tree_id.replace(/^###/, '');
+		const dotIndex = treeId.indexOf('.');
+		if (dotIndex === -1) continue;
+		const buildingName = treeId.substring(0, dotIndex);
+		if (!BUILDING_UPGRADE_PREFIXES.includes(buildingName as (typeof BUILDING_UPGRADE_PREFIXES)[number]))
+			continue;
+		if (!groups[buildingName]) groups[buildingName] = [];
+		groups[buildingName].push(purchase);
+	}
+
+	return Object.entries(groups)
+		.map(([buildingName, upgrades]) => ({
+			buildingName,
+			displayName: BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName,
+			upgrades: upgrades.sort((a, b) => a.requirement_code.localeCompare(b.requirement_code)),
+			purchasedCount: upgrades.filter((u) => u.is_purchased).length,
+			totalCount: upgrades.length
+		}))
+		.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+/** Toggle an upgrade purchase state with cascade logic. */
+export function toggleUpgrade(purchase: UpgradePurchase) {
+	if (!upgrades) return;
+	const newState = !purchase.is_purchased;
+	const treeId = purchase.tree_id.replace(/^###/, '');
+	const dotIndex = treeId.indexOf('.');
+	if (dotIndex === -1) return;
+	const buildingName = treeId.substring(0, dotIndex);
+
+	if (!newState) {
+		// Turning OFF: cascade — also turn off all higher-tier upgrades in same tree
+		for (const p of Object.values(upgrades.base_root.purchases)) {
+			if (p.instance_number !== 0) continue;
+			const pTreeId = p.tree_id.replace(/^###/, '');
+			const pDotIndex = pTreeId.indexOf('.');
+			if (pDotIndex === -1) continue;
+			const pBuildingName = pTreeId.substring(0, pDotIndex);
+			const pUpgradeKey = pTreeId.substring(pDotIndex + 1);
+			const upgradeKey = treeId.substring(dotIndex + 1);
+			if (pBuildingName === buildingName && pUpgradeKey === upgradeKey) {
+				if (p.requirement_code >= purchase.requirement_code) {
+					p.is_purchased = false;
+				}
+			}
+		}
+	} else {
+		purchase.is_purchased = true;
+	}
+
+	markDirty('persist.upgrades.json');
+}
+
+/** Strip the ### prefix from a tree_id for display. */
+export function formatTreeId(treeId: string): string {
+	return treeId.replace(/^###/, '');
+}
+
 // ── Load/Reset ──
 
 /** Load roster data into the store. */
@@ -435,6 +668,16 @@ export function loadRoster(data: RosterData) {
 /** Load estate data into the store. */
 export function loadEstate(data: EstateData) {
 	estate = data;
+}
+
+/** Load town data into the store. */
+export function loadTown(data: TownData) {
+	town = data;
+}
+
+/** Load upgrades data into the store. */
+export function loadUpgrades(data: UpgradesData) {
+	upgrades = data;
 }
 
 /** Revert a single hero to on-disk state. */
@@ -450,6 +693,8 @@ export function revertHero(guid: string) {
 export function resetSaveData() {
 	roster = null;
 	estate = null;
+	town = null;
+	upgrades = null;
 	dirtyFiles = new Set();
 	diskSnapshot = null;
 }
@@ -468,19 +713,48 @@ export function loadMockData() {
 				'96': createMockHero('Reynauld', 'crusader', 0, 4, 47, 54, 12, 3, 3),
 				'42': createMockHero('Dismas', 'highwayman', 0, 3, 35, 35, 45, 2, 2),
 				'7': createMockHero('Junia', 'vestal', 1, 5, 42, 42, 0, 4, 4),
-				'55': createMockHero('Sarmenti', 'jester', 0, 2, 15, 26, 120, 2, 2),
-				'12': createMockHero('Barristan', 'man_at_arms', 2, 3, 42, 47, 30, 3, 3),
+				'55': createMockHero('Sarmenti', 'jester', 2, 2, 15, 26, 120, 2, 2, 'tavern'),
+				'12': createMockHero('Barristan', 'man_at_arms', 2, 3, 42, 47, 30, 3, 3, 'abbey'),
 				'23': createMockHero('Paracelsus', 'plague_doctor', 0, 4, 34, 34, 5, 3, 3),
-				'34': createMockHero('Audrey', 'grave_robber', 0, 1, 24, 24, 67, 1, 1),
+				'34': createMockHero('Audrey', 'grave_robber', 2, 1, 24, 24, 67, 1, 1, 'sanitarium'),
 				'45': createMockHero('Bigby', 'bounty_hunter', 3, 6, 0, 43, 0, 4, 4),
 				'56': createMockHero('Boudica', 'hellion', 0, 3, 36, 36, 88, 2, 2),
 				'67': createMockHero('Tardif', 'bounty_hunter', 0, 0, 26, 26, 0, 0, 0),
 				'78': createMockHero('Damian', 'leper', 4, 2, 0, 49, 0, 2, 2),
-				'89': createMockHero('Missandei', 'occultist', 0, 4, 30, 30, 15, 3, 3)
+				'89': createMockHero('Missandei', 'occultist', 2, 4, 30, 30, 15, 3, 3, 'abbey')
 			}
 		}
 	};
 	loadRoster(mockRoster);
+
+	const mockUpgrades: UpgradesData = {
+		base_root: {
+			purchases: {
+				'0': { instance_number: 0, tree_id: '###sanitarium.cost', requirement_code: 'a', is_purchased: true },
+				'1': { instance_number: 0, tree_id: '###sanitarium.slot', requirement_code: 'a', is_purchased: true },
+				'2': { instance_number: 0, tree_id: '###sanitarium.slot', requirement_code: 'b', is_purchased: false },
+				'3': { instance_number: 0, tree_id: '###tavern.cost', requirement_code: 'a', is_purchased: true },
+				'4': { instance_number: 0, tree_id: '###tavern.cost', requirement_code: 'b', is_purchased: true },
+				'5': { instance_number: 0, tree_id: '###tavern.slot', requirement_code: 'a', is_purchased: true },
+				'6': { instance_number: 0, tree_id: '###abbey.cost', requirement_code: 'a', is_purchased: true },
+				'7': { instance_number: 0, tree_id: '###abbey.slot', requirement_code: 'a', is_purchased: false },
+				'8': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'a', is_purchased: true },
+				'9': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'b', is_purchased: true },
+				'10': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'c', is_purchased: false },
+				'11': { instance_number: 0, tree_id: '###guild.cost', requirement_code: 'a', is_purchased: true },
+				'12': { instance_number: 0, tree_id: '###guild.cost', requirement_code: 'b', is_purchased: false },
+				'13': { instance_number: 0, tree_id: '###stage_coach.size', requirement_code: 'a', is_purchased: true },
+				'14': { instance_number: 0, tree_id: '###stage_coach.size', requirement_code: 'b', is_purchased: true },
+				'15': { instance_number: 0, tree_id: '###stage_coach.roster_size', requirement_code: 'a', is_purchased: true },
+				'16': { instance_number: 0, tree_id: '###survivalist.cost', requirement_code: 'a', is_purchased: true },
+				'17': { instance_number: 0, tree_id: '###nomad_wagon.cost', requirement_code: 'a', is_purchased: true },
+				'18': { instance_number: 0, tree_id: '###nomad_wagon.cost', requirement_code: 'b', is_purchased: false },
+				'19': { instance_number: 96, tree_id: '###crusader.smite', requirement_code: '1', is_purchased: true },
+				'20': { instance_number: 96, tree_id: '###crusader.stand_tall', requirement_code: '1', is_purchased: true }
+			}
+		}
+	};
+	loadUpgrades(mockUpgrades);
 }
 
 function createMockHero(
@@ -492,7 +766,8 @@ function createMockHero(
 	_maxHpOverride: number,
 	stress: number,
 	weaponRank: number,
-	armourRank: number
+	armourRank: number,
+	buildingName: string = ''
 ): HeroEntry {
 	const quirks: Record<string, HeroQuirk> = {};
 	// Add some example quirks
@@ -528,6 +803,7 @@ function createMockHero(
 				base_root: {
 					'roster.status': status,
 					'roster.before_on_start_town_visit_status': status === 2 ? 0 : status,
+					'roster.building_name': buildingName,
 					actor: {
 						name,
 						current_hp: currentHp,
