@@ -6,11 +6,10 @@
 		TooltipTrigger
 	} from '$lib/components/ui/tooltip';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
-	import { snakeToTitle } from '$lib/utils';
+	import { snakeToTitle, stripDsonPrefix } from '$lib/utils';
 	import {
 		type BuildingUpgradeGroup,
 		type UpgradePurchase,
-		stripDsonPrefix,
 		toggleUpgrade
 	} from '$lib/stores/save-data.svelte';
 

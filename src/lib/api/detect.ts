@@ -65,3 +65,27 @@ export async function isGameRunning(): Promise<{ running: boolean; uncertain: bo
 		return { running: false, uncertain: true };
 	}
 }
+
+/**
+ * Validate that a path contains a recognisable Darkest Dungeon save directory
+ * (i.e. the required persist.*.json files are present).
+ */
+export async function validateSaveDirectory(path: string): Promise<boolean> {
+	try {
+		return await invoke<boolean>('validate_save_directory', { path });
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Validate that a path contains a recognisable Darkest Dungeon game installation
+ * (i.e. the game binary or known marker files are present).
+ */
+export async function validateGameDirectory(path: string): Promise<boolean> {
+	try {
+		return await invoke<boolean>('validate_game_directory', { path });
+	} catch {
+		return false;
+	}
+}

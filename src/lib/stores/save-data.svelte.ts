@@ -7,6 +7,8 @@
  */
 
 import { loadProfile } from '$lib/api/save';
+import { stripDsonPrefix } from '$lib/utils';
+import type { InventoryItem, RaidParty, RaidInstance, RaidData } from '$lib/types/save-data';
 
 // ── Types ──
 
@@ -134,59 +136,8 @@ export interface TownData {
 	};
 }
 
-export interface RaidInventoryItem {
-	id: string;
-	type: string;
-	amount: number;
-}
-
-export interface RaidParty {
-	heroes: number[];
-	start_heroes_size: number;
-	/** IMPORTANT: torchlight is a Float in DSON. Always write as float (75.0, not 75). */
-	torchlight: number;
-	'IsMovingLeft()': boolean;
-	retreat_room: string;
-	scoutChance_all: number;
-	scoutModifier_all: number;
-	inventory: {
-		system_config_type: string;
-		items: Record<string, RaidInventoryItem>;
-		hunger_room_buffer: number;
-	};
-}
-
-export interface RaidInstance {
-	id: string;
-	is_plot_quest: boolean;
-	type: string;
-	dungeon: string;
-	difficulty: number;
-	length: number;
-	goal_ids: string[];
-	completion_reward: {
-		resolve_xp: number;
-		items_definition: {
-			system_config_type: string;
-			items: Record<string, unknown>;
-		};
-	};
-}
-
-export interface RaidData {
-	base_root: {
-		raid_instance: RaidInstance;
-		in_area: string;
-		areatile: string;
-		last_room_id: string;
-		in_doorway: boolean;
-		start_elapsed_time: number;
-		inbattle: boolean;
-		stat_database: Record<string, unknown>;
-		raid_finish_quirk_monster_class_ids: unknown[];
-		party: RaidParty;
-	};
-}
+// Re-export raid types for consumers that import from the store.
+export type { InventoryItem, RaidParty, RaidInstance, RaidData } from '$lib/types/save-data';
 
 // ── Building Constants ──
 
@@ -616,10 +567,10 @@ export function reviveHero(guid: string) {
 	markDirty('persist.roster.json');
 
 	// TODO: clearDiedFlag(guid) — clear the died flag in campaign_log mission event history
-	markDirty('persist.campaign_log.json');
+	// (persist.campaign_log.json is not tracked in this store yet)
 
 	// TODO: clearGraveyardFlag(guid) — clear the graveyard achievement flag in progression
-	markDirty('persist.progression.json');
+	// (persist.progression.json is not tracked in this store yet)
 
 	// If a raid is active and this hero was in the raid party, mark raid dirty too
 	if (raid) {
@@ -761,10 +712,8 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 	markDirty('persist.upgrades.json');
 }
 
-/** Strip the ### prefix from a DSON identifier for display. */
-export function stripDsonPrefix(id: string): string {
-	return id.replace(/^###/, '');
-}
+// stripDsonPrefix is imported at the top of this file and re-exported for
+// consumers that still import it from the store module.
 
 /**
  * Abandon the active raid.
@@ -852,6 +801,10 @@ export function setGameInRaid(value: boolean) {
  * The backend returns an object mapping filename → decoded JSON object.
  */
 export async function loadProfileFromBackend(profilePath: string): Promise<void> {
+	// Clear any stale data from a previously loaded profile before populating
+	// the store with the new one.
+	resetSaveData();
+
 	const data = await loadProfile(profilePath);
 
 	if (data['persist.roster.json']) {
@@ -1030,6 +983,9 @@ export function loadMockData() {
 	};
 	loadUpgrades(mockUpgrades);
 }
+
+// Re-export stripDsonPrefix so consumers importing it from this module continue to work.
+export { stripDsonPrefix };
 
 function createMockHero(
 	name: string,

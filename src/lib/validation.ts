@@ -15,17 +15,13 @@ import {
 	xpToLevel,
 	type HeroSummary
 } from '$lib/stores/save-data.svelte';
+import type { GameInstall } from '$lib/api/detect';
 
 // ── Types ──
 
 export type ValidationSeverity = 'error' | 'warning';
 
-/** Represents a known DLC installation state. */
-export interface GameInstall {
-	hasCrimsonCourt: boolean;
-	hasColorOfMadness: boolean;
-	hasShieldbreaker: boolean;
-}
+export type { GameInstall };
 
 export interface ValidationIssue {
 	severity: ValidationSeverity;
@@ -248,14 +244,14 @@ export function checkDlcFieldInjection(
 	// The `gameInstall` flags will come from `commands::detect::detect_game_installations`
 	// once the store integration is complete.
 
-	if (!gameInstall.hasCrimsonCourt) {
+	if (!gameInstall.has_crimson_court) {
 		// TODO: Scan hero quirks in `data` for keys matching `disease_vampire_*`.
 		// If any are found, push a warning — the quirk references Crimson Court
 		// content that the game cannot resolve without the DLC installed.
 		void data; // suppress unused-variable lint until implemented
 	}
 
-	if (!gameInstall.hasColorOfMadness) {
+	if (!gameInstall.has_color_of_madness) {
 		// TODO: Scan estate data for a shard wallet entry (key: `shard_dust_amount`
 		// or similar in `persist.estate.json`). If present, push a warning —
 		// shard currencies only exist in the Color of Madness DLC.

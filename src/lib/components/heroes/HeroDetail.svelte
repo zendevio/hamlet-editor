@@ -295,6 +295,7 @@
 		class="flex items-center gap-1 rounded-none border px-2 py-1 {colorClass}"
 	>
 		<button
+			type="button"
 			class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
 			onclick={() => toggleQuirkLock(hero.guid, id)}
 			title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
@@ -308,6 +309,7 @@
 		</button>
 		<span class="flex-1 truncate text-[11px]">{snakeToTitle(id)}</span>
 		<button
+			type="button"
 			class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
 			onclick={() => removeHeroQuirk(hero.guid, id)}
 			title="Remove quirk"
@@ -386,7 +388,8 @@
 							/>
 						{:else}
 							<button
-								class="group flex w-full cursor-pointer items-center gap-2 rounded-none border border-transparent px-2 py-1 text-sm font-medium transition-colors hover:border-border hover:bg-muted/50"
+								type="button"
+							class="group flex w-full cursor-pointer items-center gap-2 rounded-none border border-transparent px-2 py-1 text-sm font-medium transition-colors hover:border-border hover:bg-muted/50"
 								onclick={startEditName}
 							>
 								<span class="flex-1 text-left">{hero.name}</span>
@@ -707,6 +710,7 @@
 								Add {quirkPickerCategory === 'positive' ? 'Positive' : 'Negative/Disease'} Quirk
 							</span>
 							<button
+								type="button"
 								class="text-muted-foreground cursor-pointer hover:text-foreground"
 								onclick={() => (showQuirkPicker = false)}
 								aria-label="Close quirk picker"
@@ -723,6 +727,7 @@
 						<div class="max-h-50 overflow-y-auto">
 							{#each filteredPickerQuirks.slice(0, 50) as quirk (quirk.id)}
 								<button
+									type="button"
 									class="flex w-full cursor-pointer items-center gap-2 px-2 py-1 text-left text-[11px] transition-colors hover:bg-muted"
 									onclick={() => pickQuirk(quirk.id)}
 								>

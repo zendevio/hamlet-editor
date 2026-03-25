@@ -189,9 +189,11 @@
 		onEscapeKeydown={(e) => e.preventDefault()}
 	>
 		<!-- Step indicator -->
-		<div class="flex items-center justify-center gap-2 pb-2">
+		<div role="list" class="flex items-center justify-center gap-2 pb-2">
 			{#each [1, 2, 3] as s}
 				<div
+					role="listitem"
+					aria-current={s === step ? 'step' : undefined}
 					class="flex h-7 w-7 items-center justify-center text-xs font-medium transition-colors
 					{s === step
 						? 'bg-primary text-primary-foreground'

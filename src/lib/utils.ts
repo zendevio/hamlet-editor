@@ -13,6 +13,11 @@ export function snakeToTitle(id: string): string {
 		.join(' ');
 }
 
+/** Strip the ### prefix from a DSON identifier (e.g. "###sanitarium.foo" → "sanitarium.foo"). */
+export function stripDsonPrefix(id: string): string {
+	return id.replace(/^###/, '');
+}
+
 export type WithoutChild<T> = T extends { child?: unknown } ? Omit<T, "child"> : T;
 export type WithoutChildren<T> = T extends { children?: unknown } ? Omit<T, "children"> : T;
 export type WithoutChildrenOrChild<T> = WithoutChildren<WithoutChild<T>>;

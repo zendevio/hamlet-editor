@@ -228,6 +228,7 @@
 							)
 								? 'border-foreground/30 bg-foreground/10'
 								: 'border-transparent hover:bg-muted'}"
+							aria-pressed={statusFilter.has(status)}
 							onclick={() => toggleStatusFilter(status)}
 						>
 							<span class="h-2 w-2 rounded-full {info?.dotClass ?? 'bg-gray-400'}"></span>
@@ -246,6 +247,7 @@
 							)
 								? 'border-foreground/30 bg-foreground/10'
 								: 'border-transparent hover:bg-muted'}"
+							aria-pressed={classFilter.has(cls)}
 							onclick={() => toggleClassFilter(cls)}
 						>
 							{CLASS_DISPLAY_NAMES[cls] ?? cls}

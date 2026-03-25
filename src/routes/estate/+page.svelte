@@ -16,7 +16,8 @@
 	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
-	import { getSaveData, markDirty, setEstateName } from '$lib/stores/save-data.svelte';
+	import TrinketPicker from '$lib/components/heroes/TrinketPicker.svelte';
+import { getSaveData, markDirty, setEstateName } from '$lib/stores/save-data.svelte';
 	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
 
 	// ----- Props / State -----
@@ -94,6 +95,9 @@
 
 	// Count of trinkets equipped on heroes (from roster data, wired later)
 	let equippedTrinketCount = $state(0);
+
+	// Add Trinket picker state
+	let showTrinketPicker = $state(false);
 
 	// ----- Derived data -----
 
@@ -178,8 +182,20 @@
 	}
 
 	function handleAddTrinket() {
-		// TODO: Open TrinketPicker combobox
-		// For now this is a placeholder
+		showTrinketPicker = true;
+	}
+
+	function handleTrinketSelected(trinketId: string) {
+		if (!estateData || !saveData.estate || !trinketId) return;
+		const existingKeys = Object.keys(estateData.trinkets.items).map(Number).filter((n) => !isNaN(n));
+		const nextKey = existingKeys.length > 0 ? Math.max(...existingKeys) + 1 : 0;
+		saveData.estate.base_root.trinkets.items[String(nextKey)] = {
+			id: trinketId,
+			type: 'trinket',
+			amount: 1
+		};
+		markDirty('persist.estate.json');
+		showTrinketPicker = false;
 	}
 
 	/** Update an estate_item amount by its ID key. */
@@ -370,6 +386,12 @@
 						<PlusIcon size={14} />
 						Add Trinket
 					</Button>
+				</div>
+			{/if}
+
+			{#if showTrinketPicker}
+				<div class="mt-3 max-w-xs">
+					<TrinketPicker onselect={handleTrinketSelected} />
 				</div>
 			{/if}
 		</section>

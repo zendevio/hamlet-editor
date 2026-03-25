@@ -39,11 +39,19 @@
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotchIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
 	import SetupWizard from '$lib/components/SetupWizard.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import ValidationDialog from '$lib/components/ValidationDialog.svelte';
 	import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
 	import DiscardConfirmDialog from '$lib/components/DiscardConfirmDialog.svelte';
+	import {
+		Dialog,
+		DialogContent,
+		DialogHeader,
+		DialogTitle,
+		DialogDescription
+	} from '$lib/components/ui/dialog';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import { getSettings } from '$lib/stores/settings.svelte';
 	import {
@@ -269,12 +277,15 @@
 			e.preventDefault();
 			goto('/settings');
 		}
+		// Ctrl/Cmd+F: Open command palette (alias for Ctrl+K)
+		if (mod && e.key === 'f') {
+			e.preventDefault();
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+		}
+
 		// TODO: Ctrl+R (reload/refresh) requires Tauri window config to intercept
 		// — the webview captures it before SvelteKit. Add `prevent_default_hotkeys`
 		// or `webview_protocols` config in tauri.conf.json when ready.
-
-		// TODO: Ctrl+F (find) similarly requires Tauri webview config to override
-		// the browser default. Intercept via `webview_config` in tauri.conf.json.
 	}
 
 	// ── Save Flow ──
@@ -408,6 +419,10 @@
 		}
 	}
 
+	// ── About Dialog ──
+
+	let showAbout = $state(false);
+
 	// ── Navigation ──
 
 	const navItems = [
@@ -454,6 +469,23 @@
 	onCancel={() => (showDiscardDialog = false)}
 />
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+
+<Dialog bind:open={showAbout}>
+	<DialogContent class="sm:max-w-sm">
+		<DialogHeader>
+			<DialogTitle>Hamlet Editor</DialogTitle>
+			<DialogDescription>v0.0.1</DialogDescription>
+		</DialogHeader>
+		<div class="space-y-3 text-sm text-muted-foreground">
+			<p>A save editor for <em>Darkest Dungeon</em>.</p>
+			<p class="text-xs leading-relaxed border border-border bg-muted/30 p-3">
+				Hamlet Editor is an unofficial fan tool and is not affiliated with, endorsed by, or
+				associated with Red Hook Studios. <em>Darkest Dungeon</em> is a registered trademark of
+				Red Hook Studios Inc. Use at your own risk — always back up your save files before editing.
+			</p>
+		</div>
+	</DialogContent>
+</Dialog>
 
 {#if showSetupWizard}
 	<SetupWizard />
@@ -541,7 +573,18 @@
 					</TooltipTrigger>
 					<TooltipContent>Toggle dark/light mode</TooltipContent>
 				</Tooltip>
-				<span class="text-xs text-muted-foreground">v0.0.1</span>
+				<div class="flex items-center gap-1">
+					<Tooltip>
+						<TooltipTrigger>
+							<Button variant="ghost" size="icon" onclick={() => (showAbout = true)}>
+								<InfoIcon class="h-4 w-4" />
+								<span class="sr-only">About</span>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>About Hamlet Editor</TooltipContent>
+					</Tooltip>
+					<span class="text-xs text-muted-foreground">v0.0.1</span>
+				</div>
 			</div>
 		</SidebarFooter>
 

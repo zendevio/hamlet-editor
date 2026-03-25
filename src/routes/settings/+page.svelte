@@ -220,22 +220,16 @@
 		}
 	}
 
-	async function handleOpenBackupFolder() {
+	function handleOpenBackupFolder() {
 		if (!settings.savePath) {
 			toast.error('No save path configured');
 			return;
 		}
-		try {
-			const { invoke } = await import('@tauri-apps/api/core');
-			// TODO: Replace with plugin-shell when @tauri-apps/plugin-shell is added as a dependency.
-			// For now, invoke a custom open_folder command if available, else show toast with path.
-			await invoke('open_folder', { path: settings.savePath });
-		} catch {
-			// Not in Tauri environment, plugin-shell not installed, or command not implemented
-			toast.info('Backup folder', {
-				description: settings.savePath
-			});
-		}
+		// TODO: Open the folder in the OS file manager once @tauri-apps/plugin-shell is added.
+		// For now, show the path so the user can navigate there manually.
+		toast.info('Backup folder', {
+			description: settings.savePath
+		});
 	}
 
 	function openRestoreDialog(backup: BackupEntry) {

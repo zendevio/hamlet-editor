@@ -14,11 +14,11 @@
 		getSaveData,
 		getHeroes,
 		CLASS_DISPLAY_NAMES,
-		stripDsonPrefix,
 		markDirty,
 		abandonRaid,
 		swapPartyPositions
 	} from '$lib/stores/save-data.svelte';
+	import { stripDsonPrefix } from '$lib/utils';
 	import type { RaidData, InventoryItem } from '$lib/types/save-data';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
@@ -26,6 +26,8 @@
 	import ArrowDownIcon from 'phosphor-svelte/lib/ArrowDownIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
 	import { toast } from 'svelte-sonner';
+	import { createBackup } from '$lib/api/backup';
+	import { getSettings } from '$lib/stores/settings.svelte';
 
 	// ── Constants ──
 
@@ -174,8 +176,15 @@
 		}
 	}
 
-	function handleCreateBackup() {
-		// TODO: Wire to Tauri backup command
+	async function handleCreateBackup() {
+		const settings = getSettings();
+		if (!settings.savePath) return;
+		try {
+			await createBackup(settings.savePath);
+			toast.success('Backup created');
+		} catch (err) {
+			toast.error('Backup failed', { description: String(err) });
+		}
 	}
 
 	function openAbandonDialog() {

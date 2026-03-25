@@ -26,3 +26,12 @@ export async function saveProfile(
 export async function loadProfile(profilePath: string): Promise<Record<string, unknown>> {
 	return await invoke<Record<string, unknown>>('load_profile', { profilePath });
 }
+
+// TODO: decodeSaveFile(path: string): Promise<unknown>
+// The `decode_save_file` command was removed from the public Tauri command handler
+// (it is now used internally by `load_profile`). If a standalone decode command is
+// re-added to the backend, add the wrapper here:
+//
+// export async function decodeSaveFile(path: string): Promise<unknown> {
+//   return await invoke<unknown>('decode_save_file', { path });
+// }
