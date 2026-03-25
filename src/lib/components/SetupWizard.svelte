@@ -185,7 +185,7 @@
 
 <Dialog open={true}>
 	<DialogContent
-		class="sm:max-w-lg overflow-hidden"
+		class="overflow-hidden sm:max-w-lg"
 		showCloseButton={false}
 		onInteractOutside={(e) => e.preventDefault()}
 		onEscapeKeydown={(e) => e.preventDefault()}
@@ -271,7 +271,7 @@
 							{@const isSelected = selectedGameInstall === install}
 							<button
 								type="button"
-								class="w-full border p-3 text-left transition-colors
+								class="w-full min-w-0 border p-3 text-left transition-colors overflow-hidden
 								{isSelected
 									? 'border-primary bg-primary/5'
 									: 'border-border hover:border-primary/50 hover:bg-muted/50'}"
@@ -292,7 +292,7 @@
 										<Badge variant="outline" class="text-[10px]">Modded</Badge>
 									{/if}
 								</div>
-								<p class="mt-1 truncate text-[11px] text-muted-foreground">{install.path}</p>
+								<p class="mt-1 break-all text-[11px] text-muted-foreground">{install.path}</p>
 								{#if isSelected}
 									<div class="mt-2 flex flex-wrap gap-1">
 										{#if install.has_crimson_court}
@@ -388,7 +388,7 @@
 							class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs"
 						>
 							<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
-							<p class="text-amber-700 dark:text-amber-400">
+							<p class="break-words text-amber-700 dark:text-amber-400">
 								Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam
 								before saving to avoid conflicts.
 							</p>
@@ -400,7 +400,7 @@
 							{@const isSelected = selectedSave === loc}
 							<button
 								type="button"
-								class="w-full border p-3 text-left transition-colors
+								class="w-full min-w-0 border p-3 text-left transition-colors overflow-hidden
 								{isSelected
 									? 'border-primary bg-primary/5'
 									: 'border-border hover:border-primary/50 hover:bg-muted/50'}"
@@ -432,7 +432,7 @@
 										>
 									</div>
 								</div>
-								<p class="mt-1 truncate text-[11px] text-muted-foreground">{loc.path}</p>
+								<p class="mt-1 break-all text-[11px] text-muted-foreground">{loc.path}</p>
 							</button>
 						{/each}
 					</div>
@@ -487,7 +487,7 @@
 								>{sourceLabel(selectedGameInstall?.source ?? 'Manual')}</span
 							>
 						</div>
-						<p class="mt-1 truncate text-[11px] text-muted-foreground">
+						<p class="mt-1 break-all text-[11px] text-muted-foreground">
 							{selectedGameInstall?.path}
 						</p>
 						{#if dlcTags.length > 0}
@@ -523,7 +523,7 @@
 								</Badge>
 							{/if}
 						</div>
-						<p class="mt-1 truncate text-[11px] text-muted-foreground">
+						<p class="mt-1 break-all text-[11px] text-muted-foreground">
 							{selectedSave?.path}
 						</p>
 						<p class="mt-1 text-[11px] text-muted-foreground">
