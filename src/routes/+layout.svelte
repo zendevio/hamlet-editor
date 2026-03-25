@@ -43,6 +43,7 @@
 	import ValidationDialog from '$lib/components/ValidationDialog.svelte';
 	import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
 	import DiscardConfirmDialog from '$lib/components/DiscardConfirmDialog.svelte';
+	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import { getSettings } from '$lib/stores/settings.svelte';
 	import {
 		getSaveData,
@@ -221,21 +222,56 @@
 	// ── Keyboard Shortcuts ──
 
 	function handleKeydown(e: KeyboardEvent) {
+		const mod = e.metaKey || e.ctrlKey;
+
 		// Ctrl/Cmd+S: Save
-		if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+		if (mod && e.key === 's') {
 			e.preventDefault();
 			if (!saveDisabled) handleSave();
 		}
 		// Ctrl/Cmd+Shift+Z: Discard
-		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') {
+		if (mod && e.shiftKey && e.key === 'z') {
 			e.preventDefault();
 			if (isDirty) showDiscardDialog = true;
 		}
 		// Ctrl/Cmd+B: Backup
-		if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+		if (mod && e.key === 'b') {
 			e.preventDefault();
 			handleBackup();
 		}
+		// Ctrl/Cmd+H: Navigate to /heroes
+		if (mod && e.key === 'h') {
+			e.preventDefault();
+			window.location.href = '/heroes';
+		}
+		// Ctrl/Cmd+E: Navigate to /estate
+		if (mod && e.key === 'e') {
+			e.preventDefault();
+			window.location.href = '/estate';
+		}
+		// Ctrl/Cmd+T: Navigate to /town
+		if (mod && e.key === 't') {
+			e.preventDefault();
+			window.location.href = '/town';
+		}
+		// Ctrl/Cmd+D: Navigate to /raid (only if raid is available)
+		if (mod && e.key === 'd') {
+			e.preventDefault();
+			if (saveData.raid !== null) {
+				window.location.href = '/raid';
+			}
+		}
+		// Ctrl/Cmd+,: Navigate to /settings
+		if (mod && e.key === ',') {
+			e.preventDefault();
+			window.location.href = '/settings';
+		}
+		// TODO: Ctrl+R (reload/refresh) requires Tauri window config to intercept
+		// — the webview captures it before SvelteKit. Add `prevent_default_hotkeys`
+		// or `webview_protocols` config in tauri.conf.json when ready.
+
+		// TODO: Ctrl+F (find) similarly requires Tauri webview config to override
+		// the browser default. Intercept via `webview_config` in tauri.conf.json.
 	}
 
 	// ── Save Flow ──
@@ -643,14 +679,11 @@
 		</header>
 
 		<main class="flex-1 overflow-auto p-4">
-			{#if isProfileLoading}
-				<div class="flex h-full items-center justify-center gap-3 text-muted-foreground">
-					<CircleNotchIcon size={20} class="animate-spin" />
-					<span class="text-sm">Loading profile...</span>
-				</div>
-			{:else}
-				{@render children()}
-			{/if}
+			{@render children()}
 		</main>
 	</SidebarInset>
 </SidebarProvider>
+
+{#if isProfileLoading}
+	<LoadingScreen status="Loading profile..." />
+{/if}

@@ -165,7 +165,8 @@ pub fn is_game_running() -> Result<bool, String> {
         OsStr::new("Darkest")
     };
 
-    let sys = sysinfo::System::new_all();
+    let mut sys = sysinfo::System::new();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     let found = sys.processes().values().any(|p| p.name() == target);
     Ok(found)
 }

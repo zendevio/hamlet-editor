@@ -15,64 +15,17 @@
 		getHeroes,
 		CLASS_DISPLAY_NAMES,
 		stripDsonPrefix,
-		markDirty
+		markDirty,
+		abandonRaid,
+		swapPartyPositions
 	} from '$lib/stores/save-data.svelte';
-
-	// ── Types ──
-
-	interface RaidInstance {
-		id: string;
-		is_plot_quest: boolean;
-		type: string;
-		dungeon: string;
-		difficulty: number;
-		length: number;
-		goal_ids: string[];
-		completion_reward: {
-			resolve_xp: number;
-			items_definition: {
-				system_config_type: string;
-				items: Record<string, unknown>;
-			};
-		};
-	}
-
-	interface InventoryItem {
-		id: string;
-		type: string;
-		amount: number;
-	}
-
-	interface RaidParty {
-		heroes: number[];
-		start_heroes_size: number;
-		/** IMPORTANT: torchlight is a Float in DSON. Always write as float (75.0, not 75). */
-		torchlight: number;
-		'IsMovingLeft()': boolean;
-		retreat_room: string;
-		scoutChance_all: number;
-		scoutModifier_all: number;
-		inventory: {
-			system_config_type: string;
-			items: Record<string, InventoryItem>;
-			hunger_room_buffer: number;
-		};
-	}
-
-	interface RaidData {
-		base_root: {
-			raid_instance: RaidInstance;
-			in_area: string;
-			areatile: string;
-			last_room_id: string;
-			in_doorway: boolean;
-			start_elapsed_time: number;
-			inbattle: boolean;
-			stat_database: Record<string, unknown>;
-			raid_finish_quirk_monster_class_ids: unknown[];
-			party: RaidParty;
-		};
-	}
+	import type { RaidData, InventoryItem } from '$lib/types/save-data';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
+	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
+	import ArrowDownIcon from 'phosphor-svelte/lib/ArrowDownIcon';
+	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
+	import { toast } from 'svelte-sonner';
 
 	// ── Constants ──
 
@@ -101,6 +54,10 @@
 	// ── State ──
 
 	const saveData = getSaveData();
+
+	// Abandon raid dialog
+	let abandonDialogOpen = $state(false);
+	let abandonConfirmChecked = $state(false);
 
 	/** Raid data from persist.raid.json — sourced from the shared save-data store. */
 	let raidData = $derived(saveData.raid as RaidData | null);
@@ -220,6 +177,19 @@
 	function handleCreateBackup() {
 		// TODO: Wire to Tauri backup command
 	}
+
+	function openAbandonDialog() {
+		abandonConfirmChecked = false;
+		abandonDialogOpen = true;
+	}
+
+	function handleAbandonRaid() {
+		abandonRaid();
+		abandonDialogOpen = false;
+		toast.success('Raid abandoned', {
+			description: 'inraid set to false. Save to apply changes.'
+		});
+	}
 </script>
 
 <!-- No raid, no inconsistency — show empty state -->
@@ -277,9 +247,15 @@
 
 		<!-- Raid Info Section -->
 		<section>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-				Raid Info
-			</h2>
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+					Raid Info
+				</h2>
+				<Button variant="destructive" size="sm" class="gap-1.5 text-xs" onclick={openAbandonDialog}>
+					<SkullIcon size={14} />
+					Abandon Raid
+				</Button>
+			</div>
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 				<RaidInfoCard label="Dungeon" value={dungeonLabel || 'Unknown'} />
 				<RaidInfoCard label="Difficulty" value={difficultyLabel || 'Unknown'} />
@@ -311,12 +287,37 @@
 				</span>
 			</div>
 			<div class="flex gap-3">
-				{#each partyHeroes as slot (slot.guid)}
-					<PartySlot
-						position={slot.position}
-						heroName={slot.name}
-						heroClass={slot.classDisplayName}
-					/>
+				{#each partyHeroes as slot, index (slot.guid)}
+					<div class="flex flex-col items-center gap-1">
+						<PartySlot
+							position={slot.position}
+							heroName={slot.name}
+							heroClass={slot.classDisplayName}
+						/>
+						<!-- Left/Right reorder buttons -->
+						<div class="flex gap-1">
+							<Button
+								variant="ghost"
+								size="icon"
+								class="h-6 w-6"
+								disabled={index === 0}
+								onclick={() => swapPartyPositions(index - 1, index)}
+								aria-label="Move left"
+							>
+								<ArrowUpIcon size={12} class="-rotate-90" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="icon"
+								class="h-6 w-6"
+								disabled={index === partyHeroes.length - 1}
+								onclick={() => swapPartyPositions(index, index + 1)}
+								aria-label="Move right"
+							>
+								<ArrowDownIcon size={12} class="-rotate-90" />
+							</Button>
+						</div>
+					</div>
 				{/each}
 				<!-- Fill empty slots up to 4 -->
 				{#each Array(Math.max(0, 4 - partyHeroes.length)) as _, i}
@@ -328,7 +329,7 @@
 				{/each}
 			</div>
 			<p class="mt-2 text-[10px] text-muted-foreground/70">
-				Drag-to-reorder coming in a future update.
+				Use arrow buttons to reorder heroes within the party.
 			</p>
 		</section>
 
@@ -459,3 +460,48 @@
 		</section>
 	</div>
 {/if}
+
+<!-- ═══════ Abandon Raid Confirmation Dialog ═══════ -->
+<Dialog.Root bind:open={abandonDialogOpen}>
+	<Dialog.Content class="sm:max-w-md">
+		<Dialog.Header>
+			<Dialog.Title class="flex items-center gap-2 text-sm text-destructive">
+				<SkullIcon size={18} />
+				Abandon Raid
+			</Dialog.Title>
+			<Dialog.Description>
+				This will set inraid to false and clear the raid data in memory. You must save to persist this change.
+			</Dialog.Description>
+		</Dialog.Header>
+
+		<div class="space-y-3">
+			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
+				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
+				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
+					Abandoning a raid will remove the party from the dungeon. Heroes in the raid
+					party may have their status reset. Create a backup before proceeding.
+				</p>
+			</div>
+
+			<label class="flex items-center gap-2">
+				<Checkbox bind:checked={abandonConfirmChecked} />
+				<span class="text-[11px]">I understand this will abandon the active raid</span>
+			</label>
+		</div>
+
+		<Dialog.Footer class="flex-row justify-end gap-2 sm:justify-end">
+			<Button variant="outline" size="sm" onclick={() => (abandonDialogOpen = false)}>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				size="sm"
+				disabled={!abandonConfirmChecked}
+				onclick={handleAbandonRaid}
+			>
+				<SkullIcon size={14} class="mr-1" />
+				Abandon Raid
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>

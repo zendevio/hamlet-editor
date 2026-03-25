@@ -41,7 +41,7 @@
 		type GameInstall,
 		type SaveLocation
 	} from '$lib/api/detect';
-	import { createBackup, listBackups, restoreBackup, type BackupEntry } from '$lib/api/backup';
+	import { createBackup, listBackups, restoreBackup, restoreGameBackup, type BackupEntry } from '$lib/api/backup';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
 
@@ -82,6 +82,11 @@
 	let restoreDialogOpen = $state(false);
 	let restoreTarget = $state<BackupEntry | null>(null);
 	let restoreConfirmChecked = $state(false);
+
+	// Restore game backup dialog
+	let restoreGameBackupDialogOpen = $state(false);
+	let restoreGameBackupConfirmChecked = $state(false);
+	let restoringGameBackup = $state(false);
 
 	// ── Derived ──
 
@@ -149,18 +154,32 @@
 		}
 	}
 
-	function handleBrowseGame() {
-		// Placeholder: will use Tauri open dialog
-		toast.info('Browse not yet implemented', {
-			description: 'Tauri file picker will be wired in when the backend is ready.'
-		});
+	async function handleBrowseGame() {
+		try {
+			const { open } = await import('@tauri-apps/plugin-dialog');
+			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
+			if (selected && typeof selected === 'string') {
+				setGamePath(selected);
+				gamePathValid = null;
+			}
+		} catch {
+			// Not in Tauri environment (dev mode in browser), show fallback
+			toast.info('Browse not available in dev mode');
+		}
 	}
 
-	function handleBrowseSave() {
-		// Placeholder: will use Tauri open dialog
-		toast.info('Browse not yet implemented', {
-			description: 'Tauri file picker will be wired in when the backend is ready.'
-		});
+	async function handleBrowseSave() {
+		try {
+			const { open } = await import('@tauri-apps/plugin-dialog');
+			const selected = await open({ directory: true, title: 'Select save file folder' });
+			if (selected && typeof selected === 'string') {
+				setSavePath(selected);
+				savePathValid = null;
+			}
+		} catch {
+			// Not in Tauri environment (dev mode in browser), show fallback
+			toast.info('Browse not available in dev mode');
+		}
 	}
 
 	function handleProfileChange(value: string) {
@@ -201,11 +220,22 @@
 		}
 	}
 
-	function handleOpenBackupFolder() {
-		// Placeholder: will use Tauri shell.open
-		toast.info('Open folder not yet implemented', {
-			description: 'Will open the system file manager when the backend is ready.'
-		});
+	async function handleOpenBackupFolder() {
+		if (!settings.savePath) {
+			toast.error('No save path configured');
+			return;
+		}
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			// TODO: Replace with plugin-shell when @tauri-apps/plugin-shell is added as a dependency.
+			// For now, invoke a custom open_folder command if available, else show toast with path.
+			await invoke('open_folder', { path: settings.savePath });
+		} catch {
+			// Not in Tauri environment, plugin-shell not installed, or command not implemented
+			toast.info('Backup folder', {
+				description: settings.savePath
+			});
+		}
 	}
 
 	function openRestoreDialog(backup: BackupEntry) {
@@ -232,6 +262,31 @@
 			restoringBackup = null;
 			restoreTarget = null;
 			restoreConfirmChecked = false;
+		}
+	}
+
+	function openRestoreGameBackupDialog() {
+		restoreGameBackupConfirmChecked = false;
+		restoreGameBackupDialogOpen = true;
+	}
+
+	async function handleRestoreGameBackup() {
+		if (!settings.savePath) return;
+		restoringGameBackup = true;
+		restoreGameBackupDialogOpen = false;
+		try {
+			await restoreGameBackup(settings.savePath);
+			toast.success('Game backup restored', {
+				description: 'The game\'s own backup has been restored successfully.'
+			});
+			await loadBackupList();
+		} catch (err) {
+			toast.error('Restore failed', {
+				description: String(err)
+			});
+		} finally {
+			restoringGameBackup = false;
+			restoreGameBackupConfirmChecked = false;
 		}
 	}
 
@@ -466,7 +521,7 @@
 				<Separator />
 
 				<!-- Backup actions -->
-				<div class="flex gap-2">
+				<div class="flex flex-wrap gap-2">
 					<Button
 						variant="outline"
 						size="sm"
@@ -490,6 +545,21 @@
 					>
 						<FolderOpenIcon size={14} />
 						Open Backup Folder
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						class="gap-1.5 text-xs"
+						disabled={!settings.savePath || restoringGameBackup}
+						onclick={openRestoreGameBackupDialog}
+					>
+						{#if restoringGameBackup}
+							<SpinnerIcon size={14} class="animate-spin" />
+							Restoring...
+						{:else}
+							<ArrowCounterClockwiseIcon size={14} />
+							Restore Game Backup
+						{/if}
 					</Button>
 				</div>
 
@@ -665,6 +735,52 @@
 				size="sm"
 				disabled={!restoreConfirmChecked}
 				onclick={handleRestore}
+			>
+				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
+				Restore
+			</Button>
+		</DialogFooter>
+	</DialogContent>
+</Dialog>
+
+<!-- ═══════ Restore Game Backup Confirmation Dialog ═══════ -->
+<Dialog bind:open={restoreGameBackupDialogOpen}>
+	<DialogContent class="sm:max-w-md">
+		<DialogHeader>
+			<DialogTitle class="flex items-center gap-2 text-sm">
+				<ArrowCounterClockwiseIcon size={18} />
+				Restore Game Backup
+			</DialogTitle>
+			<DialogDescription>
+				Restore from the game's own backup/ subdirectory inside the save profile.
+			</DialogDescription>
+		</DialogHeader>
+
+		<div class="space-y-3">
+			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
+				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
+				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
+					This restores from the game's own backup folder (backup/ inside the profile directory).
+					A safety backup of your current state will be created automatically before restoring.
+					Any unsaved in-memory edits will be lost.
+				</p>
+			</div>
+
+			<label class="flex items-center gap-2">
+				<Checkbox bind:checked={restoreGameBackupConfirmChecked} />
+				<span class="text-[11px]">I understand this will overwrite current save files</span>
+			</label>
+		</div>
+
+		<DialogFooter class="flex-row justify-end gap-2 sm:justify-end">
+			<Button variant="outline" size="sm" onclick={() => (restoreGameBackupDialogOpen = false)}>
+				Cancel
+			</Button>
+			<Button
+				variant="destructive"
+				size="sm"
+				disabled={!restoreGameBackupConfirmChecked}
+				onclick={handleRestoreGameBackup}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
 				Restore

@@ -17,25 +17,7 @@
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 	import { getSaveData, markDirty, setEstateName } from '$lib/stores/save-data.svelte';
-
-	// ----- Types -----
-
-	interface WalletEntry {
-		amount: number;
-		type: string;
-	}
-
-	interface TrinketEntry {
-		id: string;
-		type: string;
-		amount: number;
-	}
-
-	interface EstateItem {
-		id: string;
-		type: string;
-		amount: number;
-	}
+	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
 
 	// ----- Props / State -----
 

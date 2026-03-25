@@ -760,6 +760,37 @@ export function stripDsonPrefix(id: string): string {
 	return id.replace(/^###/, '');
 }
 
+/**
+ * Abandon the active raid.
+ *
+ * Sets inraid = false in persist.game.json and nulls the raid data in memory.
+ * Marks both persist.game.json and persist.raid.json as dirty so they get saved.
+ */
+export function abandonRaid() {
+	if (game) {
+		game.base_root.inraid = false;
+		markDirty('persist.game.json');
+	}
+	raid = null;
+	gameInRaid = false;
+	markDirty('persist.raid.json');
+}
+
+/**
+ * Swap two heroes in the party order by index.
+ *
+ * Both indices must be within bounds; if either is out of range the call is a no-op.
+ */
+export function swapPartyPositions(indexA: number, indexB: number) {
+	if (!raid) return;
+	const heroes = raid.base_root.party.heroes;
+	if (indexA < 0 || indexB < 0 || indexA >= heroes.length || indexB >= heroes.length) return;
+	const temp = heroes[indexA];
+	heroes[indexA] = heroes[indexB];
+	heroes[indexB] = temp;
+	markDirty('persist.raid.json');
+}
+
 // ── Load/Reset ──
 
 /** Load roster data into the store. */

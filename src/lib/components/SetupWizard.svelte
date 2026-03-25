@@ -109,6 +109,51 @@
 		if (step > 1) step--;
 	}
 
+	async function browseGamePath() {
+		try {
+			const { open } = await import('@tauri-apps/plugin-dialog');
+			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
+			if (selected && typeof selected === 'string') {
+				const fakeInstall: GameInstall = {
+					path: selected,
+					source: 'Manual',
+					has_crimson_court: false,
+					has_shieldbreaker: false,
+					has_color_of_madness: false,
+					has_musketeer: false,
+					has_mods: false
+				};
+				gameInstalls = [fakeInstall, ...gameInstalls.filter((i) => i.path !== selected)];
+				selectedGameInstall = fakeInstall;
+				gameDetectRan = true;
+			}
+		} catch {
+			// Not in Tauri environment (dev mode in browser), silently ignore
+		}
+	}
+
+	async function browseSavePath() {
+		try {
+			const { open } = await import('@tauri-apps/plugin-dialog');
+			const selected = await open({ directory: true, title: 'Select save file folder' });
+			if (selected && typeof selected === 'string') {
+				const fakeLoc: SaveLocation = {
+					path: selected,
+					source: 'Manual',
+					steam_user_id: null,
+					profile_id: selected.split('/').pop() ?? selected.split('\\').pop() ?? 'manual',
+					has_active_raid: false,
+					week_number: null
+				};
+				saveLocations = [fakeLoc, ...saveLocations.filter((l) => l.path !== selected)];
+				selectedSave = fakeLoc;
+				saveDetectRan = true;
+			}
+		} catch {
+			// Not in Tauri environment (dev mode in browser), silently ignore
+		}
+	}
+
 	function finish() {
 		if (!selectedGameInstall || !selectedSave) return;
 		setGamePath(selectedGameInstall.path);
@@ -211,7 +256,7 @@
 							<MagnifyingGlassIcon size={16} class="mr-2" />
 							Retry
 						</Button>
-						<Button variant="outline" disabled class="flex-1">
+						<Button variant="outline" onclick={browseGamePath} class="flex-1">
 							<FolderOpenIcon size={16} class="mr-2" />
 							Browse...
 						</Button>
@@ -328,7 +373,7 @@
 							<MagnifyingGlassIcon size={16} class="mr-2" />
 							Retry
 						</Button>
-						<Button variant="outline" disabled class="flex-1">
+						<Button variant="outline" onclick={browseSavePath} class="flex-1">
 							<FolderOpenIcon size={16} class="mr-2" />
 							Browse...
 						</Button>
