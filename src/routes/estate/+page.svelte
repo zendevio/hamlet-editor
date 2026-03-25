@@ -6,16 +6,16 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import CurrencyDollar from 'phosphor-svelte/lib/CurrencyDollar';
-	import Scroll from 'phosphor-svelte/lib/Scroll';
-	import Image from 'phosphor-svelte/lib/Image';
-	import FileText from 'phosphor-svelte/lib/FileText';
-	import Shield from 'phosphor-svelte/lib/Shield';
-	import Diamond from 'phosphor-svelte/lib/Diamond';
-	import Drop from 'phosphor-svelte/lib/Drop';
-	import Envelope from 'phosphor-svelte/lib/Envelope';
-	import Wrench from 'phosphor-svelte/lib/Wrench';
-	import Plus from 'phosphor-svelte/lib/Plus';
+	import CurrencyDollarIcon from 'phosphor-svelte/lib/CurrencyDollarIcon';
+	import ScrollIcon from 'phosphor-svelte/lib/ScrollIcon';
+	import ImageIcon from 'phosphor-svelte/lib/ImageIcon';
+	import FileTextIcon from 'phosphor-svelte/lib/FileTextIcon';
+	import ShieldIcon from 'phosphor-svelte/lib/ShieldIcon';
+	import DiamondIcon from 'phosphor-svelte/lib/DiamondIcon';
+	import DropIcon from 'phosphor-svelte/lib/DropIcon';
+	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
+	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
+	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 
 	// ----- Types -----
 
@@ -59,11 +59,11 @@
 	// ----- Derived data -----
 
 	const walletCurrencies = [
-		{ type: 'gold', name: 'Gold', icon: CurrencyDollar },
-		{ type: 'bust', name: 'Busts', icon: Scroll },
-		{ type: 'portrait', name: 'Portraits', icon: Image },
-		{ type: 'deed', name: 'Deeds', icon: FileText },
-		{ type: 'crest', name: 'Crests', icon: Shield }
+		{ type: 'gold', name: 'Gold', icon: CurrencyDollarIcon },
+		{ type: 'bust', name: 'Busts', icon: ScrollIcon },
+		{ type: 'portrait', name: 'Portraits', icon: ImageIcon },
+		{ type: 'deed', name: 'Deeds', icon: FileTextIcon },
+		{ type: 'crest', name: 'Crests', icon: ShieldIcon }
 	] as const;
 
 	/** Wallet amounts keyed by currency type. */
@@ -169,7 +169,7 @@
 					<WalletCard
 						name="Shards"
 						value={shardAmount}
-						icon={Diamond}
+						icon={DiamondIcon}
 						onchange={(v) => handleWalletChange('shard', v)}
 					/>
 				{/if}
@@ -188,7 +188,7 @@
 							<!-- Invitations -->
 							<div class="space-y-2">
 								<div class="flex items-center gap-2">
-									<Envelope size={16} class="text-muted-foreground" />
+									<EnvelopeIcon size={16} class="text-muted-foreground" />
 									<span class="text-sm font-medium">Invitations</span>
 								</div>
 								<div class="grid grid-cols-3 gap-2">
@@ -210,7 +210,7 @@
 							<!-- Blood Vials -->
 							<div class="space-y-2">
 								<div class="flex items-center gap-2">
-									<Drop size={16} class="text-muted-foreground" />
+									<DropIcon size={16} class="text-muted-foreground" />
 									<span class="text-sm font-medium">Blood</span>
 								</div>
 								<div class="space-y-1">
@@ -224,7 +224,7 @@
 							<!-- Blueprints -->
 							<div class="space-y-2">
 								<div class="flex items-center gap-2">
-									<Wrench size={16} class="text-muted-foreground" />
+									<WrenchIcon size={16} class="text-muted-foreground" />
 									<span class="text-sm font-medium">Blueprints</span>
 								</div>
 								<div class="space-y-1">
@@ -259,7 +259,7 @@
 								Trinkets unequipped from heroes or added via the button below will appear here.
 							</p>
 							<Button variant="outline" size="sm" onclick={handleAddTrinket}>
-								<Plus size={14} />
+								<PlusIcon size={14} />
 								Add Trinket
 							</Button>
 						</div>
@@ -277,7 +277,7 @@
 				</div>
 				<div class="mt-3">
 					<Button variant="outline" size="sm" onclick={handleAddTrinket}>
-						<Plus size={14} />
+						<PlusIcon size={14} />
 						Add Trinket
 					</Button>
 				</div>

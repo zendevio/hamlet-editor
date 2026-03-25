@@ -12,10 +12,10 @@
 		CollapsibleContent,
 		CollapsibleTrigger
 	} from '$lib/components/ui/collapsible';
-	import CaretDown from 'phosphor-svelte/lib/CaretDown';
-	import CaretRight from 'phosphor-svelte/lib/CaretRight';
-	import UserCircle from 'phosphor-svelte/lib/UserCircle';
-	import SignOut from 'phosphor-svelte/lib/SignOut';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
+	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
+	import UserCircleIcon from 'phosphor-svelte/lib/UserCircleIcon';
+	import SignOutIcon from 'phosphor-svelte/lib/SignOutIcon';
 	import {
 		BUILDING_DISPLAY_NAMES,
 		ACTIVITY_DISPLAY_NAMES,
@@ -77,9 +77,9 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						{#if isOpen}
-							<CaretDown size={16} class="text-muted-foreground" />
+							<CaretDownIcon size={16} class="text-muted-foreground" />
 						{:else}
-							<CaretRight size={16} class="text-muted-foreground" />
+							<CaretRightIcon size={16} class="text-muted-foreground" />
 						{/if}
 						<CardTitle class="text-base">{displayName}</CardTitle>
 					</div>
@@ -117,7 +117,7 @@
 										</Badge>
 										{#if hero}
 											<div class="flex items-center gap-2">
-												<UserCircle
+												<UserCircleIcon
 													size={18}
 													class="text-muted-foreground"
 												/>
@@ -139,7 +139,7 @@
 											class="h-7 gap-1 text-xs"
 											onclick={() => handleRelease(hero)}
 										>
-											<SignOut size={14} />
+											<SignOutIcon size={14} />
 											Release
 										</Button>
 									{/if}

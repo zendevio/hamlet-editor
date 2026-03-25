@@ -11,9 +11,9 @@
 		SelectTrigger
 	} from '$lib/components/ui/select';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
-	import Skull from 'phosphor-svelte/lib/Skull';
-	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
-	import FunnelSimple from 'phosphor-svelte/lib/FunnelSimple';
+	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
+	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import FunnelSimpleIcon from 'phosphor-svelte/lib/FunnelSimpleIcon';
 	import type { HeroSummary } from '$lib/stores/save-data.svelte';
 	import {
 		STATUS_MAP,
@@ -171,7 +171,7 @@
 	<div class="flex flex-col gap-2 border-b p-3">
 		<div class="flex items-center gap-2">
 			<div class="relative flex-1">
-				<MagnifyingGlass
+				<MagnifyingGlassIcon
 					class="text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2"
 					size={14}
 				/>
@@ -189,7 +189,7 @@
 						class="h-8 w-8 p-0"
 						onclick={() => (showFilters = !showFilters)}
 					>
-						<FunnelSimple size={14} />
+						<FunnelSimpleIcon size={14} />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>Toggle filters</TooltipContent>
@@ -312,7 +312,7 @@
 								: ''}"
 						>
 							{#if isDead}
-								<Skull size={18} class="text-muted-foreground" />
+								<SkullIcon size={18} class="text-muted-foreground" />
 							{:else}
 								<span class="text-muted-foreground font-medium">{hero.heroClass.slice(0, 2)}</span>
 							{/if}

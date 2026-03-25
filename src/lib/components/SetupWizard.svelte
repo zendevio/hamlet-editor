@@ -21,15 +21,15 @@
 		type GameInstall,
 		type SaveLocation
 	} from '$lib/api/detect';
-	import GameController from 'phosphor-svelte/lib/GameController';
-	import FolderOpen from 'phosphor-svelte/lib/FolderOpen';
-	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
-	import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
-	import Warning from 'phosphor-svelte/lib/Warning';
-	import Sword from 'phosphor-svelte/lib/Sword';
-	import ArrowRight from 'phosphor-svelte/lib/ArrowRight';
-	import ArrowLeft from 'phosphor-svelte/lib/ArrowLeft';
-	import Spinner from 'phosphor-svelte/lib/Spinner';
+	import GameControllerIcon from 'phosphor-svelte/lib/GameControllerIcon';
+	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
+	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import CheckCircleIcon from 'phosphor-svelte/lib/CheckCircleIcon';
+	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
+	import SwordIcon from 'phosphor-svelte/lib/SwordIcon';
+	import ArrowRightIcon from 'phosphor-svelte/lib/ArrowRightIcon';
+	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeftIcon';
+	import SpinnerIcon from 'phosphor-svelte/lib/SpinnerIcon';
 
 	// ── State ──
 
@@ -168,7 +168,7 @@
 		{#if step === 1}
 			<DialogHeader>
 				<DialogTitle class="flex items-center gap-2">
-					<GameController size={20} />
+					<GameControllerIcon size={20} />
 					Game Installation Path
 				</DialogTitle>
 				<DialogDescription>
@@ -181,10 +181,10 @@
 				{#if !gameDetectRan}
 					<Button onclick={detectGamePaths} disabled={detecting} class="w-full">
 						{#if detecting}
-							<Spinner size={16} class="mr-2 animate-spin" />
+							<SpinnerIcon size={16} class="mr-2 animate-spin" />
 							Detecting...
 						{:else}
-							<MagnifyingGlass size={16} class="mr-2" />
+							<MagnifyingGlassIcon size={16} class="mr-2" />
 							Auto-detect Game Installation
 						{/if}
 					</Button>
@@ -192,7 +192,7 @@
 					<div
 						class="flex items-start gap-2 border border-border bg-muted/50 p-3 text-xs text-muted-foreground"
 					>
-						<Warning size={16} class="mt-0.5 shrink-0 text-amber-500" />
+						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 						<div>
 							<p class="font-medium text-foreground">No installations found</p>
 							<p class="mt-1">
@@ -208,11 +208,11 @@
 							disabled={detecting}
 							class="flex-1"
 						>
-							<MagnifyingGlass size={16} class="mr-2" />
+							<MagnifyingGlassIcon size={16} class="mr-2" />
 							Retry
 						</Button>
 						<Button variant="outline" disabled class="flex-1">
-							<FolderOpen size={16} class="mr-2" />
+							<FolderOpenIcon size={16} class="mr-2" />
 							Browse...
 						</Button>
 					</div>
@@ -231,7 +231,7 @@
 								<div class="flex items-center justify-between">
 									<div class="flex items-center gap-2">
 										{#if isSelected}
-											<CheckCircle
+											<CheckCircleIcon
 												size={16}
 												weight="fill"
 												class="shrink-0 text-green-600 dark:text-green-400"
@@ -269,7 +269,7 @@
 						disabled={detecting}
 						class="w-full text-xs text-muted-foreground"
 					>
-						<MagnifyingGlass size={14} class="mr-1" />
+						<MagnifyingGlassIcon size={14} class="mr-1" />
 						Re-detect
 					</Button>
 				{/if}
@@ -278,7 +278,7 @@
 			<DialogFooter>
 				<Button onclick={nextStep} disabled={!canAdvanceFromStep1}>
 					Next
-					<ArrowRight size={16} class="ml-1" />
+					<ArrowRightIcon size={16} class="ml-1" />
 				</Button>
 			</DialogFooter>
 
@@ -286,7 +286,7 @@
 		{:else if step === 2}
 			<DialogHeader>
 				<DialogTitle class="flex items-center gap-2">
-					<FolderOpen size={20} />
+					<FolderOpenIcon size={20} />
 					Save File Location
 				</DialogTitle>
 				<DialogDescription>
@@ -298,10 +298,10 @@
 				{#if !saveDetectRan}
 					<Button onclick={detectSavePaths} disabled={detecting} class="w-full">
 						{#if detecting}
-							<Spinner size={16} class="mr-2 animate-spin" />
+							<SpinnerIcon size={16} class="mr-2 animate-spin" />
 							Detecting...
 						{:else}
-							<MagnifyingGlass size={16} class="mr-2" />
+							<MagnifyingGlassIcon size={16} class="mr-2" />
 							Auto-detect Save Files
 						{/if}
 					</Button>
@@ -309,7 +309,7 @@
 					<div
 						class="flex items-start gap-2 border border-border bg-muted/50 p-3 text-xs text-muted-foreground"
 					>
-						<Warning size={16} class="mt-0.5 shrink-0 text-amber-500" />
+						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 						<div>
 							<p class="font-medium text-foreground">No save files found</p>
 							<p class="mt-1">
@@ -325,11 +325,11 @@
 							disabled={detecting}
 							class="flex-1"
 						>
-							<MagnifyingGlass size={16} class="mr-2" />
+							<MagnifyingGlassIcon size={16} class="mr-2" />
 							Retry
 						</Button>
 						<Button variant="outline" disabled class="flex-1">
-							<FolderOpen size={16} class="mr-2" />
+							<FolderOpenIcon size={16} class="mr-2" />
 							Browse...
 						</Button>
 					</div>
@@ -338,7 +338,7 @@
 						<div
 							class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs"
 						>
-							<Warning size={16} class="mt-0.5 shrink-0 text-amber-500" />
+							<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 							<p class="text-amber-700 dark:text-amber-400">
 								Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam
 								before saving to avoid conflicts.
@@ -360,7 +360,7 @@
 								<div class="flex items-center justify-between">
 									<div class="flex items-center gap-2">
 										{#if isSelected}
-											<CheckCircle
+											<CheckCircleIcon
 												size={16}
 												weight="fill"
 												class="shrink-0 text-green-600 dark:text-green-400"
@@ -374,7 +374,7 @@
 									<div class="flex items-center gap-2">
 										{#if loc.has_active_raid}
 											<Badge variant="destructive" class="text-[10px]">
-												<Sword size={10} class="mr-0.5" />
+												<SwordIcon size={10} class="mr-0.5" />
 												In Raid
 											</Badge>
 										{/if}
@@ -394,7 +394,7 @@
 						disabled={detecting}
 						class="w-full text-xs text-muted-foreground"
 					>
-						<MagnifyingGlass size={14} class="mr-1" />
+						<MagnifyingGlassIcon size={14} class="mr-1" />
 						Re-detect
 					</Button>
 				{/if}
@@ -402,12 +402,12 @@
 
 			<DialogFooter class="flex-row justify-between sm:justify-between">
 				<Button variant="outline" onclick={prevStep}>
-					<ArrowLeft size={16} class="mr-1" />
+					<ArrowLeftIcon size={16} class="mr-1" />
 					Back
 				</Button>
 				<Button onclick={nextStep} disabled={!canAdvanceFromStep2}>
 					Next
-					<ArrowRight size={16} class="ml-1" />
+					<ArrowRightIcon size={16} class="ml-1" />
 				</Button>
 			</DialogFooter>
 
@@ -415,7 +415,7 @@
 		{:else}
 			<DialogHeader>
 				<DialogTitle class="flex items-center gap-2">
-					<CheckCircle size={20} />
+					<CheckCircleIcon size={20} />
 					Confirmation
 				</DialogTitle>
 				<DialogDescription>
@@ -429,7 +429,7 @@
 					<p class="text-xs font-medium text-muted-foreground">Game Installation</p>
 					<div class="border border-border bg-muted/30 p-3">
 						<div class="flex items-center gap-2">
-							<CheckCircle
+							<CheckCircleIcon
 								size={14}
 								weight="fill"
 								class="shrink-0 text-green-600 dark:text-green-400"
@@ -457,7 +457,7 @@
 					<div class="border border-border bg-muted/30 p-3">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
-								<CheckCircle
+								<CheckCircleIcon
 									size={14}
 									weight="fill"
 									class="shrink-0 text-green-600 dark:text-green-400"
@@ -469,7 +469,7 @@
 							</div>
 							{#if selectedSave?.has_active_raid}
 								<Badge variant="destructive" class="text-[10px]">
-									<Sword size={10} class="mr-0.5" />
+									<SwordIcon size={10} class="mr-0.5" />
 									In Raid
 								</Badge>
 							{/if}
@@ -486,11 +486,11 @@
 
 			<DialogFooter class="flex-row justify-between sm:justify-between">
 				<Button variant="outline" onclick={prevStep}>
-					<ArrowLeft size={16} class="mr-1" />
+					<ArrowLeftIcon size={16} class="mr-1" />
 					Back
 				</Button>
 				<Button onclick={finish}>
-					<GameController size={16} class="mr-1" />
+					<GameControllerIcon size={16} class="mr-1" />
 					Open Profile
 				</Button>
 			</DialogFooter>

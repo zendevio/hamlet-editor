@@ -689,6 +689,48 @@ export function revertHero(guid: string) {
 	roster.base_root.heroes[guid] = JSON.parse(JSON.stringify(original));
 }
 
+/** Clear all dirty flags (e.g. after successful save). */
+export function clearAllDirty() {
+	dirtyFiles = new Set();
+	// Update disk snapshot to current state after save
+	if (roster) diskSnapshot = JSON.stringify(roster);
+}
+
+/**
+ * Discard all in-memory changes by reverting to the disk snapshot.
+ * Reloads roster from the snapshot; resets dirty state.
+ */
+export function discardAllChanges() {
+	if (diskSnapshot) {
+		roster = JSON.parse(diskSnapshot) as RosterData;
+	}
+	// For estate/town/upgrades we don't have snapshots yet,
+	// so we just clear dirty flags. Full reload from disk
+	// would be done by the caller via the Tauri reload command.
+	dirtyFiles = new Set();
+}
+
+/**
+ * Get the current save data as a serializable object for the save command.
+ * Only includes files that have been modified.
+ */
+export function getDirtyData(): Record<string, unknown> {
+	const data: Record<string, unknown> = {};
+	if (dirtyFiles.has('persist.roster.json') && roster) {
+		data['persist.roster.json'] = roster;
+	}
+	if (dirtyFiles.has('persist.estate.json') && estate) {
+		data['persist.estate.json'] = estate;
+	}
+	if (dirtyFiles.has('persist.town.json') && town) {
+		data['persist.town.json'] = town;
+	}
+	if (dirtyFiles.has('persist.upgrades.json') && upgrades) {
+		data['persist.upgrades.json'] = upgrades;
+	}
+	return data;
+}
+
 /** Reset all save data (e.g. on profile switch). */
 export function resetSaveData() {
 	roster = null;

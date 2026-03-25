@@ -11,10 +11,10 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Separator } from '$lib/components/ui/separator';
-	import Warning from 'phosphor-svelte/lib/Warning';
-	import Heart from 'phosphor-svelte/lib/Heart';
-	import FileText from 'phosphor-svelte/lib/FileText';
-	import Info from 'phosphor-svelte/lib/Info';
+	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
+	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
+	import FileTextIcon from 'phosphor-svelte/lib/FileTextIcon';
+	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
 	import { reviveHero, type HeroSummary } from '$lib/stores/save-data.svelte';
 
 	let {
@@ -109,7 +109,7 @@
 	<DialogContent class="sm:max-w-lg">
 		<DialogHeader>
 			<DialogTitle class="flex items-center gap-2 text-sm">
-				<Heart size={18} weight="fill" class="text-green-500" />
+				<HeartIcon size={18} weight="fill" class="text-green-500" />
 				Revive {hero.name} the {hero.classDisplayName}?
 			</DialogTitle>
 			<DialogDescription>
@@ -141,7 +141,7 @@
 				<div class="space-y-1.5">
 					{#each filesToModify as file}
 						<div class="flex items-start gap-2 border border-border bg-muted/20 p-2">
-							<FileText size={14} class="mt-0.5 shrink-0 text-muted-foreground" />
+							<FileTextIcon size={14} class="mt-0.5 shrink-0 text-muted-foreground" />
 							<div>
 								<p class="text-[11px] font-medium font-mono">{file.name}</p>
 								<p class="text-[10px] text-muted-foreground">{file.description}</p>
@@ -156,7 +156,7 @@
 				<Separator />
 				<div class="space-y-2">
 					<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
-						<Warning size={14} class="mt-0.5 shrink-0 text-amber-500" />
+						<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 						<div>
 							<p class="text-[11px] font-medium text-amber-700 dark:text-amber-400">
 								Raid is active
@@ -189,7 +189,7 @@
 
 			<!-- Trinket warning -->
 			<div class="flex items-start gap-2 border border-border bg-muted/20 p-3">
-				<Info size={14} class="mt-0.5 shrink-0 text-muted-foreground" />
+				<InfoIcon size={14} class="mt-0.5 shrink-0 text-muted-foreground" />
 				<p class="text-[10px] leading-relaxed text-muted-foreground">
 					The revived hero will retain their resolve level and quirks but will have lost
 					their equipped trinkets (stripped on death). You can re-equip trinkets afterward.
@@ -217,7 +217,7 @@
 				onclick={handleRevive}
 				class="gap-1"
 			>
-				<Heart size={14} weight="fill" />
+				<HeartIcon size={14} weight="fill" />
 				Revive
 			</Button>
 		</DialogFooter>

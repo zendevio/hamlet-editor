@@ -18,18 +18,18 @@
 		CollapsibleTrigger
 	} from '$lib/components/ui/collapsible';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
-	import CaretDown from 'phosphor-svelte/lib/CaretDown';
-	import CaretRight from 'phosphor-svelte/lib/CaretRight';
-	import Heart from 'phosphor-svelte/lib/Heart';
-	import Brain from 'phosphor-svelte/lib/Brain';
-	import Skull from 'phosphor-svelte/lib/Skull';
-	import Lock from 'phosphor-svelte/lib/Lock';
-	import LockOpen from 'phosphor-svelte/lib/LockOpen';
-	import X from 'phosphor-svelte/lib/X';
-	import Plus from 'phosphor-svelte/lib/Plus';
-	import ArrowCounterClockwise from 'phosphor-svelte/lib/ArrowCounterClockwise';
-	import Pencil from 'phosphor-svelte/lib/Pencil';
-	import Trash from 'phosphor-svelte/lib/Trash';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
+	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
+	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
+	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
+	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
+	import LockIcon from 'phosphor-svelte/lib/LockIcon';
+	import LockOpenIcon from 'phosphor-svelte/lib/LockOpenIcon';
+	import XIcon from 'phosphor-svelte/lib/XIcon';
+	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
+	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
+	import PencilIcon from 'phosphor-svelte/lib/PencilIcon';
+	import TrashIcon from 'phosphor-svelte/lib/TrashIcon';
 	import type { HeroSummary, HeroQuirk } from '$lib/stores/save-data.svelte';
 	import {
 		getMaxHp,
@@ -207,7 +207,7 @@
 						: ''}"
 				>
 					{#if isDead}
-						<Skull size={28} class="text-muted-foreground" />
+						<SkullIcon size={28} class="text-muted-foreground" />
 					{:else}
 						<span class="text-muted-foreground font-bold">
 							{hero.heroClass.slice(0, 2)}
@@ -228,7 +228,7 @@
 			<Tooltip>
 				<TooltipTrigger>
 					<Button variant="ghost" size="sm" class="h-7 gap-1 text-xs" onclick={handleRevert}>
-						<ArrowCounterClockwise size={12} />
+						<ArrowCounterClockwiseIcon size={12} />
 						Reset
 					</Button>
 				</TooltipTrigger>
@@ -242,9 +242,9 @@
 		<Collapsible bind:open={identityOpen}>
 			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
 				{#if identityOpen}
-					<CaretDown size={14} class="text-muted-foreground" />
+					<CaretDownIcon size={14} class="text-muted-foreground" />
 				{:else}
-					<CaretRight size={14} class="text-muted-foreground" />
+					<CaretRightIcon size={14} class="text-muted-foreground" />
 				{/if}
 				<span class="text-xs font-semibold uppercase tracking-wider">Identity</span>
 			</CollapsibleTrigger>
@@ -267,7 +267,7 @@
 								onclick={startEditName}
 							>
 								<span class="flex-1 text-left">{hero.name}</span>
-								<Pencil
+								<PencilIcon
 									size={12}
 									class="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
 								/>
@@ -315,9 +315,9 @@
 		<Collapsible bind:open={vitalsOpen}>
 			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
 				{#if vitalsOpen}
-					<CaretDown size={14} class="text-muted-foreground" />
+					<CaretDownIcon size={14} class="text-muted-foreground" />
 				{:else}
-					<CaretRight size={14} class="text-muted-foreground" />
+					<CaretRightIcon size={14} class="text-muted-foreground" />
 				{/if}
 				<span class="text-xs font-semibold uppercase tracking-wider">Vitals</span>
 			</CollapsibleTrigger>
@@ -327,7 +327,7 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between">
 							<div class="flex items-center gap-1.5">
-								<Heart size={14} class="text-red-500" />
+								<HeartIcon size={14} class="text-red-500" />
 								<span class="text-[11px] font-medium">HP</span>
 							</div>
 							<div class="flex items-center gap-2">
@@ -363,7 +363,7 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between">
 							<div class="flex items-center gap-1.5">
-								<Brain size={14} class="text-yellow-500" />
+								<BrainIcon size={14} class="text-yellow-500" />
 								<span class="text-[11px] font-medium">Stress</span>
 							</div>
 							<div class="flex items-center gap-2">
@@ -471,9 +471,9 @@
 		<Collapsible bind:open={quirksOpen}>
 			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
 				{#if quirksOpen}
-					<CaretDown size={14} class="text-muted-foreground" />
+					<CaretDownIcon size={14} class="text-muted-foreground" />
 				{:else}
-					<CaretRight size={14} class="text-muted-foreground" />
+					<CaretRightIcon size={14} class="text-muted-foreground" />
 				{/if}
 				<span class="text-xs font-semibold uppercase tracking-wider">Quirks</span>
 				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
@@ -500,9 +500,9 @@
 										title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
 									>
 										{#if quirk.is_locked}
-											<Lock size={11} class="text-yellow-500" />
+											<LockIcon size={11} class="text-yellow-500" />
 										{:else}
-											<LockOpen size={11} />
+											<LockOpenIcon size={11} />
 										{/if}
 									</button>
 									<span class="flex-1 truncate text-[11px]">{quirkDisplayName(id)}</span>
@@ -511,7 +511,7 @@
 										onclick={() => removeHeroQuirk(hero.guid, id)}
 										title="Remove quirk"
 									>
-										<X size={11} />
+										<XIcon size={11} />
 									</button>
 								</div>
 							{/each}
@@ -523,7 +523,7 @@
 								class="mt-1 h-6 w-full text-[11px]"
 								onclick={() => openQuirkPicker('positive')}
 							>
-								<Plus size={11} class="mr-1" />
+								<PlusIcon size={11} class="mr-1" />
 								Add Positive
 							</Button>
 						{/if}
@@ -553,9 +553,9 @@
 											title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
 										>
 											{#if quirk.is_locked}
-												<Lock size={11} class="text-yellow-500" />
+												<LockIcon size={11} class="text-yellow-500" />
 											{:else}
-												<LockOpen size={11} />
+												<LockOpenIcon size={11} />
 											{/if}
 										</button>
 										<span class="flex-1 truncate text-[11px]">{quirkDisplayName(id)}</span>
@@ -564,7 +564,7 @@
 											onclick={() => removeHeroQuirk(hero.guid, id)}
 											title="Remove quirk"
 										>
-											<X size={11} />
+											<XIcon size={11} />
 										</button>
 									</div>
 								{/each}
@@ -583,9 +583,9 @@
 										title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
 									>
 										{#if quirk.is_locked}
-											<Lock size={11} class="text-yellow-500" />
+											<LockIcon size={11} class="text-yellow-500" />
 										{:else}
-											<LockOpen size={11} />
+											<LockOpenIcon size={11} />
 										{/if}
 									</button>
 									<span class="flex-1 truncate text-[11px]">{quirkDisplayName(id)}</span>
@@ -594,7 +594,7 @@
 										onclick={() => removeHeroQuirk(hero.guid, id)}
 										title="Remove quirk"
 									>
-										<X size={11} />
+										<XIcon size={11} />
 									</button>
 								</div>
 							{/each}
@@ -606,7 +606,7 @@
 								class="mt-1 h-6 w-full text-[11px]"
 								onclick={() => openQuirkPicker('negative')}
 							>
-								<Plus size={11} class="mr-1" />
+								<PlusIcon size={11} class="mr-1" />
 								Add Negative
 							</Button>
 						{/if}
@@ -627,7 +627,7 @@
 								class="text-muted-foreground cursor-pointer hover:text-foreground"
 								onclick={() => (showQuirkPicker = false)}
 							>
-								<X size={14} />
+								<XIcon size={14} />
 							</button>
 						</div>
 						<Input
@@ -668,9 +668,9 @@
 		<Collapsible bind:open={equipmentOpen}>
 			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
 				{#if equipmentOpen}
-					<CaretDown size={14} class="text-muted-foreground" />
+					<CaretDownIcon size={14} class="text-muted-foreground" />
 				{:else}
-					<CaretRight size={14} class="text-muted-foreground" />
+					<CaretRightIcon size={14} class="text-muted-foreground" />
 				{/if}
 				<span class="text-xs font-semibold uppercase tracking-wider">Equipment</span>
 				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
@@ -733,9 +733,9 @@
 		<Collapsible bind:open={actionsOpen}>
 			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
 				{#if actionsOpen}
-					<CaretDown size={14} class="text-muted-foreground" />
+					<CaretDownIcon size={14} class="text-muted-foreground" />
 				{:else}
-					<CaretRight size={14} class="text-muted-foreground" />
+					<CaretRightIcon size={14} class="text-muted-foreground" />
 				{/if}
 				<span class="text-xs font-semibold uppercase tracking-wider">Actions</span>
 			</CollapsibleTrigger>
@@ -748,7 +748,7 @@
 							class="w-full justify-start gap-2 text-xs"
 							onclick={() => (revivalWizardOpen = true)}
 						>
-							<Heart size={14} class="text-green-500" />
+							<HeartIcon size={14} class="text-green-500" />
 							Revive Hero
 						</Button>
 						<p class="text-muted-foreground text-[10px]">
@@ -779,7 +779,7 @@
 							disabled={!dismissConfirmChecked}
 							onclick={handleDismiss}
 						>
-							<Trash size={14} />
+							<TrashIcon size={14} />
 							Dismiss {hero.name}
 						</Button>
 					</div>

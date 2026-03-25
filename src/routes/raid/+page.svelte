@@ -8,8 +8,8 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Slider } from '$lib/components/ui/slider/index.js';
-	import Warning from 'phosphor-svelte/lib/Warning';
-	import Backpack from 'phosphor-svelte/lib/Backpack';
+	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
+	import BackpackIcon from 'phosphor-svelte/lib/BackpackIcon';
 	import {
 		getSaveData,
 		getHeroes,
@@ -234,7 +234,7 @@
 {:else if isInconsistent}
 	<div class="mx-auto max-w-2xl space-y-4 p-6">
 		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
-			<Warning size={16} class="text-amber-500" />
+			<WarningIcon size={16} class="text-amber-500" />
 			<Alert.Title class="text-amber-700 dark:text-amber-400">
 				Raid State Inconsistent
 			</Alert.Title>
@@ -261,7 +261,7 @@
 	<div class="space-y-6">
 		<!-- Warning Banner (always visible, not dismissable) -->
 		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
-			<Warning size={16} class="text-amber-500" />
+			<WarningIcon size={16} class="text-amber-500" />
 			<Alert.Title class="text-amber-700 dark:text-amber-400">
 				High-Risk Editing
 			</Alert.Title>
@@ -437,7 +437,7 @@
 					{#each inventoryItems as item (item.key)}
 						<Card.Root class="gap-2 p-3">
 							<div class="flex items-center gap-2">
-								<Backpack size={14} class="shrink-0 text-muted-foreground" />
+								<BackpackIcon size={14} class="shrink-0 text-muted-foreground" />
 								<span class="truncate text-xs font-medium">{item.id}</span>
 							</div>
 							<div class="flex items-center gap-2">

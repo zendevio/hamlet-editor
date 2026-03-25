@@ -2,7 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
-	import X from 'phosphor-svelte/lib/X';
+	import XIcon from 'phosphor-svelte/lib/XIcon';
 
 	let {
 		id,
@@ -43,7 +43,7 @@
 			onclick={() => onremove?.(id)}
 			title="Remove trinket"
 		>
-			<X size={14} />
+			<XIcon size={14} />
 		</Button>
 	</div>
 	{#if type && type !== 'trinket'}

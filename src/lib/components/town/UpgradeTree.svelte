@@ -5,7 +5,7 @@
 		TooltipContent,
 		TooltipTrigger
 	} from '$lib/components/ui/tooltip';
-	import Warning from 'phosphor-svelte/lib/Warning';
+	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 	import {
 		type BuildingUpgradeGroup,
 		type UpgradePurchase,
@@ -79,7 +79,7 @@
 						{#if purchase.is_purchased && hasCascadeRisk(purchase)}
 							<Tooltip>
 								<TooltipTrigger>
-									<Warning size={14} class="text-amber-500" />
+									<WarningIcon size={14} class="text-amber-500" />
 								</TooltipTrigger>
 								<TooltipContent>
 									<p class="max-w-xs text-xs">

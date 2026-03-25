@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button/index.js";
-	import SidebarIcon from 'phosphor-svelte/lib/Sidebar';
+	import SidebarIcon from 'phosphor-svelte/lib/SidebarIcon';
 	import { cn } from "$lib/utils.js";
 	import type { ComponentProps } from "svelte";
 	import { useSidebar } from "./context.svelte.js";

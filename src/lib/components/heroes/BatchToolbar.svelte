@@ -8,9 +8,9 @@
 		SelectTrigger
 	} from '$lib/components/ui/select';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
-	import Heart from 'phosphor-svelte/lib/Heart';
-	import Brain from 'phosphor-svelte/lib/Brain';
-	import ArrowUp from 'phosphor-svelte/lib/ArrowUp';
+	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
+	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
+	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
 	import type { HeroSummary } from '$lib/stores/save-data.svelte';
 	import {
 		healHeroToMax,
@@ -82,7 +82,7 @@
 		<Tooltip>
 			<TooltipTrigger>
 				<Button variant="outline" size="sm" class="h-7 gap-1.5 text-[11px]" onclick={handleHealAll}>
-					<Heart size={12} class="text-red-500" />
+					<HeartIcon size={12} class="text-red-500" />
 					Heal All
 				</Button>
 			</TooltipTrigger>
@@ -98,7 +98,7 @@
 					class="h-7 gap-1.5 text-[11px]"
 					onclick={handleClearStress}
 				>
-					<Brain size={12} class="text-yellow-500" />
+					<BrainIcon size={12} class="text-yellow-500" />
 					Clear Stress
 				</Button>
 			</TooltipTrigger>
@@ -109,7 +109,7 @@
 		<Select type="single" onValueChange={handleSetLevel}>
 			<SelectTrigger class="h-7 w-30 text-[11px]">
 				<div class="flex items-center gap-1">
-					<ArrowUp size={12} />
+					<ArrowUpIcon size={12} />
 					<span>Set Level</span>
 				</div>
 			</SelectTrigger>
@@ -132,7 +132,7 @@
 						class="h-7 gap-1.5 text-[11px]"
 						onclick={handleReviveAll}
 					>
-						<Heart size={12} class="text-green-500" />
+						<HeartIcon size={12} class="text-green-500" />
 						Revive
 					</Button>
 				</TooltipTrigger>

@@ -50,10 +50,18 @@ export async function detectGameInstallations(): Promise<GameInstall[]> {
 	}
 }
 
-export async function isGameRunning(): Promise<boolean> {
+/**
+ * Check if Darkest Dungeon is currently running.
+ * Returns { running, uncertain } where:
+ *   - running=true means the game process was detected
+ *   - uncertain=true means detection failed (fail-safe: treat as possibly running)
+ */
+export async function isGameRunning(): Promise<{ running: boolean; uncertain: boolean }> {
 	try {
-		return await invoke<boolean>('is_game_running');
+		const result = await invoke<boolean>('is_game_running');
+		return { running: result, uncertain: false };
 	} catch {
-		return false;
+		// Fail-safe: detection errored, treat as uncertain (game may be running)
+		return { running: false, uncertain: true };
 	}
 }

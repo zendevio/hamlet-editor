@@ -46,19 +46,19 @@
 	import { toast } from 'svelte-sonner';
 
 	// Phosphor icons
-	import FolderOpen from 'phosphor-svelte/lib/FolderOpen';
-	import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlass';
-	import CheckCircle from 'phosphor-svelte/lib/CheckCircle';
-	import XCircle from 'phosphor-svelte/lib/XCircle';
-	import Spinner from 'phosphor-svelte/lib/Spinner';
-	import Archive from 'phosphor-svelte/lib/Archive';
-	import ArrowCounterClockwise from 'phosphor-svelte/lib/ArrowCounterClockwise';
-	import Clock from 'phosphor-svelte/lib/Clock';
-	import Sun from 'phosphor-svelte/lib/Sun';
-	import Moon from 'phosphor-svelte/lib/Moon';
-	import Info from 'phosphor-svelte/lib/Info';
-	import GithubLogo from 'phosphor-svelte/lib/GithubLogo';
-	import Warning from 'phosphor-svelte/lib/Warning';
+	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
+	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import CheckCircleIcon from 'phosphor-svelte/lib/CheckCircleIcon';
+	import XCircleIcon from 'phosphor-svelte/lib/XCircleIcon';
+	import SpinnerIcon from 'phosphor-svelte/lib/SpinnerIcon';
+	import ArchiveIcon from 'phosphor-svelte/lib/ArchiveIcon';
+	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
+	import ClockIcon from 'phosphor-svelte/lib/ClockIcon';
+	import SunIcon from 'phosphor-svelte/lib/SunIcon';
+	import MoonIcon from 'phosphor-svelte/lib/MoonIcon';
+	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
+	import GithubLogoIcon from 'phosphor-svelte/lib/GithubLogoIcon';
+	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 
 	// ── State ──
 
@@ -282,13 +282,13 @@
 								class="h-8 pr-8 text-xs"
 							/>
 							{#if gamePathValid === true}
-								<CheckCircle
+								<CheckCircleIcon
 									size={16}
 									weight="fill"
 									class="absolute top-1/2 right-2 -translate-y-1/2 text-green-600 dark:text-green-400"
 								/>
 							{:else if gamePathValid === false}
-								<XCircle
+								<XCircleIcon
 									size={16}
 									weight="fill"
 									class="absolute top-1/2 right-2 -translate-y-1/2 text-red-500"
@@ -303,7 +303,7 @@
 									class="h-8 gap-1 text-xs"
 									onclick={handleBrowseGame}
 								>
-									<FolderOpen size={14} />
+									<FolderOpenIcon size={14} />
 									Browse
 								</Button>
 							</TooltipTrigger>
@@ -319,9 +319,9 @@
 									onclick={autoDetectGame}
 								>
 									{#if detectingGame}
-										<Spinner size={14} class="animate-spin" />
+										<SpinnerIcon size={14} class="animate-spin" />
 									{:else}
-										<MagnifyingGlass size={14} />
+										<MagnifyingGlassIcon size={14} />
 									{/if}
 									Auto-detect
 								</Button>
@@ -350,13 +350,13 @@
 								class="h-8 pr-8 text-xs"
 							/>
 							{#if savePathValid === true}
-								<CheckCircle
+								<CheckCircleIcon
 									size={16}
 									weight="fill"
 									class="absolute top-1/2 right-2 -translate-y-1/2 text-green-600 dark:text-green-400"
 								/>
 							{:else if savePathValid === false}
-								<XCircle
+								<XCircleIcon
 									size={16}
 									weight="fill"
 									class="absolute top-1/2 right-2 -translate-y-1/2 text-red-500"
@@ -371,7 +371,7 @@
 									class="h-8 gap-1 text-xs"
 									onclick={handleBrowseSave}
 								>
-									<FolderOpen size={14} />
+									<FolderOpenIcon size={14} />
 									Browse
 								</Button>
 							</TooltipTrigger>
@@ -387,9 +387,9 @@
 									onclick={autoDetectSaves}
 								>
 									{#if detectingSaves}
-										<Spinner size={14} class="animate-spin" />
+										<SpinnerIcon size={14} class="animate-spin" />
 									{:else}
-										<MagnifyingGlass size={14} />
+										<MagnifyingGlassIcon size={14} />
 									{/if}
 									Auto-detect
 								</Button>
@@ -434,7 +434,7 @@
 						</Select>
 					{:else}
 						<div class="flex items-center gap-2 border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-							<Info size={14} class="shrink-0" />
+							<InfoIcon size={14} class="shrink-0" />
 							<span>No profiles detected. Run auto-detect or browse to a save folder first.</span>
 						</div>
 					{/if}
@@ -475,10 +475,10 @@
 						onclick={handleCreateBackup}
 					>
 						{#if creatingBackup}
-							<Spinner size={14} class="animate-spin" />
+							<SpinnerIcon size={14} class="animate-spin" />
 							Creating...
 						{:else}
-							<Archive size={14} />
+							<ArchiveIcon size={14} />
 							Create Backup Now
 						{/if}
 					</Button>
@@ -488,7 +488,7 @@
 						class="gap-1.5 text-xs"
 						onclick={handleOpenBackupFolder}
 					>
-						<FolderOpen size={14} />
+						<FolderOpenIcon size={14} />
 						Open Backup Folder
 					</Button>
 				</div>
@@ -500,13 +500,13 @@
 					<div class="flex items-center justify-between">
 						<span class="text-[11px] font-medium text-muted-foreground">Recent Backups</span>
 						{#if loadingBackups}
-							<Spinner size={12} class="animate-spin text-muted-foreground" />
+							<SpinnerIcon size={12} class="animate-spin text-muted-foreground" />
 						{/if}
 					</div>
 
 					{#if backups.length === 0 && !loadingBackups}
 						<div class="flex items-center gap-2 border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-							<Archive size={14} class="shrink-0" />
+							<ArchiveIcon size={14} class="shrink-0" />
 							<span>No backups found. Create one to get started.</span>
 						</div>
 					{:else}
@@ -515,7 +515,7 @@
 								{@const isRestoring = restoringBackup === backup.path}
 								<div class="flex items-center justify-between border border-border bg-muted/20 p-2.5">
 									<div class="flex items-center gap-3">
-										<Clock size={14} class="shrink-0 text-muted-foreground" />
+										<ClockIcon size={14} class="shrink-0 text-muted-foreground" />
 										<div>
 											<p class="text-xs font-medium">
 												{formatTimestamp(backup.timestamp)}
@@ -533,10 +533,10 @@
 										onclick={() => openRestoreDialog(backup)}
 									>
 										{#if isRestoring}
-											<Spinner size={12} class="animate-spin" />
+											<SpinnerIcon size={12} class="animate-spin" />
 											Restoring...
 										{:else}
-											<ArrowCounterClockwise size={12} />
+											<ArrowCounterClockwiseIcon size={12} />
 											Restore
 										{/if}
 									</Button>
@@ -558,9 +558,9 @@
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						{#if mode.current === 'dark'}
-							<Moon size={16} class="text-muted-foreground" />
+							<MoonIcon size={16} class="text-muted-foreground" />
 						{:else}
-							<Sun size={16} class="text-muted-foreground" />
+							<SunIcon size={16} class="text-muted-foreground" />
 						{/if}
 						<div>
 							<p class="text-xs font-medium">Dark mode</p>
@@ -592,7 +592,7 @@
 
 				<div class="space-y-2">
 					<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
-						<Warning size={16} class="mt-0.5 shrink-0 text-amber-500" />
+						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 						<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
 							Hamlet Editor is not an official Red Hook Studios product or product modification,
 							and Red Hook Studios Inc. is not responsible for changes or damages resulting from
@@ -610,7 +610,7 @@
 						class="h-7 gap-1.5 text-xs"
 						href="https://github.com/placeholder/hamlet-editor"
 					>
-						<GithubLogo size={14} />
+						<GithubLogoIcon size={14} />
 						GitHub Repository
 					</Button>
 				</div>
@@ -624,7 +624,7 @@
 	<DialogContent class="sm:max-w-md">
 		<DialogHeader>
 			<DialogTitle class="flex items-center gap-2 text-sm">
-				<ArrowCounterClockwise size={18} />
+				<ArrowCounterClockwiseIcon size={18} />
 				Restore Backup
 			</DialogTitle>
 			<DialogDescription>
@@ -642,7 +642,7 @@
 				</div>
 
 				<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
-					<Warning size={14} class="mt-0.5 shrink-0 text-amber-500" />
+					<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 					<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
 						A safety backup of the current state will be created automatically before restoring.
 						Any unsaved in-memory edits will be lost.
@@ -666,7 +666,7 @@
 				disabled={!restoreConfirmChecked}
 				onclick={handleRestore}
 			>
-				<ArrowCounterClockwise size={14} class="mr-1" />
+				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
 				Restore
 			</Button>
 		</DialogFooter>
