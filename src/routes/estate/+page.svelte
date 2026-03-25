@@ -253,7 +253,7 @@
 			{#if trinkets.length === 0}
 				<Card.Root>
 					<Card.Content class="pt-0">
-						<div class="flex min-h-[120px] flex-col items-center justify-center gap-3 text-center">
+						<div class="flex min-h-30 flex-col items-center justify-center gap-3 text-center">
 							<p class="text-sm text-muted-foreground">No trinkets in storage</p>
 							<p class="text-xs text-muted-foreground/70">
 								Trinkets unequipped from heroes or added via the button below will appear here.

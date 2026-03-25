@@ -446,7 +446,7 @@
 								<TooltipTrigger>
 									<p class="text-muted-foreground text-[10px]">Historical flag only</p>
 								</TooltipTrigger>
-								<TooltipContent class="max-w-[240px]">
+								<TooltipContent class="max-w-60">
 									Indicates this hero has previously reached Death's Door. Does not directly affect
 									current gameplay state.
 								</TooltipContent>
@@ -632,7 +632,7 @@
 							class="mb-2 h-7 text-xs"
 							autofocus
 						/>
-						<div class="max-h-[200px] overflow-y-auto">
+						<div class="max-h-50 overflow-y-auto">
 							{#each filteredPickerQuirks.slice(0, 50) as quirk (quirk.id)}
 								<button
 									class="flex w-full cursor-pointer items-center gap-2 px-2 py-1 text-left text-[11px] transition-colors hover:bg-muted"

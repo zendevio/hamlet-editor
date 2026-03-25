@@ -195,7 +195,7 @@
 				<TooltipContent>Toggle filters</TooltipContent>
 			</Tooltip>
 			<Select type="single" bind:value={sortBy}>
-				<SelectTrigger class="h-8 w-[110px] text-xs">
+				<SelectTrigger class="h-8 w-27.5 text-xs">
 					<span class="text-xs">Sort: {sortBy}</span>
 				</SelectTrigger>
 				<SelectContent>

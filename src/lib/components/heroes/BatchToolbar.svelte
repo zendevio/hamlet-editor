@@ -107,7 +107,7 @@
 
 		<!-- Set Level -->
 		<Select type="single" onValueChange={handleSetLevel}>
-			<SelectTrigger class="h-7 w-[120px] text-[11px]">
+			<SelectTrigger class="h-7 w-30 text-[11px]">
 				<div class="flex items-center gap-1">
 					<ArrowUp size={12} />
 					<span>Set Level</span>
