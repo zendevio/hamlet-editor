@@ -94,13 +94,7 @@ pub fn detect_save_locations() -> Result<Vec<SaveLocation>, String> {
                 }
 
                 let remote = user_dir.join(DD1_APP_ID.to_string()).join("remote");
-                collect_profiles(
-                    &remote,
-                    "Steam",
-                    &steam_user_id,
-                    &mut locations,
-                    &mut seen,
-                );
+                collect_profiles(&remote, "Steam", &steam_user_id, &mut locations, &mut seen);
             }
         }
     }
@@ -134,7 +128,8 @@ pub fn detect_game_installations() -> Result<Vec<GameInstall>, String> {
     #[cfg(target_os = "windows")]
     {
         for install in detect_gog_game_installs_windows() {
-            let canon = std::fs::canonicalize(&install.path).unwrap_or(PathBuf::from(&install.path));
+            let canon =
+                std::fs::canonicalize(&install.path).unwrap_or(PathBuf::from(&install.path));
             if seen.insert(canon) {
                 installs.push(install);
             }
@@ -317,9 +312,7 @@ fn is_valid_save_directory(dir: &Path) -> bool {
 /// A game installation directory is valid if it contains the three
 /// required subdirectories.
 fn is_valid_game_directory(dir: &Path) -> bool {
-    dir.join("heroes").is_dir()
-        && dir.join("campaign").is_dir()
-        && dir.join("shared").is_dir()
+    dir.join("heroes").is_dir() && dir.join("campaign").is_dir() && dir.join("shared").is_dir()
 }
 
 /// On macOS the actual game data lives inside the app bundle.
@@ -368,7 +361,10 @@ fn detect_gog_game_installs_windows() -> Vec<GameInstall> {
 
     // GOG registry keys to check
     let registry_paths = [
-        (HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\GOG.com\Games\1450711444"),
+        (
+            HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\WOW6432Node\GOG.com\Games\1450711444",
+        ),
         (HKEY_LOCAL_MACHINE, r"SOFTWARE\GOG.com\Games\1450711444"),
     ];
 

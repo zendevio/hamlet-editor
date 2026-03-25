@@ -26,10 +26,7 @@ pub struct BackupEntry {
 ///
 /// Returns the backup directory path on success.
 #[tauri::command]
-pub fn create_backup(
-    profile_path: String,
-    app_handle: tauri::AppHandle,
-) -> Result<String, String> {
+pub fn create_backup(profile_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
     let profile_dir = Path::new(&profile_path);
     if !profile_dir.is_dir() {
         return Err(format!("Not a directory: {profile_path}"));
@@ -120,8 +117,7 @@ pub fn list_backups(
         }
 
         let file_count = count_save_files(&entry_path);
-        let timestamp = parse_timestamp_from_dirname(&dir_name)
-            .unwrap_or_else(|| dir_name.clone());
+        let timestamp = parse_timestamp_from_dirname(&dir_name).unwrap_or_else(|| dir_name.clone());
 
         backups.push(BackupEntry {
             path: entry_path.to_string_lossy().to_string(),

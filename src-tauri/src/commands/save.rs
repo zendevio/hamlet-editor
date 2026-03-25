@@ -11,8 +11,8 @@ use std::path::Path;
 pub fn decode_save_file(path: String) -> Result<serde_json::Value, String> {
     let data = std::fs::read(&path).map_err(|e| format!("Failed to read {path}: {e}"))?;
 
-    let file =
-        File::try_from_bin(Cursor::new(&data)).map_err(|e| format!("Failed to decode DSON: {e}"))?;
+    let file = File::try_from_bin(Cursor::new(&data))
+        .map_err(|e| format!("Failed to decode DSON: {e}"))?;
 
     let mut json_buf = Vec::new();
     let unhasher = Unhasher::empty();
@@ -81,8 +81,8 @@ pub fn load_profile(profile_path: String) -> Result<serde_json::Value, String> {
         let file_path = entry.path();
         let path_str = file_path.to_string_lossy().to_string();
 
-        let value = decode_save_file(path_str)
-            .map_err(|e| format!("Failed to decode {name}: {e}"))?;
+        let value =
+            decode_save_file(path_str).map_err(|e| format!("Failed to decode {name}: {e}"))?;
 
         result.insert(name.to_string(), value);
     }
