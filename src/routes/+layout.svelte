@@ -495,7 +495,7 @@
 			<p class="text-xs leading-relaxed border border-border bg-muted/30 p-3">
 				Hamlet Editor is an unofficial fan tool and is not affiliated with, endorsed by, or
 				associated with Red Hook Studios. <em>Darkest Dungeon</em> is a registered trademark of
-				Red Hook Studios Inc. Use at your own risk — always back up your save files before editing.
+				Red Hook Studios Inc. Use at your own risk. Always back up your save files before editing.
 			</p>
 		</div>
 	</DialogContent>
