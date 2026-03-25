@@ -52,11 +52,11 @@
 			},
 			{
 				name: 'persist.campaign_log.json',
-				description: 'Clear died flag in mission event history'
+				description: 'Clear died flag in mission event history (not yet implemented)'
 			},
 			{
 				name: 'persist.progression.json',
-				description: 'Clear graveyard achievement flag'
+				description: 'Clear graveyard achievement flag (not yet implemented)'
 			}
 		];
 
@@ -113,7 +113,7 @@
 				Revive {hero.name} the {hero.classDisplayName}?
 			</DialogTitle>
 			<DialogDescription>
-				This is a multi-file operation that will restore the hero to an alive state.
+				Currently only modifies persist.roster.json. Campaign log and progression clearing will be added in a future update.
 			</DialogDescription>
 		</DialogHeader>
 

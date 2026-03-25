@@ -17,7 +17,8 @@
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
 	import TrinketPicker from '$lib/components/heroes/TrinketPicker.svelte';
-	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData } from '$lib/stores/save-data.svelte';
+	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData, getHeroes } from '$lib/stores/save-data.svelte';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
 
 	// ----- Props / State -----
@@ -71,8 +72,8 @@
 	let hasCrimsonCourt = $derived(dlcFlags.hasCrimsonCourt);
 	let hasColorOfMadness = $derived(dlcFlags.hasColorOfMadness);
 
-	// Count of trinkets equipped on heroes (from roster data, wired later)
-	let equippedTrinketCount = $state(0);
+	// Count of trinkets equipped on heroes across all heroes in the roster
+	let equippedTrinketCount = $derived(getHeroes().reduce((count, h) => count + Object.keys(h.trinkets ?? {}).length, 0));
 
 	// Add Trinket picker state
 	let showTrinketPicker = $state(false);
@@ -221,7 +222,8 @@
 		description="The loaded profile does not contain estate data (persist.estate.json). The file may be missing or corrupted."
 	/>
 {:else}
-	<div class="space-y-8">
+	<ScrollArea class="h-full">
+	<div class="space-y-8 p-6">
 		<!-- D6: Estate Name Section -->
 		<section>
 			<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -386,4 +388,5 @@
 			{/if}
 		</section>
 	</div>
+	</ScrollArea>
 {/if}

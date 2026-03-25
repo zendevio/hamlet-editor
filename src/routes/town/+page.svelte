@@ -80,6 +80,7 @@
 
 	// Districts (Color of Madness DLC) — placeholder toggle state
 	// In real usage, this would come from persist.town.json or a DLC flag check
+	// TODO: Wire to persist.town.json districts data when loaded
 	let districtStates = $state<Record<string, boolean>>(
 		Object.fromEntries(DISTRICT_IDS.map((id) => [id, false]))
 	);

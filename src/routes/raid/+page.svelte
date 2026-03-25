@@ -18,6 +18,7 @@
 		abandonRaid,
 		swapPartyPositions
 	} from '$lib/stores/save-data.svelte';
+	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import { stripDsonPrefix } from '$lib/utils';
 	import type { RaidData, InventoryItem } from '$lib/types/save-data';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
@@ -236,7 +237,8 @@
 
 <!-- Active raid — full view -->
 {:else}
-	<div class="space-y-6">
+	<ScrollArea class="h-full">
+	<div class="space-y-6 p-6">
 		<!-- Warning Banner (always visible, not dismissable) -->
 		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
 			<WarningIcon size={16} class="text-amber-500" />
@@ -468,6 +470,7 @@
 			{/if}
 		</section>
 	</div>
+	</ScrollArea>
 {/if}
 
 <!-- ═══════ Abandon Raid Confirmation Dialog ═══════ -->

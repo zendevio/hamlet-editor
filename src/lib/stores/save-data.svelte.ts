@@ -928,6 +928,9 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 	if (data['persist.progression.json']) {
 		loadProgression(data['persist.progression.json'] as Record<string, unknown>);
 	}
+	// persist.novelty_tracker.json is intentionally not loaded into the store (v0.1.0).
+	// The backend reads and re-emits it verbatim during save_profile so the file is
+	// preserved on disk without the frontend ever inspecting its contents.
 
 	isLoaded = true;
 }

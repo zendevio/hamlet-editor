@@ -91,6 +91,12 @@
 	// ── Profile Loading ──
 
 	// When setup completes (or was already complete on startup), load the profile.
+	// TODO: After profile load, call name table / localization initialisation once the
+	// backend command is available (e.g. load_name_table, load_localization). These
+	// are currently scaffolded but not yet invoked from the frontend.
+	// TODO: After profile load, run mod-detection so that modded hero classes and item
+	// IDs are resolved against the user's mod folder. Requires wiring the
+	// detect_mods / load_mod_strings backend commands.
 	$effect(() => {
 		if (settings.isSetupComplete && !saveData.isLoaded && !isProfileLoading) {
 			isProfileLoading = true;
@@ -366,6 +372,14 @@
 
 	async function handleSaveAndClose() {
 		showCloseDialog = false;
+		// Run validation on close — log warnings but don't block the close
+		const closeIssues = runPreSaveValidation();
+		if (closeIssues.length > 0) {
+			console.warn(
+				'[hamlet] Pre-save validation issues on close:',
+				closeIssues.map((i) => `[${i.severity}] ${i.category}: ${i.message}`)
+			);
+		}
 		isSaving = true;
 		try {
 			const dirtyData = getDirtyData();
@@ -474,7 +488,7 @@
 	<DialogContent class="sm:max-w-sm">
 		<DialogHeader>
 			<DialogTitle>Hamlet Editor</DialogTitle>
-			<DialogDescription>v0.0.1</DialogDescription>
+			<DialogDescription>v0.1.0</DialogDescription>
 		</DialogHeader>
 		<div class="space-y-3 text-sm text-muted-foreground">
 			<p>A save editor for <em>Darkest Dungeon</em>.</p>
@@ -583,7 +597,7 @@
 						</TooltipTrigger>
 						<TooltipContent>About Hamlet Editor</TooltipContent>
 					</Tooltip>
-					<span class="text-xs text-muted-foreground">v0.0.1</span>
+					<span class="text-xs text-muted-foreground">v0.1.0</span>
 				</div>
 			</div>
 		</SidebarFooter>

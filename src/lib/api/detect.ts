@@ -19,7 +19,6 @@ export interface SaveLocation {
 	steam_user_id: string | null;
 	profile_id: string;
 	has_active_raid: boolean;
-	week_number: number | null;
 }
 
 export interface GameInstall {

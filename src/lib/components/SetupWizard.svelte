@@ -143,8 +143,7 @@
 					source: 'Manual',
 					steam_user_id: null,
 					profile_id: selected.split('/').pop() ?? selected.split('\\').pop() ?? 'manual',
-					has_active_raid: false,
-					week_number: null
+					has_active_raid: false
 				};
 				saveLocations = [fakeLoc, ...saveLocations.filter((l) => l.path !== selected)];
 				selectedSave = fakeLoc;
@@ -177,10 +176,7 @@
 		}
 	}
 
-	function formatWeek(week: number | null): string {
-		if (week === null) return 'Unknown week';
-		return `Week ${week}`;
-	}
+
 </script>
 
 <Dialog open={true}>
@@ -427,9 +423,6 @@
 												In Raid
 											</Badge>
 										{/if}
-										<span class="text-[11px] text-muted-foreground"
-											>{formatWeek(loc.week_number)}</span
-										>
 									</div>
 								</div>
 								<p class="mt-1 break-all text-[11px] text-muted-foreground">{loc.path}</p>
@@ -525,9 +518,6 @@
 						</div>
 						<p class="mt-1 break-all text-[11px] text-muted-foreground">
 							{selectedSave?.path}
-						</p>
-						<p class="mt-1 text-[11px] text-muted-foreground">
-							{formatWeek(selectedSave?.week_number ?? null)}
 						</p>
 					</div>
 				</div>

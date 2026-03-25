@@ -35,6 +35,7 @@
 		setProfileId,
 		setAutoBackup
 	} from '$lib/stores/settings.svelte';
+	import { loadProfileFromBackend } from '$lib/stores/save-data.svelte';
 	import {
 		detectGameInstallations,
 		detectSaveLocations,
@@ -93,7 +94,7 @@
 	let profileOptions = $derived.by(() => {
 		return saveLocations.map((loc) => ({
 			id: loc.profile_id,
-			label: `${loc.profile_id}${loc.week_number !== null ? ` — Week ${loc.week_number}` : ''}`,
+			label: loc.profile_id,
 			hasRaid: loc.has_active_raid,
 			source: loc.source
 		}));
@@ -182,11 +183,18 @@
 		}
 	}
 
-	function handleProfileChange(value: string) {
+	async function handleProfileChange(value: string) {
 		setProfileId(value);
 		const loc = saveLocations.find((l) => l.profile_id === value);
 		if (loc) {
 			setSavePath(loc.path);
+			// Reload profile data from disk whenever the active profile changes
+			try {
+				await loadProfileFromBackend(loc.path);
+				toast.success('Profile loaded', { description: `Switched to profile ${value}` });
+			} catch (err) {
+				toast.error('Failed to load profile', { description: String(err) });
+			}
 		}
 	}
 
@@ -248,6 +256,8 @@
 				description: `Restored from ${formatTimestamp(restoreTarget.timestamp)}.`
 			});
 			await loadBackupList();
+			// Reload the in-memory profile so the UI reflects the restored files
+			await loadProfileFromBackend(settings.savePath);
 		} catch (err) {
 			toast.error('Restore failed', {
 				description: String(err)
@@ -274,6 +284,8 @@
 				description: 'The game\'s own backup has been restored successfully.'
 			});
 			await loadBackupList();
+			// Reload the in-memory profile so the UI reflects the restored files
+			await loadProfileFromBackend(settings.savePath);
 		} catch (err) {
 			toast.error('Restore failed', {
 				description: String(err)
@@ -649,7 +661,7 @@
 			<CardContent class="space-y-4">
 				<div class="flex items-center justify-between">
 					<span class="text-xs font-medium">Version</span>
-					<Badge variant="outline" class="text-[11px]">v0.0.1</Badge>
+					<Badge variant="outline" class="text-[11px]">v0.1.0</Badge>
 				</div>
 
 				<Separator />
@@ -672,7 +684,7 @@
 						variant="ghost"
 						size="sm"
 						class="h-7 gap-1.5 text-xs"
-						href="https://github.com/placeholder/hamlet-editor"
+						href="https://github.com/AlinGheorghe/hamlet-editor"
 					>
 						<GithubLogoIcon size={14} />
 						GitHub Repository

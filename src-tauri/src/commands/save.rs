@@ -102,7 +102,32 @@ pub fn save_profile(profile_path: String, data: serde_json::Value) -> Result<(),
         .as_object()
         .ok_or_else(|| "Expected a JSON object for profile data".to_string())?;
 
+    // Handle _deleted: delete listed files before encoding the rest
+    if let Some(deleted) = obj.get("_deleted") {
+        let names = deleted
+            .as_array()
+            .ok_or_else(|| "_deleted must be an array".to_string())?;
+        for name_val in names {
+            let filename = name_val
+                .as_str()
+                .ok_or_else(|| "_deleted entries must be strings".to_string())?;
+            if !super::is_save_file(filename) {
+                return Err(format!("Invalid save filename in _deleted: {filename}"));
+            }
+            let file_path = dir.join(filename);
+            if file_path.exists() {
+                std::fs::remove_file(&file_path)
+                    .map_err(|e| format!("Failed to delete {filename}: {e}"))?;
+            }
+        }
+    }
+
     for (filename, value) in obj {
+        // Skip the _deleted control key
+        if filename == "_deleted" {
+            continue;
+        }
+
         if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
             return Err(format!("Invalid filename (path separators not allowed): {filename}"));
         }
