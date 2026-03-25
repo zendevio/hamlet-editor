@@ -7,8 +7,7 @@ use std::path::Path;
 /// Reads the file at `path`, decodes it from binary DSON format,
 /// converts to JSON (with `allow_dupes: true` and an empty Unhasher),
 /// and returns the parsed `serde_json::Value`.
-#[tauri::command]
-pub fn decode_save_file(path: String) -> Result<serde_json::Value, String> {
+pub(crate) fn decode_save_file(path: String) -> Result<serde_json::Value, String> {
     let data = std::fs::read(&path).map_err(|e| format!("Failed to read {path}: {e}"))?;
 
     let file = File::try_from_bin(Cursor::new(&data))
@@ -29,8 +28,7 @@ pub fn decode_save_file(path: String) -> Result<serde_json::Value, String> {
 ///
 /// Parses the JSON string via ddsavelib's JSON reader, encodes to binary,
 /// and performs an atomic write (write to temp file, then rename).
-#[tauri::command]
-pub fn encode_save_file(path: String, data: String) -> Result<(), String> {
+pub(crate) fn encode_save_file(path: String, data: String) -> Result<(), String> {
     let file = File::try_from_json(data.as_bytes())
         .map_err(|e| format!("Failed to parse JSON input: {e}"))?;
 
@@ -42,8 +40,10 @@ pub fn encode_save_file(path: String, data: String) -> Result<(), String> {
     std::fs::write(&tmp_path, &bin_buf)
         .map_err(|e| format!("Failed to write temp file {tmp_path}: {e}"))?;
 
-    std::fs::rename(&tmp_path, &path)
-        .map_err(|e| format!("Failed to rename {tmp_path} -> {path}: {e}"))?;
+    std::fs::rename(&tmp_path, &path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp_path);
+        format!("Failed to rename {tmp_path} -> {path}: {e}")
+    })?;
 
     Ok(())
 }
@@ -103,7 +103,7 @@ pub fn save_profile(profile_path: String, data: serde_json::Value) -> Result<(),
         .ok_or_else(|| "Expected a JSON object for profile data".to_string())?;
 
     for (filename, value) in obj {
-        if filename.contains('/') || filename.contains('\\') {
+        if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
             return Err(format!("Invalid filename (path separators not allowed): {filename}"));
         }
         if !super::is_save_file(filename) {

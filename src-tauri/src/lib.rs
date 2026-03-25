@@ -18,8 +18,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            commands::save::decode_save_file,
-            commands::save::encode_save_file,
             commands::save::load_profile,
             commands::save::save_profile,
             commands::detect::detect_save_locations,

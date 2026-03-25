@@ -5,6 +5,7 @@
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import {
 		SidebarProvider,
@@ -131,8 +132,10 @@
 	let isGameBlocking = $derived(gameRunning || gameDetectionUncertain);
 	let saveDisabled = $derived(!saveData.isLoaded || isGameBlocking || !isDirty || isSaving);
 
-	// C1: Steam Cloud warning
-	let isSteamCloud = $derived(settings.savePath.includes('/userdata/'));
+	// C1: Steam Cloud warning (handles both Unix and Windows path separators)
+	let isSteamCloud = $derived(
+		settings.savePath.includes('/userdata/') || settings.savePath.includes('\\userdata\\')
+	);
 
 	// C2: Modded content detection
 	let hasModdedContent = $derived.by(() => {
@@ -242,29 +245,29 @@
 		// Ctrl/Cmd+H: Navigate to /heroes
 		if (mod && e.key === 'h') {
 			e.preventDefault();
-			window.location.href = '/heroes';
+			goto('/heroes');
 		}
 		// Ctrl/Cmd+E: Navigate to /estate
 		if (mod && e.key === 'e') {
 			e.preventDefault();
-			window.location.href = '/estate';
+			goto('/estate');
 		}
 		// Ctrl/Cmd+T: Navigate to /town
 		if (mod && e.key === 't') {
 			e.preventDefault();
-			window.location.href = '/town';
+			goto('/town');
 		}
 		// Ctrl/Cmd+D: Navigate to /raid (only if raid is available)
 		if (mod && e.key === 'd') {
 			e.preventDefault();
 			if (saveData.raid !== null) {
-				window.location.href = '/raid';
+				goto('/raid');
 			}
 		}
 		// Ctrl/Cmd+,: Navigate to /settings
 		if (mod && e.key === ',') {
 			e.preventDefault();
-			window.location.href = '/settings';
+			goto('/settings');
 		}
 		// TODO: Ctrl+R (reload/refresh) requires Tauri window config to intercept
 		// — the webview captures it before SvelteKit. Add `prevent_default_hotkeys`

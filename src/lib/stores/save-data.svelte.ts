@@ -341,11 +341,15 @@ let gameInRaid = $state(false);
 let isLoaded = $state(false);
 // Svelte 5 requires immutable replacement to trigger reactivity on Sets.
 let dirtyFiles = $state<Set<string>>(new Set());
+// Files to be deleted on next save (e.g. raid file after abandonRaid).
+let deletedFiles = $state<Set<string>>(new Set());
 // JSON snapshots of on-disk state, used for in-memory revert.
 let rosterSnapshot = $state<string | null>(null);
 let estateSnapshot = $state<string | null>(null);
 let townSnapshot = $state<string | null>(null);
 let upgradesSnapshot = $state<string | null>(null);
+let raidSnapshot = $state<string | null>(null);
+let gameSnapshot = $state<string | null>(null);
 
 // ── Derived Helpers ──
 
@@ -733,7 +737,10 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 	const buildingName = treeId.substring(0, dotIndex);
 
 	if (!newState) {
-		// Turning OFF: cascade — also turn off all higher-tier upgrades in same tree
+		// Turning OFF: cascade — also turn off all higher-tier upgrades in the same
+		// building tree (same buildingName AND same upgradeKey) where the
+		// requirement_code is >= the one being turned off.
+		const upgradeKey = treeId.substring(dotIndex + 1);
 		for (const p of Object.values(upgrades.base_root.purchases)) {
 			if (p.instance_number !== 0) continue;
 			const pTreeId = stripDsonPrefix(p.tree_id);
@@ -741,7 +748,6 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 			if (pDotIndex === -1) continue;
 			const pBuildingName = pTreeId.substring(0, pDotIndex);
 			const pUpgradeKey = pTreeId.substring(pDotIndex + 1);
-			const upgradeKey = treeId.substring(dotIndex + 1);
 			if (pBuildingName === buildingName && pUpgradeKey === upgradeKey) {
 				if (p.requirement_code >= purchase.requirement_code) {
 					p.is_purchased = false;
@@ -772,8 +778,14 @@ export function abandonRaid() {
 		markDirty('persist.game.json');
 	}
 	raid = null;
+	raidSnapshot = null;
 	gameInRaid = false;
-	markDirty('persist.raid.json');
+	// The raid file should be deleted from disk, not overwritten with null.
+	deletedFiles = new Set([...deletedFiles, 'persist.raid.json']);
+	// Ensure the raid file is no longer in the dirty set.
+	const remaining = new Set(dirtyFiles);
+	remaining.delete('persist.raid.json');
+	dirtyFiles = remaining;
 }
 
 /**
@@ -820,11 +832,13 @@ export function loadUpgrades(data: UpgradesData) {
 /** Load raid data into the store. */
 export function loadRaid(data: RaidData) {
 	raid = data;
+	raidSnapshot = JSON.stringify(data);
 }
 
 /** Load game data into the store. */
 export function loadGame(data: GameData) {
 	game = data;
+	gameSnapshot = JSON.stringify(data);
 }
 
 /** Set whether the game is currently in a raid (from persist.game.json). */
@@ -877,10 +891,14 @@ export function revertHero(guid: string) {
 /** Clear all dirty flags and update snapshots to current state (call after successful save). */
 export function clearAllDirty() {
 	dirtyFiles = new Set();
+	deletedFiles = new Set();
 	if (roster) rosterSnapshot = JSON.stringify(roster);
 	if (estate) estateSnapshot = JSON.stringify(estate);
 	if (town) townSnapshot = JSON.stringify(town);
 	if (upgrades) upgradesSnapshot = JSON.stringify(upgrades);
+	if (raid) raidSnapshot = JSON.stringify(raid);
+	else raidSnapshot = null;
+	if (game) gameSnapshot = JSON.stringify(game);
 }
 
 /**
@@ -892,7 +910,17 @@ export function discardAllChanges() {
 	if (estateSnapshot) estate = JSON.parse(estateSnapshot) as EstateData;
 	if (townSnapshot) town = JSON.parse(townSnapshot) as TownData;
 	if (upgradesSnapshot) upgrades = JSON.parse(upgradesSnapshot) as UpgradesData;
+	if (raidSnapshot) {
+		raid = JSON.parse(raidSnapshot) as RaidData;
+	} else {
+		raid = null;
+	}
+	if (gameSnapshot) {
+		game = JSON.parse(gameSnapshot) as GameData;
+		gameInRaid = (game as GameData).base_root?.inraid ?? false;
+	}
 	dirtyFiles = new Set();
+	deletedFiles = new Set();
 }
 
 /**
@@ -919,6 +947,9 @@ export function getDirtyData(): Record<string, unknown> {
 	if (dirtyFiles.has('persist.game.json') && game) {
 		data['persist.game.json'] = game;
 	}
+	if (deletedFiles.size > 0) {
+		data['_deleted'] = [...deletedFiles];
+	}
 	return data;
 }
 
@@ -933,10 +964,13 @@ export function resetSaveData() {
 	gameInRaid = false;
 	isLoaded = false;
 	dirtyFiles = new Set();
+	deletedFiles = new Set();
 	rosterSnapshot = null;
 	estateSnapshot = null;
 	townSnapshot = null;
 	upgradesSnapshot = null;
+	raidSnapshot = null;
+	gameSnapshot = null;
 }
 
 // ── Mock Data for Development ──

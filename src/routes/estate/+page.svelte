@@ -64,9 +64,33 @@
 		}
 	}
 
-	// DLC flags — will come from persist.game.json once wired
-	let hasCrimsonCourt = $state(false);
-	let hasColorOfMadness = $state(false);
+	// DLC flags derived from save data content.
+	// hasCrimsonCourt: true if any hero has a disease_vampire_* quirk OR estate_items has a crimson_court_invitation_*.
+	let hasCrimsonCourt = $derived.by(() => {
+		if (!estateData) return false;
+		// Check estate_items for any crimson_court_invitation_*
+		for (const item of Object.values(estateData.estate_items.items) as EstateItem[]) {
+			if (item.id?.startsWith('crimson_court_invitation_')) return true;
+		}
+		// Check heroes for disease_vampire_* quirks
+		if (saveData.roster) {
+			for (const entry of Object.values(saveData.roster.base_root.heroes)) {
+				const quirks = entry.hero_file_data.raw_data.base_root.quirks;
+				for (const quirkId of Object.keys(quirks)) {
+					if (quirkId.startsWith('disease_vampire_')) return true;
+				}
+			}
+		}
+		return false;
+	});
+	// hasColorOfMadness: true if wallet contains type "shard" OR endless_wave_highscore exists.
+	let hasColorOfMadness = $derived.by(() => {
+		if (!estateData) return false;
+		for (const entry of Object.values(estateData.wallet)) {
+			if (entry.type === 'shard') return true;
+		}
+		return estateData.endless_wave_highscore !== undefined && estateData.endless_wave_highscore !== null;
+	});
 
 	// Count of trinkets equipped on heroes (from roster data, wired later)
 	let equippedTrinketCount = $state(0);
@@ -157,6 +181,32 @@
 		// TODO: Open TrinketPicker combobox
 		// For now this is a placeholder
 	}
+
+	/** Update an estate_item amount by its ID key. */
+	function handleEstateItemChange(itemId: string, newValue: number) {
+		if (!estateData || !saveData.estate) return;
+		for (const [key, item] of Object.entries(estateData.estate_items.items) as [string, EstateItem][]) {
+			if (item.id === itemId) {
+				(saveData.estate.base_root.estate_items.items[key] as EstateItem).amount = newValue;
+				markDirty('persist.estate.json');
+				return;
+			}
+		}
+	}
+
+	/** Update total blueprint count by distributing the delta across blueprint entries. */
+	function handleBlueprintChange(newValue: number) {
+		if (!estateData || !saveData.estate) return;
+		const bpEntries = (Object.entries(estateData.estate_items.items) as [string, EstateItem][])
+			.filter(([, item]) => item.type === 'blueprint');
+		if (bpEntries.length === 0) return;
+		// Distribute evenly: put all into the first entry for simplicity
+		for (const [key] of bpEntries) {
+			(saveData.estate.base_root.estate_items.items[key] as EstateItem).amount = 0;
+		}
+		(saveData.estate.base_root.estate_items.items[bpEntries[0][0]] as EstateItem).amount = newValue;
+		markDirty('persist.estate.json');
+	}
 </script>
 
 {#if !estateData}
@@ -181,7 +231,7 @@
 					class="h-9 text-sm"
 				/>
 				<p class="text-[10px] text-muted-foreground">
-					{estateNameValue.length} bytes
+					{new TextEncoder().encode(estateNameValue).length} bytes
 				</p>
 			</div>
 		</section>
@@ -229,15 +279,18 @@
 								<div class="grid grid-cols-3 gap-2">
 									<div class="space-y-1">
 										<label for="inv-a" class="text-xs text-muted-foreground">A (Baron)</label>
-										<Input id="inv-a" type="number" min="0" value={String(invitationA)} class="h-8 tabular-nums" />
+										<Input id="inv-a" type="number" min="0" value={String(invitationA)} class="h-8 tabular-nums"
+											onchange={(e) => handleEstateItemChange('crimson_court_invitation_A', Number((e.target as HTMLInputElement).value))} />
 									</div>
 									<div class="space-y-1">
 										<label for="inv-b" class="text-xs text-muted-foreground">B (Viscount)</label>
-										<Input id="inv-b" type="number" min="0" value={String(invitationB)} class="h-8 tabular-nums" />
+										<Input id="inv-b" type="number" min="0" value={String(invitationB)} class="h-8 tabular-nums"
+											onchange={(e) => handleEstateItemChange('crimson_court_invitation_B', Number((e.target as HTMLInputElement).value))} />
 									</div>
 									<div class="space-y-1">
 										<label for="inv-c" class="text-xs text-muted-foreground">C (Countess)</label>
-										<Input id="inv-c" type="number" min="0" value={String(invitationC)} class="h-8 tabular-nums" />
+										<Input id="inv-c" type="number" min="0" value={String(invitationC)} class="h-8 tabular-nums"
+											onchange={(e) => handleEstateItemChange('crimson_court_invitation_C', Number((e.target as HTMLInputElement).value))} />
 									</div>
 								</div>
 							</div>
@@ -249,7 +302,8 @@
 									<span class="text-sm font-medium">Blood</span>
 								</div>
 								<div class="space-y-1">
-									<Input type="number" min="0" value={String(bloodAmount)} class="h-8 tabular-nums" />
+									<Input type="number" min="0" value={String(bloodAmount)} class="h-8 tabular-nums"
+										onchange={(e) => handleEstateItemChange('the_blood', Number((e.target as HTMLInputElement).value))} />
 									<p class="text-[10px] text-muted-foreground/70">
 										type: "estate" (not "estate_currency")
 									</p>
@@ -263,7 +317,8 @@
 									<span class="text-sm font-medium">Blueprints</span>
 								</div>
 								<div class="space-y-1">
-									<Input type="number" min="0" value={String(blueprintCount)} class="h-8 tabular-nums" />
+									<Input type="number" min="0" value={String(blueprintCount)} class="h-8 tabular-nums"
+										onchange={(e) => handleBlueprintChange(Number((e.target as HTMLInputElement).value))} />
 								</div>
 							</div>
 						</div>
