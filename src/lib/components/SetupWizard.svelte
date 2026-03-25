@@ -216,7 +216,7 @@
 					<GameControllerIcon size={20} />
 					Game Installation Path
 				</DialogTitle>
-				<DialogDescription class="break-words">
+				<DialogDescription class="wrap-break-word">
 					Locate your Darkest Dungeon installation so the editor can read game data, icons, and
 					detect installed DLCs.
 				</DialogDescription>
@@ -334,7 +334,7 @@
 					<FolderOpenIcon size={20} />
 					Save File Location
 				</DialogTitle>
-				<DialogDescription class="break-words">
+				<DialogDescription class="wrap-break-word">
 					Select a save profile to edit. Each profile is a separate campaign playthrough.
 				</DialogDescription>
 			</DialogHeader>
@@ -384,7 +384,7 @@
 							class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs"
 						>
 							<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
-							<p class="break-words text-amber-700 dark:text-amber-400">
+							<p class="wrap-break-word text-amber-700 dark:text-amber-400">
 								Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam
 								before saving to avoid conflicts.
 							</p>
@@ -460,7 +460,7 @@
 					<CheckCircleIcon size={20} />
 					Confirmation
 				</DialogTitle>
-				<DialogDescription class="break-words">
+				<DialogDescription class="wrap-break-word">
 					Review your selections and open the profile to start editing.
 				</DialogDescription>
 			</DialogHeader>

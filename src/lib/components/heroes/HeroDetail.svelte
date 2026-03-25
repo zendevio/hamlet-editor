@@ -812,7 +812,7 @@
 						{/if}
 					</div>
 					<p class="text-muted-foreground/60 text-[10px]">
-						Read-only — skill editing requires game data to be loaded.
+						Read-only. Skill editing requires game data to be loaded.
 					</p>
 				</div>
 			</CollapsibleContent>

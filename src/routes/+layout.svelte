@@ -169,8 +169,8 @@
 
 	let saveTooltip = $derived.by(() => {
 		if (!saveData.isLoaded) return 'No profile loaded';
-		if (gameRunning) return 'DD Running — close the game before saving';
-		if (gameDetectionUncertain) return 'Unable to detect game status — save blocked as precaution';
+		if (gameRunning) return 'DD Running. Close the game before saving.';
+		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
 		if (isSaving) return 'Saving...';
 		if (!isDirty) return 'No unsaved changes';
 		return 'Save all changes';
@@ -635,12 +635,12 @@
 				{#if gameRunning}
 					<Badge variant="destructive" class="gap-1">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-red-400"></span>
-						DD Running — Save Blocked
+						DD Running: Save Blocked
 					</Badge>
 				{:else if gameDetectionUncertain}
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
-						Game Status Unknown — Save Blocked
+						Game Status Unknown: Save Blocked
 					</Badge>
 				{/if}
 
@@ -699,7 +699,7 @@
 							disabled={saveDisabled}
 							onclick={handleSave}
 							class="relative"
-							aria-label={isDirty ? 'Unsaved changes — Save all changes' : 'Save'}
+							aria-label={isDirty ? 'Unsaved changes. Save all changes.' : 'Save'}
 						>
 							{#if isSaving}
 								<CircleNotchIcon size={16} class="mr-1 animate-spin" />

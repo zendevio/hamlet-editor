@@ -208,7 +208,7 @@
 	<div class="flex flex-col items-center gap-4">
 		<EmptyState
 			title="No profile loaded"
-			description="Load a save profile to view and edit your estate — wallet, trinkets, and currencies."
+			description="Load a save profile to view and edit your estate: wallet, trinkets, and currencies."
 		/>
 		{#if import.meta.env.DEV}
 			<Button variant="outline" size="sm" onclick={loadMockData}>

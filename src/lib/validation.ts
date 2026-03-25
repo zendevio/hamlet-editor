@@ -203,7 +203,6 @@ function checkDuplicateTrinkets(): ValidationIssue[] {
  * during the encode/decode cycle. A robust approach would be to normalise
  * both sides to a canonical key-sorted form before comparing.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function validateRoundTrip(_profilePath: string, _filename: string): Promise<boolean> {
 	// TODO: Re-implement once decode_save_file is exposed as a Tauri command again.
 	// The previous implementation called invoke('decode_save_file') which no longer
