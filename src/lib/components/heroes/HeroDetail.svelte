@@ -248,7 +248,7 @@
 				<div class="mt-2 space-y-3">
 					<!-- Name -->
 					<div>
-						<label class="text-muted-foreground mb-1 block text-[11px]">Name</label>
+						<span class="text-muted-foreground mb-1 block text-[11px]">Name</span>
 						{#if editingName}
 							<Input
 								bind:value={nameValue}
@@ -273,7 +273,7 @@
 
 					<!-- Class (read-only) -->
 					<div>
-						<label class="text-muted-foreground mb-1 block text-[11px]">Class</label>
+						<span class="text-muted-foreground mb-1 block text-[11px]">Class</span>
 						<div class="flex items-center gap-2 px-2 py-1 text-sm">
 							<span>{hero.classDisplayName}</span>
 							<Tooltip>
@@ -287,7 +287,7 @@
 
 					<!-- Resolve Level -->
 					<div>
-						<label class="text-muted-foreground mb-1 block text-[11px]">Resolve Level</label>
+						<span class="text-muted-foreground mb-1 block text-[11px]">Resolve Level</span>
 						<Select type="single" value={String(resolveLevel)} onValueChange={(v: string) => handleLevelChange(v)}>
 							<SelectTrigger class="h-8 w-full text-xs">
 								<span>Lv {resolveLevel} — {RESOLVE_LEVEL_NAMES[resolveLevel]}</span>
@@ -324,7 +324,7 @@
 						<div class="mb-2 flex items-center justify-between">
 							<div class="flex items-center gap-1.5">
 								<Heart size={14} class="text-red-500" />
-								<label class="text-[11px] font-medium">HP</label>
+								<span class="text-[11px] font-medium">HP</span>
 							</div>
 							<div class="flex items-center gap-2">
 								<span
@@ -360,7 +360,7 @@
 						<div class="mb-2 flex items-center justify-between">
 							<div class="flex items-center gap-1.5">
 								<Brain size={14} class="text-yellow-500" />
-								<label class="text-[11px] font-medium">Stress</label>
+								<span class="text-[11px] font-medium">Stress</span>
 							</div>
 							<div class="flex items-center gap-2">
 								<span
@@ -399,7 +399,7 @@
 					<!-- Affliction -->
 					<div>
 						<div class="mb-1 flex items-center justify-between">
-							<label class="text-[11px] font-medium">Affliction / Virtue</label>
+							<span class="text-[11px] font-medium">Affliction / Virtue</span>
 							{#if hero.afflictionTypeId}
 								<Button
 									variant="ghost"
@@ -441,7 +441,7 @@
 					<!-- Deaths Door -->
 					<div class="bg-muted/30 flex items-center justify-between rounded-none p-2">
 						<div>
-							<label class="text-[11px] font-medium">Death's Door Visited</label>
+							<span class="text-[11px] font-medium">Death's Door Visited</span>
 							<Tooltip>
 								<TooltipTrigger>
 									<p class="text-muted-foreground text-[10px]">Historical flag only</p>
@@ -677,9 +677,9 @@
 				<div class="mt-2 space-y-3">
 					<!-- Weapon Rank -->
 					<div>
-						<label class="text-muted-foreground mb-1 block text-[11px]">
+						<span class="text-muted-foreground mb-1 block text-[11px]">
 							Weapon Rank (max: {maxGear})
-						</label>
+						</span>
 						<Select
 							type="single"
 							value={String(hero.weaponRank)}
@@ -698,9 +698,9 @@
 
 					<!-- Armour Rank -->
 					<div>
-						<label class="text-muted-foreground mb-1 block text-[11px]">
+						<span class="text-muted-foreground mb-1 block text-[11px]">
 							Armour Rank (max: {maxGear})
-						</label>
+						</span>
 						<Select
 							type="single"
 							value={String(hero.armourRank)}
