@@ -8,278 +8,87 @@
 
 import { loadProfile } from '$lib/api/save';
 import { stripDsonPrefix } from '$lib/utils';
-import type { InventoryItem, RaidParty, RaidInstance, RaidData } from '$lib/types/save-data';
 import { getSettings } from '$lib/stores/settings.svelte';
+import {
+	TREATMENT_BUILDINGS,
+	BUILDING_ACTIVITIES,
+	BUILDING_DISPLAY_NAMES,
+	ACTIVITY_DISPLAY_NAMES,
+	DISTRICT_IDS,
+	DISTRICT_DISPLAY_NAMES,
+	BUILDING_UPGRADE_PREFIXES,
+	RESOLVE_XP_THRESHOLDS,
+	RESOLVE_LEVEL_NAMES,
+	STATUS_MAP,
+	HP_TABLE,
+	CLASS_DISPLAY_NAMES
+} from '$lib/data/constants';
+import { createMockRoster, createMockUpgrades, createMockEstate, createMockTown } from '$lib/data/mock';
 
-// ── Types ──
+// ── Re-export types so existing imports from this module still work ──
 
-export interface HeroQuirk {
-	is_locked: boolean;
-	is_new: boolean;
-	mission_count: number;
-	replaces_quirk: number;
-	replaces_quirk_viewed: boolean;
-	evolution_duration_remaining: number;
-}
+export type {
+	HeroQuirk,
+	HeroActor,
+	HeroBaseRoot,
+	HeroEntry,
+	RosterData,
+	EstateData,
+	GameData,
+	UpgradePurchase,
+	UpgradesData,
+	TownBuildingSlot,
+	TownBuilding,
+	TownData,
+	HeroSummary,
+	TreatmentHero,
+	BuildingUpgradeGroup,
+	SaveFileName,
+	// Raid types
+	InventoryItem,
+	RaidParty,
+	RaidInstance,
+	RaidData
+} from '$lib/types/save-data';
 
-export interface HeroActor {
-	name: string;
-	current_hp: number;
-	colour_variation: number;
-	stunned: number;
-	combat_ready: boolean;
-	damage_source_data: string;
-	buff_group: Record<string, unknown>;
-	buff_group_next_guid: number;
-	actor_dot: Record<string, unknown>;
-}
+// ── Re-export constants so existing imports from this module still work ──
 
-export interface HeroBaseRoot {
-	'roster.status': number;
-	'roster.before_on_start_town_visit_status': number;
-	'roster.building_name': string;
-	actor: HeroActor;
-	heroClass: string;
-	resolveXp: number;
-	m_Stress: number;
-	visited_deaths_door: boolean;
-	is_death_heart_attack_completed: boolean;
-	has_had_heart_attack: boolean;
-	deaths_door_enter_effect_round_cooldown: number;
-	weapon_rank: number;
-	armour_rank: number;
-	affliction_type_id: string;
-	affliction_severity: number;
-	virtue_type_id: string;
-	backer_hero: boolean;
-	enemies_killed: number;
-	steps_taken: number;
-	provisions_consumed: number;
-	dd_test_survived: number;
-	number_of_successful_darkest_dungeon_quests: number;
-	is_from_town_event: boolean;
-	quirks: Record<string, HeroQuirk>;
-	skills: {
-		selected_combat_skills: Record<string, unknown>;
-		selected_camping_skills: Record<string, unknown>;
-	};
-	trinkets: { items: Record<string, unknown> };
-	dungeon_history: unknown[];
-}
-
-export interface HeroEntry {
-	hero_file_data: {
-		raw_data: {
-			base_root: HeroBaseRoot;
-		};
-	};
-}
-
-export interface RosterData {
-	base_root: {
-		version: number;
-		nextGuid: number;
-		dismissed_hero_count: number;
-		last_party: {
-			last_party_guids: number[];
-		};
-		heroes: Record<string, HeroEntry>;
-	};
-}
-
-export interface EstateData {
-	base_root: {
-		wallet: Record<string, { amount: number; type: string }>;
-		trinkets: { items: Record<string, unknown> };
-		estate_items: { items: Record<string, unknown> };
-		endless_wave_highscore: number;
-		tampering: Record<string, unknown>;
-		darkest_dungeon_trinket_unlocks: Record<string, unknown>;
-	};
-}
-
-export interface GameData {
-	base_root: {
-		estatename: string;
-		inraid: boolean;
-		game_mode: string;
-		[key: string]: unknown;
-	};
-}
-
-// ── Town & Upgrade Types ──
-
-export interface UpgradePurchase {
-	instance_number: number;
-	tree_id: string;
-	requirement_code: string;
-	is_purchased: boolean;
-}
-
-export interface UpgradesData {
-	base_root: {
-		purchases: Record<string, UpgradePurchase>;
-	};
-}
-
-export interface TownBuildingSlot {
-	hero_guid: number;
-	activity_type: string;
-}
-
-export interface TownBuilding {
-	slots: Record<string, TownBuildingSlot>;
-}
-
-export interface TownData {
-	base_root: {
-		buildings: Record<string, TownBuilding>;
-	};
-}
-
-// Re-export raid types for consumers that import from the store.
-export type { InventoryItem, RaidParty, RaidInstance, RaidData } from '$lib/types/save-data';
-
-// ── Building Constants ──
-
-export const TREATMENT_BUILDINGS = ['abbey', 'tavern', 'sanitarium'] as const;
-export type TreatmentBuildingName = (typeof TREATMENT_BUILDINGS)[number];
-
-export const BUILDING_ACTIVITIES: Record<TreatmentBuildingName, string[]> = {
-	abbey: ['meditation', 'prayer', 'flagellation'],
-	tavern: ['bar', 'gambling', 'brothel'],
-	sanitarium: ['disease_treatment', 'quirk_treatment']
+export {
+	TREATMENT_BUILDINGS,
+	BUILDING_ACTIVITIES,
+	BUILDING_DISPLAY_NAMES,
+	ACTIVITY_DISPLAY_NAMES,
+	DISTRICT_IDS,
+	DISTRICT_DISPLAY_NAMES,
+	BUILDING_UPGRADE_PREFIXES,
+	RESOLVE_XP_THRESHOLDS,
+	RESOLVE_LEVEL_NAMES,
+	STATUS_MAP,
+	HP_TABLE,
+	CLASS_DISPLAY_NAMES
 };
 
-export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
-	sanitarium: 'Sanitarium',
-	tavern: 'Tavern',
-	abbey: 'Abbey',
-	blacksmith: 'Blacksmith',
-	guild: 'Guild',
-	stage_coach: 'Stage Coach',
-	survivalist: 'Survivalist',
-	barracks: 'Barracks',
-	nomad_wagon: 'Nomad Wagon'
-};
+export type { TreatmentBuildingName } from '$lib/data/constants';
 
-export const ACTIVITY_DISPLAY_NAMES: Record<string, string> = {
-	meditation: 'Meditation',
-	prayer: 'Prayer',
-	flagellation: 'Flagellation',
-	bar: 'Bar',
-	gambling: 'Gambling',
-	brothel: 'Brothel',
-	disease_treatment: 'Disease Treatment',
-	quirk_treatment: 'Quirk Treatment'
-};
+// ── Import types for internal use ──
 
-/** Known district IDs (Color of Madness DLC). */
-export const DISTRICT_IDS = [
-	'district_bank',
-	'district_granary',
-	'district_inn',
-	'district_puppet_theatre',
-	'district_training_ring',
-	'district_cartographers_camp',
-	'district_sanguine_vintners',
-	'district_abbey_addition',
-	'district_tavern_addition',
-	'district_sanitarium_addition'
-] as const;
-
-export const DISTRICT_DISPLAY_NAMES: Record<string, string> = {
-	district_bank: 'Bank',
-	district_granary: 'Granary',
-	district_inn: 'Inn',
-	district_puppet_theatre: 'Puppet Theatre',
-	district_training_ring: 'Training Ring',
-	district_cartographers_camp: "Cartographer's Camp",
-	district_sanguine_vintners: 'Sanguine Vintners',
-	district_abbey_addition: 'Abbey Addition',
-	district_tavern_addition: 'Tavern Addition',
-	district_sanitarium_addition: 'Sanitarium Addition'
-};
-
-/** Known building name prefixes for upgrade tree_ids. */
-export const BUILDING_UPGRADE_PREFIXES = [
-	'sanitarium',
-	'tavern',
-	'abbey',
-	'blacksmith',
-	'guild',
-	'stage_coach',
-	'survivalist',
-	'barracks',
-	'nomad_wagon'
-] as const;
-
-/** Resolve level thresholds: index = level, value = min XP. */
-export const RESOLVE_XP_THRESHOLDS = [0, 2, 8, 14, 24, 36, 48];
-
-/** Level title names. */
-export const RESOLVE_LEVEL_NAMES = [
-	'Novice',
-	'Apprentice',
-	'Journeyman',
-	'Veteran',
-	'Champion',
-	'Champion',
-	'Legend'
-];
-
-/** Status code labels and colors. */
-export const STATUS_MAP: Record<number, { label: string; color: string; dotClass: string }> = {
-	0: { label: 'Available', color: 'green', dotClass: 'bg-green-500' },
-	1: { label: 'In Squad', color: 'teal', dotClass: 'bg-teal-500' },
-	2: { label: 'In Treatment', color: 'blue', dotClass: 'bg-blue-500' },
-	3: { label: 'Dead', color: 'red', dotClass: 'bg-red-500' },
-	4: { label: 'In Raid', color: 'orange', dotClass: 'bg-orange-500' }
-};
-
-/** HP table: class -> armour_rank -> max HP. */
-export const HP_TABLE: Record<string, number[]> = {
-	plague_doctor: [22, 26, 30, 34, 38],
-	occultist: [20, 23, 27, 30, 34],
-	vestal: [25, 29, 33, 38, 42],
-	hellion: [27, 31, 36, 40, 45],
-	houndmaster: [22, 25, 29, 32, 36],
-	bounty_hunter: [26, 30, 34, 38, 43],
-	man_at_arms: [33, 37, 42, 47, 52],
-	highwayman: [24, 28, 31, 35, 39],
-	jester: [20, 23, 26, 29, 33],
-	crusader: [36, 40, 47, 54, 61],
-	arbalest: [28, 32, 36, 40, 45],
-	musketeer: [28, 32, 36, 40, 45],
-	grave_robber: [20, 24, 28, 32, 36],
-	leper: [35, 42, 49, 56, 63],
-	abomination: [27, 31, 36, 41, 46],
-	antiquarian: [17, 20, 23, 26, 29],
-	shieldbreaker: [21, 24, 28, 31, 35],
-	flagellant: [22, 26, 30, 33, 37]
-};
-
-/** Human-readable class names. */
-export const CLASS_DISPLAY_NAMES: Record<string, string> = {
-	plague_doctor: 'Plague Doctor',
-	occultist: 'Occultist',
-	vestal: 'Vestal',
-	hellion: 'Hellion',
-	houndmaster: 'Hound Master',
-	bounty_hunter: 'Bounty Hunter',
-	man_at_arms: 'Man-at-Arms',
-	highwayman: 'Highwayman',
-	jester: 'Jester',
-	crusader: 'Crusader',
-	arbalest: 'Arbalest',
-	musketeer: 'Musketeer',
-	grave_robber: 'Grave Robber',
-	leper: 'Leper',
-	abomination: 'Abomination',
-	antiquarian: 'Antiquarian',
-	shieldbreaker: 'Shieldbreaker',
-	flagellant: 'Flagellant'
-};
+import type {
+	HeroQuirk,
+	HeroBaseRoot,
+	HeroEntry,
+	RosterData,
+	EstateData,
+	GameData,
+	UpgradePurchase,
+	UpgradesData,
+	TownData,
+	HeroSummary,
+	TreatmentHero,
+	BuildingUpgradeGroup,
+	SaveFileName,
+	RaidData
+} from '$lib/types/save-data';
+import type { TreatmentBuildingName } from '$lib/data/constants';
 
 // ── Reactive State ──
 
@@ -379,32 +188,6 @@ export function getDlcFlags() {
 }
 
 // ── Derived Helpers ──
-
-/** Flat list of heroes with their GUIDs for easy iteration. */
-export interface HeroSummary {
-	guid: string;
-	name: string;
-	heroClass: string;
-	classDisplayName: string;
-	resolveLevel: number;
-	resolveXp: number;
-	currentHp: number;
-	maxHp: number;
-	stress: number;
-	status: number;
-	statusLabel: string;
-	statusDotClass: string;
-	weaponRank: number;
-	armourRank: number;
-	afflictionTypeId: string;
-	virtueTypeId: string;
-	visitedDeathsDoor: boolean;
-	buildingName: string;
-	quirks: Record<string, HeroQuirk>;
-	selectedCombatSkills: Record<string, unknown>;
-	selectedCampingSkills: Record<string, unknown>;
-	trinkets: Record<string, unknown>;
-}
 
 /** Convert resolveXp to a resolve level (0-6). */
 export function xpToLevel(xp: number): number {
@@ -520,7 +303,7 @@ export function getHeroRawData(guid: string): HeroBaseRoot | null {
 }
 
 /** Mark a file as having unsaved changes. */
-export function markDirty(filename: string) {
+export function markDirty(filename: SaveFileName) {
 	dirtyFiles = new Set([...dirtyFiles, filename]);
 }
 
@@ -681,16 +464,6 @@ export function dismissHero(guid: string) {
 
 // ── Town & Upgrade Helpers ──
 
-/** Get heroes currently in treatment (status 2) with their building/activity info. */
-export interface TreatmentHero {
-	guid: string;
-	name: string;
-	heroClass: string;
-	classDisplayName: string;
-	buildingName: string;
-	activityType: string;
-}
-
 /** Get all heroes currently in treatment for a specific building. */
 export function getHeroesInBuilding(buildingName: TreatmentBuildingName): TreatmentHero[] {
 	if (!roster) return [];
@@ -724,14 +497,6 @@ export function releaseHeroFromTreatment(guid: string) {
 }
 
 /** Get all building upgrades grouped by building name. */
-export interface BuildingUpgradeGroup {
-	buildingName: string;
-	displayName: string;
-	upgrades: UpgradePurchase[];
-	purchasedCount: number;
-	totalCount: number;
-}
-
 export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 	if (!upgrades) return [];
 	const groups: Record<string, UpgradePurchase[]> = {};
@@ -892,7 +657,7 @@ export function setGameInRaid(value: boolean) {
 /**
  * Load a full profile from the Rust backend.
  * Calls the `load_profile` command and distributes data to each sub-store.
- * The backend returns an object mapping filename → decoded JSON object.
+ * The backend returns an object mapping filename -> decoded JSON object.
  */
 export async function loadProfileFromBackend(profilePath: string): Promise<void> {
 	// Clear any stale data from a previously loaded profile before populating
@@ -1049,175 +814,12 @@ export function resetSaveData() {
 
 /** Generate mock roster data for UI development. */
 export function loadMockData() {
-	const mockRoster: RosterData = {
-		base_root: {
-			version: 513,
-			nextGuid: 110,
-			dismissed_hero_count: 1,
-			last_party: { last_party_guids: [96, 42, 7, 55] },
-			heroes: {
-				'96': createMockHero('Reynauld', 'crusader', 0, 4, 47, 12, 3, 3),
-				'42': createMockHero('Dismas', 'highwayman', 0, 3, 35, 45, 2, 2),
-				'7': createMockHero('Junia', 'vestal', 1, 5, 42, 0, 4, 4),
-				'55': createMockHero('Sarmenti', 'jester', 2, 2, 15, 120, 2, 2, 'tavern'),
-				'12': createMockHero('Barristan', 'man_at_arms', 2, 3, 42, 30, 3, 3, 'abbey'),
-				'23': createMockHero('Paracelsus', 'plague_doctor', 0, 4, 34, 5, 3, 3),
-				'34': createMockHero('Audrey', 'grave_robber', 2, 1, 24, 67, 1, 1, 'sanitarium'),
-				'45': createMockHero('Bigby', 'bounty_hunter', 3, 6, 0, 0, 4, 4),
-				'56': createMockHero('Boudica', 'hellion', 0, 3, 36, 88, 2, 2),
-				'67': createMockHero('Tardif', 'bounty_hunter', 0, 0, 26, 0, 0, 0),
-				'78': createMockHero('Damian', 'leper', 4, 2, 0, 0, 2, 2),
-				'89': createMockHero('Missandei', 'occultist', 2, 4, 30, 15, 3, 3, 'abbey')
-			}
-		}
-	};
-	loadRoster(mockRoster);
-
-	const mockUpgrades: UpgradesData = {
-		base_root: {
-			purchases: {
-				'0': { instance_number: 0, tree_id: '###sanitarium.cost', requirement_code: 'a', is_purchased: true },
-				'1': { instance_number: 0, tree_id: '###sanitarium.slot', requirement_code: 'a', is_purchased: true },
-				'2': { instance_number: 0, tree_id: '###sanitarium.slot', requirement_code: 'b', is_purchased: false },
-				'3': { instance_number: 0, tree_id: '###tavern.cost', requirement_code: 'a', is_purchased: true },
-				'4': { instance_number: 0, tree_id: '###tavern.cost', requirement_code: 'b', is_purchased: true },
-				'5': { instance_number: 0, tree_id: '###tavern.slot', requirement_code: 'a', is_purchased: true },
-				'6': { instance_number: 0, tree_id: '###abbey.cost', requirement_code: 'a', is_purchased: true },
-				'7': { instance_number: 0, tree_id: '###abbey.slot', requirement_code: 'a', is_purchased: false },
-				'8': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'a', is_purchased: true },
-				'9': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'b', is_purchased: true },
-				'10': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'c', is_purchased: false },
-				'11': { instance_number: 0, tree_id: '###guild.cost', requirement_code: 'a', is_purchased: true },
-				'12': { instance_number: 0, tree_id: '###guild.cost', requirement_code: 'b', is_purchased: false },
-				'13': { instance_number: 0, tree_id: '###stage_coach.size', requirement_code: 'a', is_purchased: true },
-				'14': { instance_number: 0, tree_id: '###stage_coach.size', requirement_code: 'b', is_purchased: true },
-				'15': { instance_number: 0, tree_id: '###stage_coach.roster_size', requirement_code: 'a', is_purchased: true },
-				'16': { instance_number: 0, tree_id: '###survivalist.cost', requirement_code: 'a', is_purchased: true },
-				'17': { instance_number: 0, tree_id: '###nomad_wagon.cost', requirement_code: 'a', is_purchased: true },
-				'18': { instance_number: 0, tree_id: '###nomad_wagon.cost', requirement_code: 'b', is_purchased: false },
-				'19': { instance_number: 96, tree_id: '###crusader.smite', requirement_code: '1', is_purchased: true },
-				'20': { instance_number: 96, tree_id: '###crusader.stand_tall', requirement_code: '1', is_purchased: true }
-			}
-		}
-	};
-	loadUpgrades(mockUpgrades);
-
-	const mockEstate: EstateData = {
-		base_root: {
-			wallet: {
-				'0': { amount: 12500, type: 'gold' },
-				'1': { amount: 4, type: 'bust' },
-				'2': { amount: 2, type: 'portrait' },
-				'3': { amount: 6, type: 'deed' },
-				'4': { amount: 3, type: 'crest' }
-			},
-			trinkets: { items: {} },
-			estate_items: { items: {} },
-			endless_wave_highscore: 0,
-			tampering: {},
-			darkest_dungeon_trinket_unlocks: {}
-		}
-	};
-	loadEstate(mockEstate);
-
-	const mockTown: TownData = {
-		base_root: {
-			buildings: {}
-		}
-	};
-	loadTown(mockTown);
-
+	loadRoster(createMockRoster());
+	loadUpgrades(createMockUpgrades());
+	loadEstate(createMockEstate());
+	loadTown(createMockTown());
 	isLoaded = true;
 }
 
 // Re-export stripDsonPrefix so consumers importing it from this module continue to work.
 export { stripDsonPrefix };
-
-function createMockHero(
-	name: string,
-	heroClass: string,
-	status: number,
-	level: number,
-	currentHp: number,
-	stress: number,
-	weaponRank: number,
-	armourRank: number,
-	buildingName: string = ''
-): HeroEntry {
-	const quirks: Record<string, HeroQuirk> = {};
-	// Add some example quirks
-	const positiveQuirks = ['quick_reflexes', 'natural_swing', 'tough', 'eagle_eye', 'hard_skinned'];
-	const negativeQuirks = ['nervous', 'fear_of_beast', 'kleptomaniac', 'thin_blooded', 'slow_reflexes'];
-	const numPositive = Math.floor(Math.random() * 4) + 1;
-	const numNegative = Math.floor(Math.random() * 3) + 1;
-
-	for (let i = 0; i < numPositive; i++) {
-		quirks[positiveQuirks[i]] = {
-			is_locked: i === 0, // lock first one
-			is_new: false,
-			mission_count: Math.floor(Math.random() * 10),
-			replaces_quirk: 0,
-			replaces_quirk_viewed: false,
-			evolution_duration_remaining: 0
-		};
-	}
-	for (let i = 0; i < numNegative; i++) {
-		quirks[negativeQuirks[i]] = {
-			is_locked: false,
-			is_new: false,
-			mission_count: Math.floor(Math.random() * 10),
-			replaces_quirk: 0,
-			replaces_quirk_viewed: false,
-			evolution_duration_remaining: 0
-		};
-	}
-
-	return {
-		hero_file_data: {
-			raw_data: {
-				base_root: {
-					'roster.status': status,
-					'roster.before_on_start_town_visit_status': status === 2 ? 0 : status,
-					'roster.building_name': buildingName,
-					actor: {
-						name,
-						current_hp: currentHp,
-						colour_variation: 0,
-						stunned: 0,
-						combat_ready: false,
-						damage_source_data: '###none',
-						buff_group: {},
-						buff_group_next_guid: 0,
-						actor_dot: {}
-					},
-					heroClass,
-					resolveXp: RESOLVE_XP_THRESHOLDS[level],
-					m_Stress: stress,
-					visited_deaths_door: status === 3,
-					is_death_heart_attack_completed: false,
-					has_had_heart_attack: false,
-					deaths_door_enter_effect_round_cooldown: 0,
-					weapon_rank: weaponRank,
-					armour_rank: armourRank,
-					affliction_type_id: stress >= 100 ? 'paranoid' : '',
-					affliction_severity: stress >= 100 ? 1 : 0,
-					virtue_type_id: '',
-					backer_hero: false,
-					enemies_killed: Math.floor(Math.random() * 50),
-					steps_taken: Math.floor(Math.random() * 200),
-					provisions_consumed: Math.floor(Math.random() * 100),
-					dd_test_survived: 0,
-					number_of_successful_darkest_dungeon_quests: 0,
-					is_from_town_event: false,
-					quirks,
-					skills: {
-						selected_combat_skills: {},
-						selected_camping_skills: {}
-					},
-					trinkets: { items: {} },
-					dungeon_history: []
-				}
-			}
-		}
-	};
-}

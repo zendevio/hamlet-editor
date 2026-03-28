@@ -58,6 +58,7 @@ pub fn unescape(arg: &str) -> Option<Cow<'_, str>> {
                 Some('r') => '\r',
                 Some('t') => '\t',
                 Some('"') => '\"',
+                Some('\\') => '\\',
                 _ => return None,
             });
         }
