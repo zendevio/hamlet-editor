@@ -449,8 +449,8 @@ fn decode_fields_bin<R: Read>(
         let len = field.name_length() as usize;
         let field_name = buf.get(off..off + len).ok_or(FromBinError::Eof)?;
         let name = {
-            let cs = CStr::from_bytes_with_nul(&field_name)?.to_str()?;
-            NameType::from(cs)
+            let cs = CStr::from_bytes_with_nul(&field_name)?.to_string_lossy();
+            NameType::from(cs.as_ref())
         };
 
         if name_hash(&name) != field.name_hash {
@@ -571,10 +571,10 @@ impl FieldType {
                         let mut buf = vec![0u8; len];
                         reader.read_exact(&mut buf)?;
                         let string = {
-                            let cs = CStr::from_bytes_with_nul(&buf)?.to_str()?;
+                            let cs = CStr::from_bytes_with_nul(&buf)?.to_string_lossy();
                             let mut n = std::string::String::new();
                             n.try_reserve_exact(cs.len())?;
-                            n.push_str(cs);
+                            n.push_str(&cs);
                             n
                         };
                         tmp_vec.push(string);
@@ -631,10 +631,10 @@ impl FieldType {
                             let mut buf = vec![0u8; len];
                             reader.read_exact(&mut buf)?;
                             let string = {
-                                let cs = CStr::from_bytes_with_nul(&buf)?.to_str()?;
+                                let cs = CStr::from_bytes_with_nul(&buf)?.to_string_lossy();
                                 let mut n = std::string::String::new();
                                 n.try_reserve_exact(cs.len())?;
-                                n.push_str(cs);
+                                n.push_str(&cs);
                                 n
                             };
                             Ok(String(string.into_boxed_str()))

@@ -28,6 +28,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-os = "2"
+tauri-plugin-shell = "2"
 ddsavelib = { path = "crates/ddsavelib" }
 steamlocate = "2"
 sysinfo = "0.33"

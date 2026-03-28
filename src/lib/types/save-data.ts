@@ -200,9 +200,19 @@ export interface TownBuilding {
 	slots: Record<string, TownBuildingSlot>;
 }
 
+export interface TownDistrict {
+	built: boolean;
+}
+
+export interface TownDistricts {
+	buildings: Record<string, TownDistrict>;
+}
+
 export interface TownData {
 	base_root: {
 		buildings: Record<string, TownBuilding>;
+		/** Color of Madness districts (only present when DLC is active). */
+		districts?: TownDistricts;
 	};
 }
 

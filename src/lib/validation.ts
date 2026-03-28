@@ -14,7 +14,9 @@ import {
 	xpToLevel,
 	type HeroSummary
 } from '$lib/stores/save-data.svelte';
+import { loadProfile } from '$lib/api/save';
 import type { GameInstall } from '$lib/api/detect';
+import { getSettings } from '$lib/stores/settings.svelte';
 
 // ── Types ──
 
@@ -42,6 +44,15 @@ export function runPreSaveValidation(): ValidationIssue[] {
 	issues.push(...checkGearRanks());
 	issues.push(...checkTreatmentConsistency());
 	issues.push(...checkDuplicateTrinkets());
+
+	const gameInstall = getSettings().gameInstall;
+	if (gameInstall !== null) {
+		const saveData = getSaveData();
+		const data: Record<string, unknown> = {};
+		if (saveData.roster) data['persist.roster.json'] = saveData.roster;
+		if (saveData.estate) data['persist.estate.json'] = saveData.estate;
+		issues.push(...checkDlcFieldInjection(data, gameInstall));
+	}
 
 	return issues;
 }
@@ -191,23 +202,49 @@ function checkDuplicateTrinkets(): ValidationIssue[] {
 /**
  * Validate that a just-written save file decodes back to the expected data.
  *
- * Calls `decode_save_file` on the written file and performs a semantic
- * comparison against the in-memory representation.
+ * Re-loads the entire profile via `load_profile` and compares the top-level
+ * key count of the specified file's decoded object against the in-memory
+ * representation. A key-count mismatch indicates a gross encoding failure
+ * (e.g. fields were silently dropped or the file could not be re-decoded).
  *
- * @param profilePath - Absolute path to the profile directory.
- * @param filename    - Name of the specific save file to check (e.g. `persist.roster.json`).
- * @returns           - `true` if the decoded data matches, `false` otherwise.
+ * This is a lightweight sanity check — it does NOT guarantee field-level
+ * correctness. A full semantic comparison is non-trivial because ddsavelib
+ * may reorder fields or normalise numeric representations during encode/decode.
  *
- * TODO: Implement actual semantic comparison. The comparison is non-trivial
- * because ddsavelib may reorder fields or normalise numeric representations
- * during the encode/decode cycle. A robust approach would be to normalise
- * both sides to a canonical key-sorted form before comparing.
+ * @param profilePath  - Absolute path to the profile directory.
+ * @param filename     - Name of the specific save file to check (e.g. `persist.roster.json`).
+ * @param inMemoryData - The in-memory object that was encoded and written.
+ * @returns            - `true` if the top-level key count matches, `false` on mismatch or error.
  */
-export async function validateRoundTrip(_profilePath: string, _filename: string): Promise<boolean> {
-	// TODO: Re-implement once decode_save_file is exposed as a Tauri command again.
-	// The previous implementation called invoke('decode_save_file') which no longer
-	// exists in the command handler. Return true as a stub.
-	return true;
+export async function validateRoundTrip(
+	profilePath: string,
+	filename: string,
+	inMemoryData: Record<string, unknown>
+): Promise<boolean> {
+	try {
+		const reloaded = await loadProfile(profilePath);
+		const reloadedFile = reloaded[filename];
+
+		if (typeof reloadedFile !== 'object' || reloadedFile === null) {
+			console.warn(`[validateRoundTrip] ${filename}: re-decoded value is not an object`);
+			return false;
+		}
+
+		const inMemoryKeyCount = Object.keys(inMemoryData).length;
+		const reloadedKeyCount = Object.keys(reloadedFile as Record<string, unknown>).length;
+
+		if (inMemoryKeyCount !== reloadedKeyCount) {
+			console.warn(
+				`[validateRoundTrip] ${filename}: key count mismatch — in-memory ${inMemoryKeyCount} vs re-decoded ${reloadedKeyCount}`
+			);
+			return false;
+		}
+
+		return true;
+	} catch (err) {
+		console.warn(`[validateRoundTrip] ${filename}: error during re-load — ${err}`);
+		return false;
+	}
 }
 
 // ── DLC Field Injection Guards ──
@@ -215,14 +252,26 @@ export async function validateRoundTrip(_profilePath: string, _filename: string)
 /**
  * Check that save data does not contain fields from uninstalled DLC expansions.
  *
- * TODO: DLC detection is not yet wired to the settings store. Once
- * `GameInstall` flags are populated from the detect commands, this function
- * should be called from `runPreSaveValidation` and passed the current install
- * state.
+ * Performs two checks:
  *
- * Current checks (stubbed):
- * - Crimson Court: hero quirks matching `disease_vampire_*`
- * - Color of Madness: estate shard wallet entries
+ * 1. **Crimson Court** (`has_crimson_court: false`): scans hero quirks in the
+ *    roster for keys matching `disease_vampire_*`. These quirks are defined
+ *    exclusively in `dlc/580100_crimson_court/…/crimson_court.quirk_library.json`
+ *    and will cause the game to fail to resolve the quirk if CC is not installed.
+ *
+ * 2. **Color of Madness** (`has_color_of_madness: false`): scans the estate
+ *    wallet for an entry with `type === "shard"`. Shard currency is introduced
+ *    by the CoM DLC; injecting it into a non-CoM save will show a phantom
+ *    currency the game cannot spend.
+ *
+ * This function should be called from `runPreSaveValidation` and passed the
+ * current `GameInstall` flags. Use `getDlcFlags()` from the save-data store
+ * as a fallback when no explicit install is detected.
+ *
+ * @param data        - The combined dirty save data keyed by filename.
+ * @param gameInstall - Detected DLC flags for the active game installation.
+ * @returns Array of `ValidationIssue` warnings (never errors — the user may
+ *          have intentionally edited the save for a future install).
  */
 export function checkDlcFieldInjection(
 	data: Record<string, unknown>,
@@ -230,21 +279,60 @@ export function checkDlcFieldInjection(
 ): ValidationIssue[] {
 	const issues: ValidationIssue[] = [];
 
-	// TODO: Wire up actual DLC detection before enabling these checks.
-	// The `gameInstall` flags will come from `commands::detect::detect_game_installations`
-	// once the store integration is complete.
-
+	// ── Crimson Court: disease_vampire_* quirks ──
 	if (!gameInstall.has_crimson_court) {
-		// TODO: Scan hero quirks in `data` for keys matching `disease_vampire_*`.
-		// If any are found, push a warning — the quirk references Crimson Court
-		// content that the game cannot resolve without the DLC installed.
-		void data; // suppress unused-variable lint until implemented
+		const rosterFile = data['persist.roster.json'] as
+			| { base_root?: { heroes?: Record<string, unknown> } }
+			| undefined;
+		const heroes = rosterFile?.base_root?.heroes ?? {};
+
+		for (const [, entry] of Object.entries(heroes)) {
+			if (typeof entry !== 'object' || entry === null) continue;
+			const heroEntry = entry as {
+				hero_file_data?: {
+					raw_data?: {
+						base_root?: { quirks?: Record<string, unknown>; actor?: { name?: string } };
+					};
+				};
+			};
+			const baseRoot = heroEntry?.hero_file_data?.raw_data?.base_root;
+			const quirks = baseRoot?.quirks ?? {};
+			const heroName = baseRoot?.actor?.name ?? 'Unknown';
+
+			for (const quirkId of Object.keys(quirks)) {
+				if (quirkId.startsWith('disease_vampire_')) {
+					issues.push({
+						severity: 'warning',
+						category: 'DLC',
+						message: `Hero "${heroName}" has Crimson Curse quirk "${quirkId}" but Crimson Court DLC is not installed. The game cannot resolve this quirk without the DLC.`
+					});
+					// One warning per hero is enough — break after the first match.
+					break;
+				}
+			}
+		}
 	}
 
+	// ── Color of Madness: shard wallet entry ──
 	if (!gameInstall.has_color_of_madness) {
-		// TODO: Scan estate data for a shard wallet entry (key: `shard_dust_amount`
-		// or similar in `persist.estate.json`). If present, push a warning —
-		// shard currencies only exist in the Color of Madness DLC.
+		const estateFile = data['persist.estate.json'] as
+			| { base_root?: { wallet?: Record<string, unknown> } }
+			| undefined;
+		const wallet = estateFile?.base_root?.wallet ?? {};
+
+		for (const [, entry] of Object.entries(wallet)) {
+			if (typeof entry !== 'object' || entry === null) continue;
+			const walletEntry = entry as { type?: string; amount?: number };
+			if (walletEntry.type === 'shard') {
+				issues.push({
+					severity: 'warning',
+					category: 'DLC',
+					message: `Estate wallet contains a "shard" currency entry (amount: ${walletEntry.amount ?? 0}) but Color of Madness DLC is not installed. This currency cannot be used without the DLC.`
+				});
+				// Only one warning needed regardless of how many shard entries exist.
+				break;
+			}
+		}
 	}
 
 	return issues;

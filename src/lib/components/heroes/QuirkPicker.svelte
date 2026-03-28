@@ -10,7 +10,9 @@
 	} from '$lib/components/ui/command';
 	import { Button } from '$lib/components/ui/button';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
-	import { getAllQuirks } from '$lib/data/quirks';
+	import { getAllQuirks, type QuirkInfo } from '$lib/data/quirks';
+	import { snakeToTitle } from '$lib/utils';
+	import { getGameData } from '$lib/stores/game-data.svelte';
 
 	let {
 		exclude = new Set<string>(),
@@ -22,7 +24,19 @@
 
 	let open = $state(false);
 
-	const allQuirks = getAllQuirks();
+	const gameData = getGameData();
+
+	/** Build the full quirk list from game data if loaded, else fall back to hardcoded. */
+	let allQuirks = $derived.by((): QuirkInfo[] => {
+		if (gameData.quirks.length > 0) {
+			return gameData.quirks.map((q) => ({
+				id: q.id,
+				displayName: snakeToTitle(q.id),
+				category: q.is_disease ? 'disease' : q.is_positive ? 'positive' : 'negative'
+			}));
+		}
+		return getAllQuirks();
+	});
 
 	let positiveQuirks = $derived(
 		allQuirks.filter((q) => q.category === 'positive' && !exclude.has(q.id))

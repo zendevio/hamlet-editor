@@ -53,7 +53,7 @@
 		DialogDescription
 	} from '$lib/components/ui/dialog';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
-	import { getSettings } from '$lib/stores/settings.svelte';
+	import { getSettings, setSavePath, setProfileId } from '$lib/stores/settings.svelte';
 	import {
 		getSaveData,
 		hasDirtyFiles,
@@ -64,16 +64,20 @@
 		getHeroes,
 		CLASS_DISPLAY_NAMES
 	} from '$lib/stores/save-data.svelte';
+	import { setNameTable, setQuirks, setTrinkets, localize } from '$lib/stores/game-data.svelte';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
 	} from '$lib/components/ui/select';
-	import { isGameRunning } from '$lib/api/detect';
+	import { isGameRunning, detectSaveLocations, type SaveLocation } from '$lib/api/detect';
 	import { saveProfile } from '$lib/api/save';
 	import { createBackup } from '$lib/api/backup';
-	import { runPreSaveValidation, type ValidationIssue } from '$lib/validation';
+	import { generateNameTable, loadLocalization, setNameTableOnBackend } from '$lib/api/names';
+	import { loadQuirkLibrary, loadTrinketLibrary } from '$lib/api/gamedata';
+	import { scanModDirectories } from '$lib/api/mods';
+	import { runPreSaveValidation, validateRoundTrip, type ValidationIssue } from '$lib/validation';
 
 	let { children } = $props();
 
@@ -87,20 +91,87 @@
 	let gameDetectionUncertain = $state(false);
 	let isSaving = $state(false);
 	let isProfileLoading = $state(false);
+	let modCount = $state<number | null>(null);
+
+	// ── Profile Selector ──
+
+	// Detected save locations — populated once on first successful setup.
+	let sidebarSaveLocations = $state<SaveLocation[]>([]);
+
+	/** Switch to a different profile from the sidebar selector. */
+	async function handleSidebarProfileChange(newProfileId: string) {
+		if (newProfileId === settings.profileId || isProfileLoading) return;
+		const loc = sidebarSaveLocations.find((l) => l.profile_id === newProfileId);
+		if (!loc) return;
+
+		setSavePath(loc.path);
+		setProfileId(newProfileId);
+
+		isProfileLoading = true;
+		try {
+			await loadProfileFromBackend(loc.path);
+			if (settings.gamePath) {
+				await initGameData(settings.gamePath);
+			}
+			toast.success('Profile loaded', { description: `Switched to ${newProfileId}` });
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			toast.error(`Failed to switch profile: ${message}`);
+		} finally {
+			isProfileLoading = false;
+		}
+	}
 
 	// ── Profile Loading ──
 
-	// When setup completes (or was already complete on startup), load the profile.
-	// TODO: After profile load, call name table / localization initialisation once the
-	// backend command is available (e.g. load_name_table, load_localization). These
-	// are currently scaffolded but not yet invoked from the frontend.
-	// TODO: After profile load, run mod-detection so that modded hero classes and item
-	// IDs are resolved against the user's mod folder. Requires wiring the
-	// detect_mods / load_mod_strings backend commands.
+	// ── Name table + localization + mod-scan pipeline ──
+
+	async function initGameData(gamePath: string) {
+		// 1. Generate name table from game files and push to Rust state.
+		const names = await generateNameTable(gamePath);
+		await setNameTableOnBackend(names);
+
+		// 2. Load localization strings and store in the frontend game-data store.
+		const locData = await loadLocalization(gamePath);
+		setNameTable(locData);
+
+		// 3. Load quirk and trinket definitions from game JSON files.
+		const [quirkDefs, trinketDefs] = await Promise.all([
+			loadQuirkLibrary(gamePath),
+			loadTrinketLibrary(gamePath)
+		]);
+		setQuirks(quirkDefs);
+		setTrinkets(trinketDefs);
+
+		// 4. Scan mod directories and surface the count.
+		const mods = await scanModDirectories(gamePath);
+		modCount = mods.length;
+		if (mods.length > 0) {
+			toast.info(`${mods.length} mod${mods.length === 1 ? '' : 's'} detected`);
+		}
+	}
+
+	// When setup completes (or was already complete on startup), load the profile,
+	// then initialise the name table, localization, and mod scan.
+	// Also detect save locations to populate the sidebar profile selector.
 	$effect(() => {
 		if (settings.isSetupComplete && !saveData.isLoaded && !isProfileLoading) {
 			isProfileLoading = true;
+			// Detect all available save locations so the sidebar selector is populated.
+			detectSaveLocations()
+				.then((locs) => {
+					sidebarSaveLocations = locs;
+				})
+				.catch(() => {
+					// Non-fatal — sidebar selector will show current profile only
+				});
+
 			loadProfileFromBackend(settings.savePath)
+				.then(() => {
+					if (settings.gamePath) {
+						return initGameData(settings.gamePath);
+					}
+				})
 				.catch((err) => {
 					const message = err instanceof Error ? err.message : String(err);
 					toast.error(`Failed to load profile: ${message}`);
@@ -289,9 +360,12 @@
 			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
 		}
 
-		// TODO: Ctrl+R (reload/refresh) requires Tauri window config to intercept
-		// — the webview captures it before SvelteKit. Add `prevent_default_hotkeys`
-		// or `webview_protocols` config in tauri.conf.json when ready.
+		// Ctrl/Cmd+R: Prevent WebView reload. e.preventDefault() intercepts it
+		// before the WebView acts on it — no Tauri config changes needed.
+		if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+			e.preventDefault();
+			// Ctrl+R reserved — no action (prevents WebView reload)
+		}
 	}
 
 	// ── Save Flow ──
@@ -326,6 +400,23 @@
 			}
 			const dirtyData = getDirtyData();
 			await saveProfile(settings.savePath, dirtyData);
+
+			// Round-trip validation: re-read the roster file and check key count.
+			// Non-blocking — a mismatch only surfaces a warning toast.
+			const rosterInMemory = saveData.roster;
+			if (rosterInMemory) {
+				const ok = await validateRoundTrip(
+					settings.savePath,
+					'persist.roster.json',
+					rosterInMemory as unknown as Record<string, unknown>
+				);
+				if (!ok) {
+					toast.warning(
+						'Round-trip validation warning: saved file may differ from expected. Check your save.'
+					);
+				}
+			}
+
 			clearAllDirty();
 			toast.success('Saved successfully');
 		} catch (err) {
@@ -514,14 +605,28 @@
 			<!-- C5: Profile selector -->
 			{#if settings.isSetupComplete && settings.profileId}
 				<div class="px-2 pb-1">
-					<Select type="single" value={settings.profileId} disabled>
-						<SelectTrigger class="h-7 text-xs">
-							<span class="text-xs">Profile: {settings.profileId}</span>
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value={settings.profileId}>{settings.profileId}</SelectItem>
-						</SelectContent>
-					</Select>
+					{#if sidebarSaveLocations.length > 1}
+						<Select
+							type="single"
+							value={settings.profileId}
+							disabled={isProfileLoading}
+							onValueChange={handleSidebarProfileChange}
+						>
+							<SelectTrigger class="h-7 text-xs">
+								<span class="text-xs">Profile: {settings.profileId}</span>
+							</SelectTrigger>
+							<SelectContent>
+								{#each sidebarSaveLocations as loc (loc.profile_id)}
+									<SelectItem value={loc.profile_id}>{loc.profile_id}</SelectItem>
+								{/each}
+							</SelectContent>
+						</Select>
+					{:else}
+						<!-- Single profile or locations not yet detected — static display -->
+						<div class="h-7 flex items-center px-3 text-xs text-muted-foreground border border-border bg-muted/20 rounded-sm">
+							Profile: {settings.profileId}
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</SidebarHeader>
@@ -657,6 +762,13 @@
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
 						Modded Content
+					</Badge>
+				{/if}
+
+				<!-- Mod count badge -->
+				{#if modCount !== null && modCount > 0}
+					<Badge variant="outline" class="gap-1">
+						{modCount} mod{modCount === 1 ? '' : 's'}
 					</Badge>
 				{/if}
 

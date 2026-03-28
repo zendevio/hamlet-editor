@@ -52,11 +52,11 @@
 			},
 			{
 				name: 'persist.campaign_log.json',
-				description: 'Clear died flag in mission event history (not yet implemented)'
+				description: 'Clear died flag in MissionEvent history for this hero (if present)'
 			},
 			{
 				name: 'persist.progression.json',
-				description: 'Clear graveyard achievement flag (not yet implemented)'
+				description: 'No per-hero death field found in progression data; file not modified'
 			}
 		];
 
@@ -73,15 +73,10 @@
 	// ── Actions ──
 
 	function handleRevive() {
-		// Perform the roster-level revival
+		// Performs the full revival: roster mutation + campaign_log died flag clearing.
+		// clearDiedFlags and clearGraveyardFlag are called internally by reviveHero.
 		reviveHero(hero.guid);
 
-		// Note: campaign_log and progression edits will be wired in when
-		// those stores are implemented. The reviveHero function currently
-		// handles only persist.roster.json mutations.
-
-		// TODO: clearDiedFlag(hero.guid) for campaign_log
-		// TODO: clearGraveyardFlag(hero.guid) for progression
 		// TODO: if addToRaidChecked, addHeroToRaidParty(hero.guid)
 
 		confirmChecked = false;
@@ -113,7 +108,7 @@
 				Revive {hero.name} the {hero.classDisplayName}?
 			</DialogTitle>
 			<DialogDescription>
-				Currently only modifies persist.roster.json. Campaign log and progression clearing will be added in a future update.
+				Modifies persist.roster.json and clears the died flag in persist.campaign_log.json mission event history.
 			</DialogDescription>
 		</DialogHeader>
 

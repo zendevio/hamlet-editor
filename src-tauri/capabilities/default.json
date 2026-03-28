@@ -13,6 +13,7 @@
     "dialog:default",
     "dialog:allow-open",
     "store:default",
-    "os:default"
+    "os:default",
+    "shell:allow-open"
   ]
 }

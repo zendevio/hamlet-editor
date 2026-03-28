@@ -305,7 +305,9 @@
 							heroName={slot.name}
 							heroClass={slot.classDisplayName}
 						/>
-						<!-- Left/Right reorder buttons -->
+						<!-- Arrow buttons are the intentional reorder UX for party positions.
+						     svelte-dnd-action was considered but has Svelte 5 compatibility issues.
+						     Arrow buttons are simpler, accessible, and sufficient for a 4-slot party. -->
 						<div class="flex gap-1">
 							<Button
 								variant="ghost"

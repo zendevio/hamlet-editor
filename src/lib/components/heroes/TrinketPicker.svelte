@@ -11,8 +11,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
 	import { snakeToTitle } from '$lib/utils';
+	import { getGameData } from '$lib/stores/game-data.svelte';
 
-	// ── Static trinket list (from docs/game-data.md) ──
+	// ── Static trinket list (from docs/game-data.md) — fallback only ──
 
 	const ANCESTOR_TRINKETS = [
 		'ancestors_candle',
@@ -60,6 +61,10 @@
 
 	let open = $state(false);
 
+	const gameData = getGameData();
+
+	let gameDataLoaded = $derived(gameData.trinkets.length > 0);
+
 	function handleSelect(id: string) {
 		open = false;
 		onselect?.(id);
@@ -89,29 +94,42 @@
 			<CommandList class="max-h-64">
 				<CommandEmpty>No trinket found.</CommandEmpty>
 
-				<CommandGroup heading="Ancestor Trinkets">
-					{#each ANCESTOR_TRINKETS as id (id)}
-						<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-							{snakeToTitle(id)}
-						</CommandItem>
-					{/each}
-				</CommandGroup>
+				{#if gameDataLoaded}
+					<CommandGroup heading="All Trinkets">
+						{#each gameData.trinkets as trinket (trinket.id)}
+							<CommandItem value={trinket.id} onSelect={() => handleSelect(trinket.id)} class="text-xs">
+								{snakeToTitle(trinket.id)}
+								{#if trinket.rarity}
+									<span class="ml-auto text-[10px] text-muted-foreground/50">{trinket.rarity}</span>
+								{/if}
+							</CommandItem>
+						{/each}
+					</CommandGroup>
+				{:else}
+					<CommandGroup heading="Ancestor Trinkets">
+						{#each ANCESTOR_TRINKETS as id (id)}
+							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
+								{snakeToTitle(id)}
+							</CommandItem>
+						{/each}
+					</CommandGroup>
 
-				<CommandGroup heading="Boss Drops">
-					{#each BOSS_DROP_TRINKETS as id (id)}
-						<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-							{snakeToTitle(id)}
-						</CommandItem>
-					{/each}
-				</CommandGroup>
+					<CommandGroup heading="Boss Drops">
+						{#each BOSS_DROP_TRINKETS as id (id)}
+							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
+								{snakeToTitle(id)}
+							</CommandItem>
+						{/each}
+					</CommandGroup>
 
-				<CommandGroup heading="Core Stackable">
-					{#each CORE_STACKABLE_TRINKETS as id (id)}
-						<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-							{snakeToTitle(id)}
-						</CommandItem>
-					{/each}
-				</CommandGroup>
+					<CommandGroup heading="Core Stackable">
+						{#each CORE_STACKABLE_TRINKETS as id (id)}
+							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
+								{snakeToTitle(id)}
+							</CommandItem>
+						{/each}
+					</CommandGroup>
+				{/if}
 			</CommandList>
 		</Command>
 	</PopoverContent>

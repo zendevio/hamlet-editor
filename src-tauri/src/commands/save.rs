@@ -1,20 +1,25 @@
+use crate::NameTableState;
 use ddsavelib::{File, Unhasher};
 use std::io::Cursor;
 use std::path::Path;
+use tauri::State;
 
 /// Decode a binary DSON save file to a JSON value.
 ///
 /// Reads the file at `path`, decodes it from binary DSON format,
-/// converts to JSON (with `allow_dupes: true` and an empty Unhasher),
-/// and returns the parsed `serde_json::Value`.
-pub(crate) fn decode_save_file(path: String) -> Result<serde_json::Value, String> {
+/// converts to JSON (with `allow_dupes: true`) using `name_table` to
+/// resolve hashed field names. Pass an empty slice if no name table is
+/// available.
+pub(crate) fn decode_save_file(path: String, names: &[String]) -> Result<serde_json::Value, String> {
     let data = std::fs::read(&path).map_err(|e| format!("Failed to read {path}: {e}"))?;
 
     let file = File::try_from_bin(Cursor::new(&data))
         .map_err(|e| format!("Failed to decode DSON: {e}"))?;
 
+    let mut unhasher = Unhasher::<String>::new();
+    unhasher.offer_names(names.iter().cloned());
+
     let mut json_buf = Vec::new();
-    let unhasher = Unhasher::empty();
     file.write_to_json(&mut json_buf, true, &unhasher)
         .map_err(|e| format!("Failed to write JSON: {e}"))?;
 
@@ -51,14 +56,26 @@ pub(crate) fn encode_save_file(path: String, data: String) -> Result<(), String>
 /// Load all save files from a profile directory.
 ///
 /// Reads all `persist.*.json` files and `novelty_tracker.json` from the
-/// given directory, decodes each from binary DSON, and returns a JSON
-/// object mapping filename to decoded content.
+/// given directory, decodes each from binary DSON using the cached name
+/// table (if any), and returns a JSON object mapping filename to decoded
+/// content.
 #[tauri::command]
-pub fn load_profile(profile_path: String) -> Result<serde_json::Value, String> {
+pub fn load_profile(
+    profile_path: String,
+    state: State<'_, NameTableState>,
+) -> Result<serde_json::Value, String> {
     let dir = Path::new(&profile_path);
     if !dir.is_dir() {
         return Err(format!("Not a directory: {profile_path}"));
     }
+
+    // Snapshot the name table so we hold the lock for as short a time as
+    // possible.
+    let names: Vec<String> = state
+        .0
+        .lock()
+        .map_err(|e| format!("Lock error: {e}"))?
+        .clone();
 
     let entries = std::fs::read_dir(dir)
         .map_err(|e| format!("Failed to read directory {profile_path}: {e}"))?;
@@ -77,8 +94,8 @@ pub fn load_profile(profile_path: String) -> Result<serde_json::Value, String> {
         let file_path = entry.path();
         let path_str = file_path.to_string_lossy().to_string();
 
-        let value =
-            decode_save_file(path_str).map_err(|e| format!("Failed to decode {name}: {e}"))?;
+        let value = decode_save_file(path_str, &names)
+            .map_err(|e| format!("Failed to decode {name}: {e}"))?;
 
         result.insert(name.to_string(), value);
     }

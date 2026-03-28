@@ -27,3 +27,15 @@ export async function loadLocalization(gamePath: string): Promise<Record<string,
 		return {};
 	}
 }
+
+/**
+ * Push the name table into Rust managed state so that subsequent
+ * `load_profile` calls can resolve hashed DSON field names.
+ */
+export async function setNameTableOnBackend(names: string[]): Promise<void> {
+	try {
+		await invoke('set_name_table', { names });
+	} catch {
+		// Non-fatal — worst case hashed names remain unresolved
+	}
+}

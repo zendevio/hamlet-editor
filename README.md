@@ -1,42 +1,42 @@
-# sv
+# Hamlet Editor
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A cross-platform visual save game editor for Darkest Dungeon 1.
 
-## Creating a project
+Built with Tauri 2 + SvelteKit + Rust.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Features
+
+- Hero editing: stats, stress, quirks, trinkets, resolve level, and more
+- Estate management: gold, busts, deeds, portraits, and other resources
+- Town buildings: upgrades for Sanitarium, Blacksmith, Guild, and others
+- Raid editing: party reorder, torchlight, scout chance, inventory (active raid only)
+- Automatic backups before save, with manual backup support
+- Auto-detection of Darkest Dungeon save locations
+- Multi-profile support (switch between Steam profiles)
+
+## Requirements
+
+- Darkest Dungeon 1 installed (Steam or GOG)
+- The game must be closed before saving changes
+
+## Development
 
 ```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv@0.12.8 create --template minimal --types ts --no-install .
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+pnpm install
+pnpm tauri dev
 ```
 
 ## Building
 
-To create a production version of your app:
-
 ```sh
-npm run build
+pnpm tauri build
 ```
 
-You can preview the production build with `npm run preview`.
+## Credits
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- [robojumper](https://github.com/robojumper) for [ddsavelib](https://github.com/robojumper/ddsavelib) and [DDSaveEditor](https://github.com/robojumper/DarkestDungeonSaveEditor) (MIT)
+- Hamlet Editor is an unofficial fan tool and is not affiliated with, endorsed by, or associated with Red Hook Studios. Darkest Dungeon is a registered trademark of Red Hook Studios Inc.
+
+## License
+
+MIT

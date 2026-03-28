@@ -1,6 +1,6 @@
-<!-- TODO: For rosters with 30+ heroes, consider virtualizing this list
-     using a virtual scroll library compatible with Svelte 5.
-     Current implementation renders all heroes which is fine for typical rosters (< 30). -->
+<!-- NOTE: This list renders all heroes without virtual scrolling.
+     For typical DD1 rosters (< 30 heroes), this performs well.
+     Virtual scrolling can be added later if needed for heavily modded games. -->
 <script lang="ts">
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';

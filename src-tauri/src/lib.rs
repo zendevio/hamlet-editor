@@ -1,5 +1,18 @@
 mod commands;
 
+use std::sync::Mutex;
+
+// ── Managed state ──
+
+/// Shared name table used by save decode commands to un-hash DSON field names.
+pub struct NameTableState(pub Mutex<Vec<String>>);
+
+impl Default for NameTableState {
+    fn default() -> Self {
+        Self(Mutex::new(Vec::new()))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -7,6 +20,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_shell::init())
+        .manage(NameTableState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -18,6 +33,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::names::set_name_table,
             commands::save::load_profile,
             commands::save::save_profile,
             commands::detect::detect_save_locations,
@@ -34,6 +50,8 @@ pub fn run() {
             commands::names::generate_name_table,
             commands::names::load_localization,
             commands::mods::scan_mod_directories,
+            commands::gamedata::load_quirk_library,
+            commands::gamedata::load_trinket_library,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

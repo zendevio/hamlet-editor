@@ -258,7 +258,7 @@ fn decode_game_json(profile_dir: &Path) -> (Option<String>, Option<String>) {
         return (None, None);
     }
 
-    let value = match decode_save_file(path.to_string_lossy().to_string()) {
+    let value = match decode_save_file(path.to_string_lossy().to_string(), &[]) {
         Ok(v) => v,
         Err(_) => return (None, None),
     };
@@ -278,7 +278,7 @@ fn decode_campaign_log_json(profile_dir: &Path) -> Option<u32> {
         return None;
     }
 
-    let value = decode_save_file(path.to_string_lossy().to_string()).ok()?;
+    let value = decode_save_file(path.to_string_lossy().to_string(), &[]).ok()?;
     find_u32_field(&value, "total_weeks")
 }
 

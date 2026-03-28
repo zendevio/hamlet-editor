@@ -9,6 +9,7 @@
 import { loadProfile } from '$lib/api/save';
 import { stripDsonPrefix } from '$lib/utils';
 import { getSettings } from '$lib/stores/settings.svelte';
+import { localize } from '$lib/stores/game-data.svelte';
 import {
 	TREATMENT_BUILDINGS,
 	BUILDING_ACTIVITIES,
@@ -39,6 +40,8 @@ export type {
 	UpgradesData,
 	TownBuildingSlot,
 	TownBuilding,
+	TownDistrict,
+	TownDistricts,
 	TownData,
 	HeroSummary,
 	TreatmentHero,
@@ -225,7 +228,7 @@ function heroEntryToSummary(guid: string, entry: HeroEntry): HeroSummary {
 		guid,
 		name: root.actor.name,
 		heroClass: root.heroClass,
-		classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass,
+		classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? localize('hero_class_name_' + root.heroClass),
 		resolveLevel,
 		resolveXp: root.resolveXp,
 		currentHp: root.actor.current_hp,
@@ -421,6 +424,76 @@ export function healHeroToMax(guid: string) {
 	markDirty('persist.roster.json');
 }
 
+/**
+ * Clear the `died` flag for a hero in all MissionEvent entries in the campaign log.
+ *
+ * Iterates through `campaignLog.base_root.chapters` (numeric-string keys),
+ * then through each chapter's entries (also numeric-string keys). Any entry
+ * with `rtti === 2006063882` (MissionEvent) has a `heroes` map whose entries
+ * each have a `guid` (number) and `died` (boolean). Entries matching the hero
+ * GUID have their `died` flag set to false.
+ *
+ * Marks `persist.campaign_log.json` dirty if any change was made.
+ */
+export function clearDiedFlags(heroGuid: string) {
+	if (!campaignLog) return;
+	const guidNum = parseInt(heroGuid, 10);
+	const baseRoot = campaignLog['base_root'] as Record<string, unknown> | undefined;
+	if (!baseRoot) return;
+	const chapters = baseRoot['chapters'] as Record<string, unknown> | undefined;
+	if (!chapters) return;
+
+	let changed = false;
+
+	for (const chapter of Object.values(chapters)) {
+		if (typeof chapter !== 'object' || chapter === null) continue;
+		const chapterObj = chapter as Record<string, unknown>;
+		for (const [key, entry] of Object.entries(chapterObj)) {
+			// Skip the chapterIndex metadata key
+			if (key === 'chapterIndex') continue;
+			if (typeof entry !== 'object' || entry === null) continue;
+			const event = entry as Record<string, unknown>;
+			// MissionEvent RTTI
+			if (event['rtti'] !== 2006063882) continue;
+			const heroes = event['heroes'] as Record<string, unknown> | undefined;
+			if (!heroes) continue;
+			for (const heroEntry of Object.values(heroes)) {
+				if (typeof heroEntry !== 'object' || heroEntry === null) continue;
+				const h = heroEntry as Record<string, unknown>;
+				if (h['guid'] === guidNum && h['died'] === true) {
+					h['died'] = false;
+					changed = true;
+				}
+			}
+		}
+	}
+
+	if (changed) {
+		markDirty('persist.campaign_log.json');
+	}
+}
+
+/**
+ * Mark the progression file dirty after a hero revival.
+ *
+ * The `visit_graveyard` achievement in `persist.progression.json`
+ * (`base_root.real_achievements.visit_graveyard.completed`) is a campaign-level
+ * flag that tracks whether the player has ever visited the graveyard — it does
+ * NOT need to be cleared per revival. No per-hero death state has been found
+ * in progression data in the reference sample.
+ *
+ * TODO: If future investigation reveals a per-hero death record in progression
+ * (e.g. a hero GUID reference under a different field), clear it here.
+ * For now this function is a no-op but is wired into reviveHero so the call
+ * site is already in place.
+ */
+export function clearGraveyardFlag(_heroGuid: string) {
+	// No known per-hero field to clear in persist.progression.json.
+	// The visit_graveyard achievement tracks whether the graveyard has ever been
+	// visited (campaign-wide) and should NOT be reset per revival.
+	// This function is intentionally left as a no-op pending further research.
+}
+
 /** Revive a dead hero (basic: sets status to 0, HP to 1, stress to 0). */
 export function reviveHero(guid: string) {
 	const raw = getHeroRawData(guid);
@@ -431,11 +504,11 @@ export function reviveHero(guid: string) {
 	raw.m_Stress = 0;
 	markDirty('persist.roster.json');
 
-	// TODO: clearDiedFlag(guid) — clear the died flag in campaign_log mission event history
-	// (persist.campaign_log.json is not tracked in this store yet)
+	// Clear died flags in MissionEvent history in the campaign log.
+	clearDiedFlags(guid);
 
-	// TODO: clearGraveyardFlag(guid) — clear the graveyard achievement flag in progression
-	// (persist.progression.json is not tracked in this store yet)
+	// Progression graveyard flag (no-op pending further research — see clearGraveyardFlag).
+	clearGraveyardFlag(guid);
 
 	// If a raid is active and this hero was in the raid party, mark raid dirty too
 	if (raid) {
@@ -475,7 +548,7 @@ export function getHeroesInBuilding(buildingName: TreatmentBuildingName): Treatm
 				guid,
 				name: root.actor.name,
 				heroClass: root.heroClass,
-				classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass,
+				classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? localize('hero_class_name_' + root.heroClass),
 				buildingName: root['roster.building_name'],
 				activityType: '' // Activity type is stored in town data slots
 			});
@@ -557,6 +630,24 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 	}
 
 	markDirty('persist.upgrades.json');
+}
+
+/**
+ * Set the `built` flag for a Color of Madness district.
+ *
+ * Districts live in `persist.town.json → base_root.districts.buildings.<id>.built`.
+ * If the `districts` key is absent (e.g. DLC not installed), this is a no-op.
+ */
+export function setDistrictBuilt(districtId: string, built: boolean) {
+	if (!town) return;
+	const districts = town.base_root.districts;
+	if (!districts) return;
+	if (!districts.buildings[districtId]) {
+		districts.buildings[districtId] = { built };
+	} else {
+		districts.buildings[districtId].built = built;
+	}
+	markDirty('persist.town.json');
 }
 
 // stripDsonPrefix is imported at the top of this file and re-exported for

@@ -16,6 +16,7 @@
 		getHeroesInBuilding,
 		getBuildingUpgrades,
 		getDlcFlags,
+		setDistrictBuilt,
 		TREATMENT_BUILDINGS,
 		DISTRICT_IDS,
 		DISTRICT_DISPLAY_NAMES,
@@ -78,12 +79,19 @@
 		}
 	}
 
-	// Districts (Color of Madness DLC) — placeholder toggle state
-	// In real usage, this would come from persist.town.json or a DLC flag check
-	// TODO: Wire to persist.town.json districts data when loaded
-	let districtStates = $state<Record<string, boolean>>(
-		Object.fromEntries(DISTRICT_IDS.map((id) => [id, false]))
-	);
+	// Districts (Color of Madness DLC) — read from persist.town.json.
+	// `base_root.districts.buildings.<id>.built` is the canonical field.
+	// Falls back to false for any district not yet present in the save data.
+	let districtStates = $derived.by(() => {
+		const districts = saveData.town?.base_root.districts?.buildings ?? {};
+		return Object.fromEntries(
+			DISTRICT_IDS.map((id) => [id, districts[id]?.built ?? false])
+		);
+	});
+
+	function handleDistrictToggle(districtId: string, checked: boolean) {
+		setDistrictBuilt(districtId, checked);
+	}
 </script>
 
 {#if !saveData.isLoaded}
@@ -171,9 +179,7 @@
 									<Switch
 										size="sm"
 										checked={districtStates[districtId]}
-										onCheckedChange={(checked) => {
-											districtStates[districtId] = checked;
-										}}
+										onCheckedChange={(checked) => handleDistrictToggle(districtId, checked)}
 									/>
 								</div>
 							</CardContent>

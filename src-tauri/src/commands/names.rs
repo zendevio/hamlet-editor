@@ -1,6 +1,8 @@
+use crate::NameTableState;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use tauri::State;
 
 // ---------------------------------------------------------------------------
 // Hardcoded seed names — always present regardless of game path
@@ -80,6 +82,18 @@ pub fn load_localization(game_path: String) -> Result<HashMap<String, String>, S
     }
 
     Ok(map)
+}
+
+/// Store the name table in Tauri managed state so that subsequent
+/// `load_profile` calls can resolve hashed DSON field names.
+#[tauri::command]
+pub fn set_name_table(
+    names: Vec<String>,
+    state: State<'_, NameTableState>,
+) -> Result<(), String> {
+    let mut guard = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
+    *guard = names;
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

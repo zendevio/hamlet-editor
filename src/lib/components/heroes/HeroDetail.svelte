@@ -558,6 +558,12 @@
 						{/if}
 					</div>
 
+					<!-- Affliction / Virtue and Deaths Door
+					     Both `affliction_type_id` and `visited_deaths_door` are stored in
+					     persist.roster.json under each hero's base_root (hamlet state).
+					     They persist across raids and are NOT in persist.raid.json.
+					     Changes here are written to persist.roster.json. -->
+
 					<!-- Affliction -->
 					<div>
 						<div class="mb-1 flex items-center justify-between">

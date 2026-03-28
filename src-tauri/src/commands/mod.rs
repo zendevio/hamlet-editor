@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod backup;
 pub mod detect;
+pub mod gamedata;
 pub mod mods;
 pub mod names;
 pub mod save;
