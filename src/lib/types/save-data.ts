@@ -129,8 +129,8 @@ export interface HeroBaseRoot {
 	is_from_town_event: boolean;
 	quirks: Record<string, HeroQuirk>;
 	skills: {
-		selected_combat_skills: Record<string, unknown>;
-		selected_camping_skills: Record<string, unknown>;
+		selected_combat_skills: Record<string, number>;
+		selected_camping_skills: Record<string, number>;
 	};
 	trinkets: { items: Record<string, unknown> };
 	dungeon_history: unknown[];
@@ -239,8 +239,8 @@ export interface HeroSummary {
 	visitedDeathsDoor: boolean;
 	buildingName: string;
 	quirks: Record<string, HeroQuirk>;
-	selectedCombatSkills: Record<string, unknown>;
-	selectedCampingSkills: Record<string, unknown>;
+	selectedCombatSkills: Record<string, number>;
+	selectedCampingSkills: Record<string, number>;
 	trinkets: Record<string, unknown>;
 }
 

@@ -72,6 +72,8 @@
 	import { snakeToTitle } from '$lib/utils';
 	import RevivalWizard from './RevivalWizard.svelte';
 	import TrinketPicker from './TrinketPicker.svelte';
+	import { getAvailableCombatSkills, getAvailableCampingSkills } from '$lib/stores/game-data.svelte';
+	import { toggleCombatSkill, toggleCampingSkill } from '$lib/stores/save-data.svelte';
 
 	let {
 		hero,
@@ -155,6 +157,41 @@
 	// ── Skills derived ──
 	let combatSkillIds = $derived(Object.keys(hero.selectedCombatSkills));
 	let campingSkillIds = $derived(Object.keys(hero.selectedCampingSkills));
+
+	// Available skills from game data (empty when not loaded)
+	let availableCombat = $derived(getAvailableCombatSkills(hero.heroClass));
+	let availableCamping = $derived(getAvailableCampingSkills(hero.heroClass));
+
+	// Abomination has a fixed skill set — no toggling allowed
+	let isAbomination = $derived(hero.heroClass === 'abomination');
+
+	// Max selectable combat skills: 7 for abomination, 4 for all others
+	const MAX_COMBAT_SKILLS = 4;
+
+	function canToggleCombatOn(skillId: string): boolean {
+		if (isAbomination) return false;
+		if (combatSkillIds.includes(skillId)) return true; // already on, toggle-off check is separate
+		return combatSkillIds.length < MAX_COMBAT_SKILLS;
+	}
+
+	function canToggleCombatOff(skillId: string): boolean {
+		if (isAbomination) return false;
+		return combatSkillIds.length > 1 && combatSkillIds.includes(skillId);
+	}
+
+	function handleToggleCombat(skillId: string) {
+		const isSelected = combatSkillIds.includes(skillId);
+		if (isSelected) {
+			if (!canToggleCombatOff(skillId)) return;
+		} else {
+			if (!canToggleCombatOn(skillId)) return;
+		}
+		toggleCombatSkill(hero.guid, skillId);
+	}
+
+	function handleToggleCamping(skillId: string) {
+		toggleCampingSkill(hero.guid, skillId);
+	}
 
 	// ── Trinket slots derived ──
 	let trinketSlot0 = $derived(
@@ -785,19 +822,77 @@
 					<!-- Combat Skills -->
 					<div>
 						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
-							Combat Skills ({combatSkillIds.length})
+							Combat Skills ({combatSkillIds.length}{availableCombat.length > 0 && !isAbomination ? `/${MAX_COMBAT_SKILLS}` : ''})
 						</span>
-						{#if combatSkillIds.length > 0}
-							<div class="space-y-0.5">
-								{#each combatSkillIds as skillId (skillId)}
-									<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
-										<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
-										<span class="font-mono">{skillId}</span>
-									</div>
-								{/each}
-							</div>
+						{#if availableCombat.length > 0}
+							{#if isAbomination}
+								<div class="space-y-0.5">
+									{#each availableCombat as skillId (skillId)}
+										<div class="flex items-center gap-2 px-2 py-1 text-[11px] opacity-60">
+											<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
+											<span class="font-mono">{snakeToTitle(skillId)}</span>
+										</div>
+									{/each}
+								</div>
+								<p class="text-muted-foreground mt-1 text-[10px]">Fixed skill set.</p>
+							{:else}
+								<div class="space-y-0.5">
+									{#each availableCombat as skillId (skillId)}
+										{@const isSelected = combatSkillIds.includes(skillId)}
+										{@const disableOn = !isSelected && combatSkillIds.length >= MAX_COMBAT_SKILLS}
+										{@const disableOff = isSelected && combatSkillIds.length <= 1}
+										<Tooltip>
+											<TooltipTrigger class="w-full">
+												<button
+													type="button"
+													class="flex w-full items-center gap-2 rounded-none px-2 py-1 text-left text-[11px] transition-colors
+														{isSelected ? 'bg-orange-500/10 hover:bg-orange-500/20' : 'hover:bg-muted'}
+														{(disableOn || disableOff) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}"
+													disabled={disableOn || disableOff}
+													onclick={() => handleToggleCombat(skillId)}
+													aria-pressed={isSelected}
+													aria-label="{isSelected ? 'Deselect' : 'Select'} {snakeToTitle(skillId)}"
+												>
+													{#if isSelected}
+														<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
+													{:else}
+														<span class="h-2 w-2 rounded-full border border-orange-400 shrink-0"></span>
+													{/if}
+													<span class="font-mono">{snakeToTitle(skillId)}</span>
+												</button>
+											</TooltipTrigger>
+											<TooltipContent>
+												{#if disableOn}
+													4 combat skills already selected
+												{:else if disableOff}
+													At least 1 combat skill must remain
+												{:else if isSelected}
+													Click to deselect
+												{:else}
+													Click to select
+												{/if}
+											</TooltipContent>
+										</Tooltip>
+									{/each}
+								</div>
+							{/if}
 						{:else}
-							<p class="text-muted-foreground text-[11px]">No combat skills selected.</p>
+							<!-- Fallback: game data not loaded -->
+							{#if combatSkillIds.length > 0}
+								<div class="space-y-0.5">
+									{#each combatSkillIds as skillId (skillId)}
+										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
+											<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
+											<span class="font-mono">{skillId}</span>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-muted-foreground text-[11px]">No combat skills selected.</p>
+							{/if}
+							<p class="text-muted-foreground/60 text-[10px]">
+								Read-only. Load game data to enable editing.
+							</p>
 						{/if}
 					</div>
 
@@ -806,22 +901,53 @@
 						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
 							Camping Skills ({campingSkillIds.length})
 						</span>
-						{#if campingSkillIds.length > 0}
+						{#if availableCamping.length > 0}
 							<div class="space-y-0.5">
-								{#each campingSkillIds as skillId (skillId)}
-									<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
-										<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
-										<span class="font-mono">{skillId}</span>
-									</div>
+								{#each availableCamping as skillId (skillId)}
+									{@const isSelected = campingSkillIds.includes(skillId)}
+									<Tooltip>
+										<TooltipTrigger class="w-full">
+											<button
+												type="button"
+												class="flex w-full items-center gap-2 rounded-none px-2 py-1 text-left text-[11px] transition-colors cursor-pointer
+													{isSelected ? 'bg-blue-500/10 hover:bg-blue-500/20' : 'hover:bg-muted'}"
+												onclick={() => handleToggleCamping(skillId)}
+												aria-pressed={isSelected}
+												aria-label="{isSelected ? 'Deselect' : 'Select'} {snakeToTitle(skillId)}"
+											>
+												{#if isSelected}
+													<span class="h-2 w-2 rounded-full bg-blue-400 shrink-0 ring-1 ring-blue-400"></span>
+												{:else}
+													<span class="h-2 w-2 rounded-full border border-blue-400 shrink-0"></span>
+												{/if}
+												<span class="font-mono">{snakeToTitle(skillId)}</span>
+											</button>
+										</TooltipTrigger>
+										<TooltipContent>
+											{#if isSelected}Click to deselect{:else}Click to select{/if}
+										</TooltipContent>
+									</Tooltip>
 								{/each}
 							</div>
 						{:else}
-							<p class="text-muted-foreground text-[11px]">No camping skills selected.</p>
+							<!-- Fallback: game data not loaded -->
+							{#if campingSkillIds.length > 0}
+								<div class="space-y-0.5">
+									{#each campingSkillIds as skillId (skillId)}
+										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
+											<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
+											<span class="font-mono">{skillId}</span>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-muted-foreground text-[11px]">No camping skills selected.</p>
+							{/if}
+							<p class="text-muted-foreground/60 text-[10px]">
+								Read-only. Load game data to enable editing.
+							</p>
 						{/if}
 					</div>
-					<p class="text-muted-foreground/60 text-[10px]">
-						Read-only. Skill editing requires game data to be loaded.
-					</p>
 				</div>
 			</CollapsibleContent>
 		</Collapsible>

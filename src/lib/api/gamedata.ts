@@ -56,3 +56,21 @@ export async function loadClassStats(gamePath: string): Promise<ClassStats[]> {
 		return [];
 	}
 }
+
+export interface ClassSkills {
+	class_id: string;
+	combat_skills: string[];
+	camping_skills: string[];
+}
+
+/**
+ * Load combat and camping skill IDs per hero class from game files.
+ * Returns an empty array on failure.
+ */
+export async function loadClassSkills(gamePath: string): Promise<ClassSkills[]> {
+	try {
+		return await invoke<ClassSkills[]>('load_class_skills', { gamePath });
+	} catch {
+		return [];
+	}
+}

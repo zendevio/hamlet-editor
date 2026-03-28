@@ -421,6 +421,32 @@ export function toggleQuirkLock(guid: string, quirkId: string) {
 	markDirty('persist.roster.json');
 }
 
+/** Toggle a combat skill on or off for a hero. */
+export function toggleCombatSkill(guid: string, skillId: string) {
+	const raw = getHeroRawData(guid);
+	if (!raw?.skills) return;
+	const skills = raw.skills.selected_combat_skills as Record<string, number>;
+	if (skillId in skills) {
+		delete skills[skillId];
+	} else {
+		skills[skillId] = 0;
+	}
+	markDirty('persist.roster.json');
+}
+
+/** Toggle a camping skill on or off for a hero. */
+export function toggleCampingSkill(guid: string, skillId: string) {
+	const raw = getHeroRawData(guid);
+	if (!raw?.skills) return;
+	const skills = raw.skills.selected_camping_skills as Record<string, number>;
+	if (skillId in skills) {
+		delete skills[skillId];
+	} else {
+		skills[skillId] = 0;
+	}
+	markDirty('persist.roster.json');
+}
+
 /** Heal a hero to max HP. */
 export function healHeroToMax(guid: string) {
 	const raw = getHeroRawData(guid);

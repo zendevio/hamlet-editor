@@ -7,7 +7,7 @@
  */
 
 import { snakeToTitle } from '$lib/utils';
-import type { ClassStats, QuirkDef, TrinketDef } from '$lib/api/gamedata';
+import type { ClassSkills, ClassStats, QuirkDef, TrinketDef } from '$lib/api/gamedata';
 
 // ── State ──
 
@@ -16,6 +16,7 @@ let localizationLoaded = $state(false);
 let quirks = $state<QuirkDef[]>([]);
 let trinkets = $state<TrinketDef[]>([]);
 let classStats = $state<ClassStats[]>([]);
+let classSkills = $state<ClassSkills[]>([]);
 
 // ── Public API ──
 
@@ -35,6 +36,9 @@ export function getGameData() {
 		},
 		get classStats() {
 			return classStats;
+		},
+		get classSkills() {
+			return classSkills;
 		}
 	};
 }
@@ -70,6 +74,23 @@ export function setClassStats(defs: ClassStats[]) {
 	classStats = defs;
 }
 
+/** Replace the loaded class skills. */
+export function setClassSkills(defs: ClassSkills[]) {
+	classSkills = defs;
+}
+
+/** Get the available combat skill IDs for a given hero class. */
+export function getAvailableCombatSkills(heroClass: string): string[] {
+	const entry = classSkills.find((s) => s.class_id === heroClass);
+	return entry?.combat_skills ?? [];
+}
+
+/** Get the available camping skill IDs for a given hero class. */
+export function getAvailableCampingSkills(heroClass: string): string[] {
+	const entry = classSkills.find((s) => s.class_id === heroClass);
+	return entry?.camping_skills ?? [];
+}
+
 /**
  * Look up max HP for a hero class at a given armour rank from game data.
  * Returns null if the class is not found in the loaded stats (e.g. modded class
@@ -89,4 +110,5 @@ export function resetGameData() {
 	quirks = [];
 	trinkets = [];
 	classStats = [];
+	classSkills = [];
 }

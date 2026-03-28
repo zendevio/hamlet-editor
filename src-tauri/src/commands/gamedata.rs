@@ -14,6 +14,14 @@ pub struct ClassStats {
     pub hp_by_rank: Vec<i32>,
 }
 
+/// All available skill IDs for a hero class, parsed from game data files.
+#[derive(Debug, Serialize)]
+pub struct ClassSkills {
+    pub class_id: String,
+    pub combat_skills: Vec<String>,
+    pub camping_skills: Vec<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QuirkDef {
     pub id: String,
@@ -166,6 +174,117 @@ pub fn load_class_stats(game_path: String) -> Result<Vec<ClassStats>, String> {
     Ok(stats)
 }
 
+/// Load combat and camping skill IDs for every hero class.
+///
+/// **Combat skills** are parsed from `heroes/<class>/<class>.info.darkest`
+/// (plus the three DLC paths). The regex extracts unique skill IDs from
+/// `combat_skill: .id "..."` lines; duplicate IDs (same skill at multiple
+/// upgrade levels) are deduplicated while preserving first-seen order.
+///
+/// **Camping skills** are parsed from `raid/camping/*.camping_skills.json`.
+/// Each file lists skills with their `hero_classes` arrays; the function
+/// inverts this to build a per-class list.
+///
+/// Missing or malformed files are silently skipped.
+#[tauri::command]
+pub fn load_class_skills(game_path: String) -> Result<Vec<ClassSkills>, String> {
+    let data_root = resolve_data_root(Path::new(&game_path));
+
+    // ── 1. Collect (class_id, path_to_info_darkest) candidates ──────────────
+    let mut candidates: Vec<(String, PathBuf)> = Vec::new();
+
+    let heroes_dir = data_root.join("heroes");
+    if heroes_dir.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&heroes_dir) {
+            for entry in entries.flatten() {
+                let class_dir = entry.path();
+                if class_dir.is_dir() {
+                    if let Some(class_id) = class_dir.file_name().and_then(|n| n.to_str()) {
+                        let darkest = class_dir.join(format!("{class_id}.info.darkest"));
+                        candidates.push((class_id.to_string(), darkest));
+                    }
+                }
+            }
+        }
+    }
+
+    let dlc_extras = [
+        (
+            "flagellant",
+            "dlc/580100_crimson_court/features/flagellant/heroes/flagellant/flagellant.info.darkest",
+        ),
+        (
+            "shieldbreaker",
+            "dlc/702540_shieldbreaker/heroes/shieldbreaker/shieldbreaker.info.darkest",
+        ),
+        (
+            "musketeer",
+            "dlc/445700_musketeer/heroes/musketeer/musketeer.info.darkest",
+        ),
+    ];
+    for (class_id, rel_path) in &dlc_extras {
+        let full = data_root.join(rel_path);
+        if !candidates.iter().any(|(id, _)| id == class_id) {
+            candidates.push((class_id.to_string(), full));
+        }
+    }
+
+    // ── 2. Parse combat skills from each .info.darkest file ─────────────────
+    let combat_re = Regex::new(r#"combat_skill:\s+\.id\s+"([^"]+)""#).unwrap();
+    // Map from class_id -> ClassSkills (combat filled, camping empty for now).
+    let mut map: std::collections::HashMap<String, ClassSkills> =
+        std::collections::HashMap::new();
+
+    for (class_id, path) in &candidates {
+        let content = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut combat_skills: Vec<String> = Vec::new();
+        for cap in combat_re.captures_iter(&content) {
+            if let Some(id) = cap.get(1).map(|m| m.as_str().to_string()) {
+                if seen.insert(id.clone()) {
+                    combat_skills.push(id);
+                }
+            }
+        }
+        if !combat_skills.is_empty() {
+            map.insert(
+                class_id.clone(),
+                ClassSkills {
+                    class_id: class_id.clone(),
+                    combat_skills,
+                    camping_skills: Vec::new(),
+                },
+            );
+        }
+    }
+
+    // ── 3. Parse camping skills from raid/camping/*.camping_skills.json ──────
+    let camping_dir = data_root.join("raid/camping");
+    if camping_dir.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&camping_dir) {
+            for entry in entries.flatten() {
+                let fp = entry.path();
+                if fp.is_file() {
+                    if let Some(name) = fp.file_name().and_then(|n| n.to_str()) {
+                        if name.ends_with(".camping_skills.json") {
+                            parse_camping_skills_file(&fp, &mut map);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── 4. Collect into a sorted Vec ─────────────────────────────────────────
+    let mut result: Vec<ClassSkills> = map.into_values().collect();
+    result.sort_by(|a, b| a.class_id.cmp(&b.class_id));
+
+    Ok(result)
+}
+
 // ---------------------------------------------------------------------------
 // Parsing helpers
 // ---------------------------------------------------------------------------
@@ -234,6 +353,42 @@ fn parse_darkest_armour_hp(class_id: &str, path: &Path, re: &Regex) -> Option<Cl
         return None;
     }
     Some(ClassStats { class_id: class_id.to_string(), hp_by_rank })
+}
+
+/// Parse a `*.camping_skills.json` file and append skill IDs to the
+/// per-class entries already present in `map`. Classes not yet in `map`
+/// (i.e. no `.info.darkest` was found for them) are skipped.
+/// Silently returns if the file does not exist or cannot be parsed.
+fn parse_camping_skills_file(
+    path: &Path,
+    map: &mut std::collections::HashMap<String, ClassSkills>,
+) {
+    let v = read_json(path);
+    let skills = match v.get("skills").and_then(|s| s.as_array()) {
+        Some(arr) => arr,
+        None => return,
+    };
+    for skill in skills {
+        let skill_id = match skill.get("id").and_then(|i| i.as_str()) {
+            Some(s) if !s.is_empty() => s.to_string(),
+            _ => continue,
+        };
+        let hero_classes = match skill.get("hero_classes").and_then(|c| c.as_array()) {
+            Some(arr) => arr,
+            None => continue,
+        };
+        for class_val in hero_classes {
+            let class_id = match class_val.as_str() {
+                Some(s) if !s.is_empty() => s,
+                _ => continue,
+            };
+            if let Some(entry) = map.get_mut(class_id) {
+                if !entry.camping_skills.contains(&skill_id) {
+                    entry.camping_skills.push(skill_id.clone());
+                }
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
