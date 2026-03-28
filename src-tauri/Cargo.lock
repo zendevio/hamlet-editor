@@ -658,7 +658,9 @@ dependencies = [
  "byteorder",
  "itoa",
  "ryu",
+ "serde_json",
  "string_cache 0.8.9",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

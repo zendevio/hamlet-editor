@@ -19,22 +19,15 @@ pub(crate) fn decode_save_file(path: String, names: &[String]) -> Result<serde_j
     let mut unhasher = Unhasher::<String>::new();
     unhasher.offer_names(names.iter().cloned());
 
-    let mut json_buf = Vec::new();
-    file.write_to_json(&mut json_buf, true, &unhasher)
-        .map_err(|e| format!("Failed to write JSON: {e}"))?;
-
-    let value: serde_json::Value = serde_json::from_slice(&json_buf)
-        .map_err(|e| format!("Failed to parse JSON output: {e}"))?;
-
-    Ok(value)
+    Ok(file.to_json_value(&unhasher))
 }
 
-/// Encode a JSON string back into a binary DSON save file.
+/// Encode a JSON value back into a binary DSON save file.
 ///
-/// Parses the JSON string via ddsavelib's JSON reader, encodes to binary,
-/// and performs an atomic write (write to temp file, then rename).
-pub(crate) fn encode_save_file(path: String, data: String) -> Result<(), String> {
-    let file = File::try_from_json(data.as_bytes())
+/// Converts the `serde_json::Value` via ddsavelib's JSON reader, encodes
+/// to binary, and performs an atomic write (write to temp file, then rename).
+pub(crate) fn encode_save_file(path: String, data: &serde_json::Value) -> Result<(), String> {
+    let file = File::from_json_value(data)
         .map_err(|e| format!("Failed to parse JSON input: {e}"))?;
 
     let mut bin_buf = Vec::new();
@@ -160,11 +153,7 @@ pub fn save_profile(profile_path: String, data: serde_json::Value) -> Result<(),
         let file_path = dir.join(filename);
         let path_str = file_path.to_string_lossy().to_string();
 
-        // Serialize the value to a JSON string for ddsavelib to parse
-        let json_str = serde_json::to_string_pretty(value)
-            .map_err(|e| format!("Failed to serialize {filename}: {e}"))?;
-
-        encode_save_file(path_str, json_str)
+        encode_save_file(path_str, value)
             .map_err(|e| format!("Failed to encode {filename}: {e}"))?;
     }
 
