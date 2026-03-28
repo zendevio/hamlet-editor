@@ -70,3 +70,32 @@ pub fn unescape(arg: &str) -> Option<Cow<'_, str>> {
 pub fn is_whitespace(i: char) -> bool {
     return matches!(i, '\r' | '\n' | '\t' | ' ');
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_escape_unescape_backslash() {
+        let input = r#"hello\world"#;
+        let escaped = escape(input);
+        assert_eq!(escaped.as_ref(), r#"hello\\world"#);
+        let unescaped = unescape(&escaped).expect("unescape should succeed");
+        assert_eq!(unescaped.as_ref(), input);
+    }
+
+    #[test]
+    fn test_escape_unescape_all_sequences() {
+        // Test all escape sequences round-trip
+        let input = "tab\there\nnewline\rcarriage\x08back\x0Cform\"quote\\backslash";
+        let escaped = escape(input);
+        let unescaped = unescape(&escaped).expect("unescape should succeed");
+        assert_eq!(unescaped.as_ref(), input);
+    }
+
+    #[test]
+    fn test_unescape_bare_control_chars_rejected() {
+        assert!(unescape("has\nnewline").is_none());
+        assert!(unescape("has\ttab").is_none());
+    }
+}
