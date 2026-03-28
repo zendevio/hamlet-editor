@@ -100,6 +100,10 @@ pub enum FromJsonError {
     /// The String contained invalid bare control characters.
     #[error("Encoding error '{0}' at {1}:{2}")]
     EncodingErr(String, usize, usize),
+
+    /// A serde_json deserialization error.
+    #[error("serde_json error: {0}")]
+    SerdeJson(String),
 }
 
 // Custom: maps TryFromIntError to IntegerErr (source is discarded)

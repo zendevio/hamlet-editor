@@ -75,7 +75,7 @@ impl Unhasher<&str> {
 ///
 /// It is recommended that tools operating on the JSON representation preserve
 /// the order of fields in the file.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct File {
     h: Header,
     o: Objects,
@@ -495,37 +495,5 @@ impl FieldType {
             FieldType::Object(ref mut v) => v,
             _ => panic!("attempted to unwrap non-object field type {:?}", self),
         }
-    }
-}
-
-impl File {
-    /// Convert the internal [`File`] representation to a [`serde_json::Value`].
-    ///
-    /// This is the recommended API for Tauri integration.
-    ///
-    /// This is a bridge implementation: it serialises via the existing
-    /// hand-rolled writer and then parses the result with `serde_json`.
-    /// Future versions will build the `Value` directly.
-    pub fn to_json_value(&self, unhasher: &Unhasher<impl AsRef<str>>) -> serde_json::Value {
-        let mut buf = Vec::new();
-        self.write_to_json(&mut buf, true, unhasher)
-            .expect("JSON write to Vec cannot fail");
-        serde_json::from_slice(&buf).expect("our JSON output should always be valid")
-    }
-
-    /// Create a [`File`] from a [`serde_json::Value`].
-    ///
-    /// This is the recommended API for Tauri integration.
-    ///
-    /// This is a bridge implementation: it serialises the `Value` to a
-    /// string and then passes it through the existing hand-rolled parser.
-    pub fn from_json_value(value: &serde_json::Value) -> Result<Self, crate::err::FromJsonError> {
-        let json_str = serde_json::to_string_pretty(value).map_err(|e| {
-            crate::err::FromJsonError::IoError(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                e,
-            ))
-        })?;
-        Self::try_from_json(json_str.as_bytes())
     }
 }

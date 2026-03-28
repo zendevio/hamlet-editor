@@ -46,11 +46,10 @@ The hand-rolled parser handles 5 DD-specific quirks that serde_json doesn't supp
 - Run the entire Phase 1 test suite against the new parser
 - Iterate until all tests pass
 
-### Phase 3: Swap + Cleanup
-- Make new parser the default behind a feature flag
-- Keep old parser accessible via `feature = "legacy-parser"`
-- Run against real saves in production for a release cycle
-- Remove old parser and feature flag after confidence is established
+### Phase 3: Swap
+- Once all golden tests pass on the new parser, swap directly (no feature flag)
+- Keep old parser code in the codebase until explicitly told to remove it
+- Validate with real saves before merging
 
 ## Estimated Effort
 - Phase 1: 1-2 days (test suite creation)

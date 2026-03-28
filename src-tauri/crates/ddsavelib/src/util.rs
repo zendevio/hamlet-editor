@@ -31,71 +31,27 @@ pub fn escape(arg: &str) -> Cow<'_, str> {
     }
 }
 
-pub fn unescape(arg: &str) -> Option<Cow<'_, str>> {
-    // Bare control characters are disallowed
-    if arg
-        .chars()
-        .any(|c| matches!(c, '\x08' | '\x0C' | '\n' | '\r' | '\t'))
-    {
-        return None;
-    }
-    if arg.find('\\').is_some() {
-        let mut s = String::new();
-        let mut it = arg.chars();
-        while let Some(c) = it.next() {
-            match c {
-                '\\' => {}
-                c => {
-                    s.push(c);
-                    continue;
-                }
-            }
-
-            s.push(match it.next() {
-                Some('b') => '\x08',
-                Some('f') => '\x0C',
-                Some('n') => '\n',
-                Some('r') => '\r',
-                Some('t') => '\t',
-                Some('"') => '\"',
-                Some('\\') => '\\',
-                _ => return None,
-            });
-        }
-        return Some(Cow::Owned(s));
-    }
-    Some(Cow::Borrowed(arg))
-}
-
-pub fn is_whitespace(i: char) -> bool {
-    return matches!(i, '\r' | '\n' | '\t' | ' ');
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_escape_unescape_backslash() {
+    fn test_escape_backslash() {
         let input = r#"hello\world"#;
         let escaped = escape(input);
         assert_eq!(escaped.as_ref(), r#"hello\\world"#);
-        let unescaped = unescape(&escaped).expect("unescape should succeed");
-        assert_eq!(unescaped.as_ref(), input);
     }
 
     #[test]
-    fn test_escape_unescape_all_sequences() {
-        // Test all escape sequences round-trip
+    fn test_escape_all_sequences() {
         let input = "tab\there\nnewline\rcarriage\x08back\x0Cform\"quote\\backslash";
         let escaped = escape(input);
-        let unescaped = unescape(&escaped).expect("unescape should succeed");
-        assert_eq!(unescaped.as_ref(), input);
-    }
-
-    #[test]
-    fn test_unescape_bare_control_chars_rejected() {
-        assert!(unescape("has\nnewline").is_none());
-        assert!(unescape("has\ttab").is_none());
+        assert!(escaped.contains("\\t"));
+        assert!(escaped.contains("\\n"));
+        assert!(escaped.contains("\\r"));
+        assert!(escaped.contains("\\b"));
+        assert!(escaped.contains("\\f"));
+        assert!(escaped.contains("\\\""));
+        assert!(escaped.contains("\\\\"));
     }
 }
