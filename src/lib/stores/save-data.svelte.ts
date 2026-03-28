@@ -9,7 +9,7 @@
 import { loadProfile } from '$lib/api/save';
 import { stripDsonPrefix } from '$lib/utils';
 import { getSettings } from '$lib/stores/settings.svelte';
-import { localize } from '$lib/stores/game-data.svelte';
+import { localize, getMaxHp as getGameDataMaxHp } from '$lib/stores/game-data.svelte';
 import {
 	TREATMENT_BUILDINGS,
 	BUILDING_ACTIVITIES,
@@ -200,8 +200,14 @@ export function xpToLevel(xp: number): number {
 	return 0;
 }
 
-/** Get max HP for a hero class at a given armour rank. Falls back to 1 for unknowns. */
+/** Get max HP for a hero class at a given armour rank.
+ *
+ * Tries game-data (parsed from .darkest files) first; falls back to the
+ * hardcoded HP_TABLE; returns 1 for completely unknown classes.
+ */
 export function getMaxHp(heroClass: string, armourRank: number): number {
+	const fromGameData = getGameDataMaxHp(heroClass, armourRank);
+	if (fromGameData !== null) return fromGameData;
 	const table = HP_TABLE[heroClass];
 	if (!table) return 1;
 	const rank = Math.max(0, Math.min(armourRank, 4));

@@ -7,7 +7,7 @@
  */
 
 import { snakeToTitle } from '$lib/utils';
-import type { QuirkDef, TrinketDef } from '$lib/api/gamedata';
+import type { ClassStats, QuirkDef, TrinketDef } from '$lib/api/gamedata';
 
 // ── State ──
 
@@ -15,6 +15,7 @@ let nameTable = $state<Record<string, string>>({});
 let localizationLoaded = $state(false);
 let quirks = $state<QuirkDef[]>([]);
 let trinkets = $state<TrinketDef[]>([]);
+let classStats = $state<ClassStats[]>([]);
 
 // ── Public API ──
 
@@ -31,6 +32,9 @@ export function getGameData() {
 		},
 		get trinkets() {
 			return trinkets;
+		},
+		get classStats() {
+			return classStats;
 		}
 	};
 }
@@ -67,10 +71,28 @@ export function setTrinkets(defs: TrinketDef[]) {
 	trinkets = defs;
 }
 
+/** Replace the loaded class stats. */
+export function setClassStats(defs: ClassStats[]) {
+	classStats = defs;
+}
+
+/**
+ * Look up max HP for a hero class at a given armour rank from game data.
+ * Returns null if the class is not found in the loaded stats (e.g. modded class
+ * or game data not yet loaded).
+ */
+export function getMaxHp(heroClass: string, armourRank: number): number | null {
+	const entry = classStats.find((s) => s.class_id === heroClass);
+	if (!entry) return null;
+	const rank = Math.max(0, Math.min(armourRank, entry.hp_by_rank.length - 1));
+	return entry.hp_by_rank[rank] ?? null;
+}
+
 /** Reset localization state (e.g. when game install is cleared). */
 export function resetGameData() {
 	nameTable = {};
 	localizationLoaded = false;
 	quirks = [];
 	trinkets = [];
+	classStats = [];
 }

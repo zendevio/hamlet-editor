@@ -52,6 +52,7 @@ pub fn run() {
             commands::mods::scan_mod_directories,
             commands::gamedata::load_quirk_library,
             commands::gamedata::load_trinket_library,
+            commands::gamedata::load_class_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,9 +1,18 @@
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
+
+/// HP stats per armour rank (ranks 0-4) for a hero class, parsed from the
+/// class's `.info.darkest` file.
+#[derive(Debug, Serialize)]
+pub struct ClassStats {
+    pub class_id: String,
+    pub hp_by_rank: Vec<i32>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QuirkDef {
@@ -92,6 +101,71 @@ pub fn load_trinket_library(game_path: String) -> Result<Vec<TrinketDef>, String
     Ok(trinkets)
 }
 
+/// Load hero class HP stats from `heroes/<class>/<class>.info.darkest` files.
+///
+/// Parses the `armour:` lines in each file and extracts the `.hp` value for
+/// armour ranks 0-4. Handles base-game classes, plus the three DLC classes:
+/// Flagellant (Crimson Court), Shieldbreaker, and Musketeer.
+///
+/// Missing or malformed files are silently skipped.
+#[tauri::command]
+pub fn load_class_stats(game_path: String) -> Result<Vec<ClassStats>, String> {
+    let data_root = resolve_data_root(Path::new(&game_path));
+    let mut stats: Vec<ClassStats> = Vec::new();
+
+    // Collect (class_id, path_to_info_darkest) pairs.
+    let mut candidates: Vec<(String, PathBuf)> = Vec::new();
+
+    // Base-game heroes: heroes/<class>/<class>.info.darkest
+    let heroes_dir = data_root.join("heroes");
+    if heroes_dir.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(&heroes_dir) {
+            for entry in entries.flatten() {
+                let class_dir = entry.path();
+                if class_dir.is_dir() {
+                    if let Some(class_id) = class_dir.file_name().and_then(|n| n.to_str()) {
+                        let darkest = class_dir.join(format!("{class_id}.info.darkest"));
+                        candidates.push((class_id.to_string(), darkest));
+                    }
+                }
+            }
+        }
+    }
+
+    // DLC heroes with non-standard paths.
+    let dlc_extras = [
+        (
+            "flagellant",
+            "dlc/580100_crimson_court/features/flagellant/heroes/flagellant/flagellant.info.darkest",
+        ),
+        (
+            "shieldbreaker",
+            "dlc/702540_shieldbreaker/heroes/shieldbreaker/shieldbreaker.info.darkest",
+        ),
+        (
+            "musketeer",
+            "dlc/445700_musketeer/heroes/musketeer/musketeer.info.darkest",
+        ),
+    ];
+    for (class_id, rel_path) in &dlc_extras {
+        let full = data_root.join(rel_path);
+        // Only add if not already found under heroes/.
+        if !candidates.iter().any(|(id, _)| id == class_id) {
+            candidates.push((class_id.to_string(), full));
+        }
+    }
+
+    // Parse each candidate file.
+    let re = Regex::new(r"armour:\s+.*?\.hp\s+(\d+)").unwrap();
+    for (class_id, path) in candidates {
+        if let Some(class_stats) = parse_darkest_armour_hp(&class_id, &path, &re) {
+            stats.push(class_stats);
+        }
+    }
+
+    Ok(stats)
+}
+
 // ---------------------------------------------------------------------------
 // Parsing helpers
 // ---------------------------------------------------------------------------
@@ -146,6 +220,20 @@ fn parse_trinket_file(path: &Path, out: &mut Vec<TrinketDef>) {
             .map(|s| s.to_string());
         out.push(TrinketDef { id, rarity, class_restriction });
     }
+}
+
+/// Parse a `.info.darkest` file and extract HP values from `armour:` lines.
+/// Returns `None` if the file cannot be read or contains no armour entries.
+fn parse_darkest_armour_hp(class_id: &str, path: &Path, re: &Regex) -> Option<ClassStats> {
+    let content = std::fs::read_to_string(path).ok()?;
+    let hp_by_rank: Vec<i32> = re
+        .captures_iter(&content)
+        .filter_map(|cap| cap.get(1)?.as_str().parse::<i32>().ok())
+        .collect();
+    if hp_by_rank.is_empty() {
+        return None;
+    }
+    Some(ClassStats { class_id: class_id.to_string(), hp_by_rank })
 }
 
 // ---------------------------------------------------------------------------
