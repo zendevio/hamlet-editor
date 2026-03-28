@@ -269,6 +269,19 @@
 			</div>
 		</section>
 
+		<!-- Endless Wave Highscore (Color of Madness DLC) -->
+		{#if hasColorOfMadness && estateData?.endless_wave_highscore !== undefined}
+			<section>
+				<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+					Endless Mode
+				</h2>
+				<div class="flex items-center gap-2">
+					<span class="text-sm text-muted-foreground">Endless Highscore:</span>
+					<Badge variant="outline" class="tabular-nums">{estateData.endless_wave_highscore}</Badge>
+				</div>
+			</section>
+		{/if}
+
 		<!-- Estate Currencies Section (Crimson Court DLC) -->
 		{#if hasCrimsonCourt}
 			<section>

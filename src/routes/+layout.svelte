@@ -64,7 +64,7 @@
 		getHeroes,
 		CLASS_DISPLAY_NAMES
 	} from '$lib/stores/save-data.svelte';
-	import { setNameTable, setQuirks, setTrinkets, setClassStats, localize } from '$lib/stores/game-data.svelte';
+	import { setNameTable, setQuirks, setTrinkets, setClassStats } from '$lib/stores/game-data.svelte';
 	import {
 		Select,
 		SelectContent,

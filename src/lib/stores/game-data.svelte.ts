@@ -55,12 +55,6 @@ export function setNameTable(table: Record<string, string>) {
 	localizationLoaded = true;
 }
 
-/** Merge additional entries into the existing name table. */
-export function mergeNameTable(entries: Record<string, string>) {
-	nameTable = { ...nameTable, ...entries };
-	localizationLoaded = true;
-}
-
 /** Replace the loaded quirk definitions. */
 export function setQuirks(defs: QuirkDef[]) {
 	quirks = defs;

@@ -6,6 +6,7 @@
  */
 
 import type { GameInstall } from '$lib/api/detect';
+import { resetGameData } from '$lib/stores/game-data.svelte';
 
 // ── Persistence helpers ──
 
@@ -131,5 +132,6 @@ export function resetSetup() {
 	autoBackup = false;
 	isSetupComplete = false;
 	gameInstall = null;
+	resetGameData();
 	persistAll();
 }

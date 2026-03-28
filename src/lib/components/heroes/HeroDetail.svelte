@@ -65,7 +65,8 @@
 		revertHero,
 		markDirty,
 		RESOLVE_LEVEL_NAMES,
-		RESOLVE_XP_THRESHOLDS
+		RESOLVE_XP_THRESHOLDS,
+		getDlcFlags
 	} from '$lib/stores/save-data.svelte';
 	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '$lib/data/quirks';
 	import { snakeToTitle } from '$lib/utils';
@@ -81,6 +82,7 @@
 	} = $props();
 
 	const settings = getSettings();
+	const dlcFlags = getDlcFlags();
 
 	// ── Section open states ──
 	let identityOpen = $state(true);
@@ -926,8 +928,8 @@
 			</CollapsibleContent>
 		</Collapsible>
 
-		<!-- D2: Blood Curse Section (visible only if hero has disease_vampire_* quirk) -->
-		{#if hasBloodCurse}
+		<!-- D2: Blood Curse Section (visible only if Crimson Court DLC is installed AND hero has disease_vampire_* quirk) -->
+		{#if dlcFlags.hasCrimsonCourt && hasBloodCurse}
 			<Separator />
 			<Collapsible bind:open={bloodCurseOpen}>
 				<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">

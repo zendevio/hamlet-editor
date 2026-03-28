@@ -696,6 +696,22 @@ export function swapPartyPositions(indexA: number, indexB: number) {
 	markDirty('persist.raid.json');
 }
 
+/**
+ * Add a hero to the active raid party by GUID.
+ *
+ * The GUID string is converted to a number (as stored in party.heroes).
+ * Only adds if a raid is active and the party has fewer than 4 members.
+ * Marks persist.raid.json dirty.
+ */
+export function addHeroToRaidParty(heroGuid: string) {
+	if (!raid) return;
+	const heroes = raid.base_root.party.heroes;
+	if (heroes.length >= 4) return;
+	const guidNum = parseInt(heroGuid, 10);
+	heroes.push(guidNum);
+	markDirty('persist.raid.json');
+}
+
 // ── Load/Reset ──
 
 /** Load roster data into the store. */

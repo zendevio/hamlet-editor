@@ -15,7 +15,7 @@
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import FileTextIcon from 'phosphor-svelte/lib/FileTextIcon';
 	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
-	import { reviveHero, type HeroSummary } from '$lib/stores/save-data.svelte';
+	import { reviveHero, addHeroToRaidParty, type HeroSummary } from '$lib/stores/save-data.svelte';
 
 	let {
 		hero,
@@ -77,7 +77,9 @@
 		// clearDiedFlags and clearGraveyardFlag are called internally by reviveHero.
 		reviveHero(hero.guid);
 
-		// TODO: if addToRaidChecked, addHeroToRaidParty(hero.guid)
+		if (addToRaidChecked) {
+			addHeroToRaidParty(hero.guid);
+		}
 
 		confirmChecked = false;
 		addToRaidChecked = false;
