@@ -45,6 +45,7 @@
 	import { createBackup, listBackups, restoreBackup, restoreGameBackup, type BackupEntry } from '$lib/api/backup';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
+	import { onMount } from 'svelte';
 
 	// Phosphor icons
 	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -64,6 +65,18 @@
 	// ── State ──
 
 	const settings = getSettings();
+
+	let appVersion = $state('dev');
+
+	onMount(async () => {
+		try {
+			const { getVersion } = await import('@tauri-apps/api/app');
+			appVersion = 'v' + await getVersion();
+		} catch {
+			// Not in Tauri runtime (browser dev mode)
+			appVersion = 'dev';
+		}
+	});
 
 	// Path detection
 	let detectingGame = $state(false);
@@ -665,7 +678,7 @@
 			<CardContent class="space-y-4">
 				<div class="flex items-center justify-between">
 					<span class="text-xs font-medium">Version</span>
-					<Badge variant="outline" class="text-[11px]">v0.1.0</Badge>
+					<Badge variant="outline" class="text-[11px]">{appVersion}</Badge>
 				</div>
 
 				<Separator />

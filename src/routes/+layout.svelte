@@ -81,6 +81,8 @@
 
 	let { children } = $props();
 
+	let appVersion = $state('dev');
+
 	const settings = getSettings();
 	const saveData = getSaveData();
 	let showSetupWizard = $derived(!settings.isSetupComplete);
@@ -265,6 +267,11 @@
 	// ── Window Close Handler ──
 
 	onMount(() => {
+		// Fetch app version from Tauri (fire-and-forget; falls back to 'dev' in browser)
+		import('@tauri-apps/api/app').then(({ getVersion }) =>
+			getVersion().then((v) => { appVersion = 'v' + v; })
+		).catch(() => { appVersion = 'dev'; });
+
 		let unlisten: (() => void) | undefined;
 
 		async function setup() {
@@ -581,7 +588,7 @@
 	<DialogContent class="sm:max-w-sm">
 		<DialogHeader>
 			<DialogTitle>Hamlet Editor</DialogTitle>
-			<DialogDescription>v0.1.0</DialogDescription>
+			<DialogDescription>{appVersion}</DialogDescription>
 		</DialogHeader>
 		<div class="space-y-3 text-sm text-muted-foreground">
 			<p>A save editor for <em>Darkest Dungeon</em>.</p>
@@ -704,7 +711,7 @@
 						</TooltipTrigger>
 						<TooltipContent>About Hamlet Editor</TooltipContent>
 					</Tooltip>
-					<span class="text-xs text-muted-foreground">v0.1.0</span>
+					<span class="text-xs text-muted-foreground">{appVersion}</span>
 				</div>
 			</div>
 		</SidebarFooter>
