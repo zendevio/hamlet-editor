@@ -38,10 +38,8 @@
 	import SunIcon from 'phosphor-svelte/lib/SunIcon';
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotchIcon';
-	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
 	import SetupWizard from '$lib/components/SetupWizard.svelte';
-	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import ValidationDialog from '$lib/components/ValidationDialog.svelte';
 	import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
 	import DiscardConfirmDialog from '$lib/components/DiscardConfirmDialog.svelte';
@@ -296,26 +294,8 @@
 
 		setup();
 
-		// Listen for custom events from CommandPalette
-		function handleSaveEvent() {
-			handleSave();
-		}
-		function handleDiscardEvent() {
-			showDiscardDialog = true;
-		}
-		function handleBackupEvent() {
-			handleBackup();
-		}
-
-		window.addEventListener('hamlet:save', handleSaveEvent);
-		window.addEventListener('hamlet:discard', handleDiscardEvent);
-		window.addEventListener('hamlet:backup', handleBackupEvent);
-
 		return () => {
 			unlisten?.();
-			window.removeEventListener('hamlet:save', handleSaveEvent);
-			window.removeEventListener('hamlet:discard', handleDiscardEvent);
-			window.removeEventListener('hamlet:backup', handleBackupEvent);
 		};
 	});
 
@@ -365,11 +345,6 @@
 		if (mod && e.key === ',') {
 			e.preventDefault();
 			goto('/settings');
-		}
-		// Ctrl/Cmd+F: Open command palette (alias for Ctrl+K)
-		if (mod && e.key === 'f') {
-			e.preventDefault();
-			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
 		}
 
 		// Ctrl/Cmd+R: Prevent WebView reload. e.preventDefault() intercepts it
@@ -566,7 +541,6 @@
 
 <ModeWatcher />
 <Toaster />
-<CommandPalette />
 <ValidationDialog
 	bind:open={showValidation}
 	issues={validationIssues}
@@ -731,25 +705,6 @@
 			<SidebarTrigger class="-ml-1" />
 			<Separator orientation="vertical" class="mr-2 h-4" />
 			<h1 class="text-sm font-semibold">{viewTitle}</h1>
-
-			<!-- Search trigger -->
-			<Tooltip>
-				<TooltipTrigger>
-					<Button
-						variant="ghost"
-						size="sm"
-						class="text-muted-foreground ml-1 gap-1"
-						onclick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-					>
-						<MagnifyingGlassIcon size={16} />
-						<span class="text-xs">Search</span>
-						<kbd class="bg-muted text-muted-foreground pointer-events-none ml-1 inline-flex h-5 items-center gap-0.5 rounded border px-1.5 font-mono text-[10px] font-medium">
-							<span class="text-xs">{navigator?.platform?.includes('Mac') ? '\u2318' : 'Ctrl+'}</span>K
-						</kbd>
-					</Button>
-				</TooltipTrigger>
-				<TooltipContent>Search (Ctrl/Cmd+K)</TooltipContent>
-			</Tooltip>
 
 			<div class="ml-auto flex items-center gap-2">
 				<!-- Game Running Badge -->

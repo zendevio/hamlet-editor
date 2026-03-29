@@ -410,7 +410,7 @@
 					</Card.Content>
 				</Card.Root>
 			{:else}
-				<ScrollArea class="h-[270px]">
+				<ScrollArea class="h-67.5">
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pr-3">
 						{#each filteredTrinkets as trinket, i (i)}
 							<TrinketCard
