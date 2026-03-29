@@ -15,9 +15,13 @@
 	import DropIcon from 'phosphor-svelte/lib/DropIcon';
 	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
-	import PlusIcon from 'phosphor-svelte/lib/PlusIcon';
+	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import TrinketPicker from '$lib/components/heroes/TrinketPicker.svelte';
 	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData, getHeroes } from '$lib/stores/save-data.svelte';
+	import { localize } from '$lib/stores/game-data.svelte';
+	import { snakeToTitle } from '$lib/utils';
+	import { getSettings } from '$lib/stores/settings.svelte';
+	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
 
@@ -25,6 +29,7 @@
 
 	const saveData = getSaveData();
 	const dlcFlags = getDlcFlags();
+	const settings = getSettings();
 
 	// estateData reads from the shared store's estate field.
 	// The base_root is unwrapped to match the local EstateData shape expected by the UI.
@@ -76,16 +81,16 @@
 	let equippedTrinketCount = $derived(getHeroes().reduce((count, h) => count + Object.keys(h.trinkets ?? {}).length, 0));
 
 	// Add Trinket picker state
-	let showTrinketPicker = $state(false);
+	let trinketSearch = $state('');
 
 	// ----- Derived data -----
 
 	const walletCurrencies = [
-		{ type: 'gold', name: 'Gold', icon: CurrencyDollarIcon },
-		{ type: 'bust', name: 'Busts', icon: ScrollIcon },
-		{ type: 'portrait', name: 'Portraits', icon: ImageIcon },
-		{ type: 'deed', name: 'Deeds', icon: FileTextIcon },
-		{ type: 'crest', name: 'Crests', icon: ShieldIcon }
+		{ type: 'gold', name: 'Gold', icon: CurrencyDollarIcon, asset: 'shared/estate/currency.gold.large_icon.png' },
+		{ type: 'bust', name: 'Busts', icon: ScrollIcon, asset: 'shared/estate/currency.bust.icon.png' },
+		{ type: 'portrait', name: 'Portraits', icon: ImageIcon, asset: 'shared/estate/currency.portrait.icon.png' },
+		{ type: 'deed', name: 'Deeds', icon: FileTextIcon, asset: 'shared/estate/currency.deed.icon.png' },
+		{ type: 'crest', name: 'Crests', icon: ShieldIcon, asset: 'shared/estate/currency.crest.icon.png' }
 	] as const;
 
 	/** Wallet amounts keyed by currency type. */
@@ -104,8 +109,22 @@
 	/** Trinkets in estate storage. */
 	let trinkets = $derived.by(() => {
 		if (!estateData) return [];
-		return Object.values(estateData.trinkets.items);
+		return Object.values(estateData.trinkets.items).sort((a, b) => {
+			const nameA = localize(`str_inventory_title_trinket${a.id}`) ?? snakeToTitle(a.id);
+			const nameB = localize(`str_inventory_title_trinket${b.id}`) ?? snakeToTitle(b.id);
+			return nameA.localeCompare(nameB);
+		});
 	});
+
+	/** Filtered trinkets based on search query. */
+	let filteredTrinkets = $derived(
+		trinketSearch.trim().length === 0
+			? trinkets
+			: trinkets.filter(t =>
+				t.id.toLowerCase().includes(trinketSearch.trim().toLowerCase()) ||
+				(localize(`str_inventory_title_trinket${t.id}`) ?? snakeToTitle(t.id)).toLowerCase().includes(trinketSearch.trim().toLowerCase())
+			)
+	);
 
 	/** Estate items (invitations, blood, blueprints). */
 	let estateItems = $derived.by(() => {
@@ -160,10 +179,6 @@
 		}
 	}
 
-	function handleAddTrinket() {
-		showTrinketPicker = true;
-	}
-
 	function handleTrinketSelected(trinketId: string) {
 		if (!estateData || !saveData.estate || !trinketId) return;
 		const existingKeys = Object.keys(estateData.trinkets.items).map(Number).filter((n) => !isNaN(n));
@@ -174,7 +189,6 @@
 			amount: 1
 		};
 		markDirty('persist.estate.json');
-		showTrinketPicker = false;
 	}
 
 	/** Update an estate_item amount by its ID key. */
@@ -224,23 +238,36 @@
 {:else}
 	<ScrollArea class="h-full">
 	<div class="space-y-8 p-6">
-		<!-- D6: Estate Name Section -->
+		<!-- D6: Estate Name + Endless Mode -->
 		<section>
-			<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-				Estate Name
-			</h2>
-			<div class="max-w-sm space-y-1">
-				<Input
-					bind:value={estateNameValue}
-					onfocus={() => (estateNameEditing = true)}
-					onblur={handleEstateNameBlur}
-					onkeydown={handleEstateNameKeydown}
-					placeholder="Enter estate name..."
-					class="h-9 text-sm"
-				/>
-				<p class="text-[10px] text-muted-foreground">
-					{new TextEncoder().encode(estateNameValue).length} bytes
-				</p>
+			<div class="flex items-start gap-6">
+				<div class="flex-1">
+					<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+						Estate Name
+					</h2>
+					<div class="max-w-sm">
+						<Input
+							bind:value={estateNameValue}
+							onfocus={() => (estateNameEditing = true)}
+							onblur={handleEstateNameBlur}
+							onkeydown={handleEstateNameKeydown}
+							placeholder="Enter estate name..."
+							maxlength={32}
+							class="h-9 text-sm"
+						/>
+					</div>
+				</div>
+				{#if hasColorOfMadness && estateData?.endless_wave_highscore !== undefined}
+					<div>
+						<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+							Endless Mode
+						</h2>
+						<div class="flex items-center gap-2">
+							<span class="text-sm text-muted-foreground">Highscore:</span>
+							<Badge variant="outline" class="tabular-nums">{estateData.endless_wave_highscore}</Badge>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</section>
 
@@ -255,6 +282,8 @@
 						name={currency.name}
 						value={walletAmounts?.[currency.type] ?? 0}
 						icon={currency.icon}
+						gamePath={settings.gamePath}
+						gameAssetPath={currency.asset}
 						onchange={(v) => handleWalletChange(currency.type, v)}
 					/>
 				{/each}
@@ -263,24 +292,13 @@
 						name="Shards"
 						value={shardAmount}
 						icon={DiamondIcon}
+						gamePath={settings.gamePath}
+						gameAssetPath="shared/estate/currency.shard.icon.png"
 						onchange={(v) => handleWalletChange('shard', v)}
 					/>
 				{/if}
 			</div>
 		</section>
-
-		<!-- Endless Wave Highscore (Color of Madness DLC) -->
-		{#if hasColorOfMadness && estateData?.endless_wave_highscore !== undefined}
-			<section>
-				<h2 class="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-					Endless Mode
-				</h2>
-				<div class="flex items-center gap-2">
-					<span class="text-sm text-muted-foreground">Endless Highscore:</span>
-					<Badge variant="outline" class="tabular-nums">{estateData.endless_wave_highscore}</Badge>
-				</div>
-			</section>
-		{/if}
 
 		<!-- Estate Currencies Section (Crimson Court DLC) -->
 		{#if hasCrimsonCourt}
@@ -290,26 +308,28 @@
 				</h2>
 				<Card.Root>
 					<Card.Content class="pt-0">
-						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+						<div class="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
 							<!-- Invitations -->
 							<div class="space-y-2">
-								<div class="flex items-center gap-2">
-									<EnvelopeIcon size={16} class="text-muted-foreground" />
+								<div class="flex h-6 items-center gap-2">
+									<GameAssetIcon gamePath={settings.gamePath} relativePath="dlc/580100_crimson_court/features/crimson_court/panels/icons_equip/estate_currency/inv_estate_currency+crimson_court_invitation_A.png" alt="Invitations" class="h-10 w-auto">
+										{#snippet fallback()}<EnvelopeIcon class="text-muted-foreground size-10" />{/snippet}
+									</GameAssetIcon>
 									<span class="text-sm font-medium">Invitations</span>
 								</div>
 								<div class="grid grid-cols-3 gap-2">
 									<div class="space-y-1">
-										<label for="inv-a" class="text-xs text-muted-foreground">A (Baron)</label>
+										<label for="inv-a" class="text-xs text-muted-foreground">Baron</label>
 										<Input id="inv-a" type="number" min="0" value={String(invitationA)} class="h-8 tabular-nums"
 											onchange={(e) => handleEstateItemChange('crimson_court_invitation_A', Number((e.target as HTMLInputElement).value))} />
 									</div>
 									<div class="space-y-1">
-										<label for="inv-b" class="text-xs text-muted-foreground">B (Viscount)</label>
+										<label for="inv-b" class="text-xs text-muted-foreground">Viscount</label>
 										<Input id="inv-b" type="number" min="0" value={String(invitationB)} class="h-8 tabular-nums"
 											onchange={(e) => handleEstateItemChange('crimson_court_invitation_B', Number((e.target as HTMLInputElement).value))} />
 									</div>
 									<div class="space-y-1">
-										<label for="inv-c" class="text-xs text-muted-foreground">C (Countess)</label>
+										<label for="inv-c" class="text-xs text-muted-foreground">Countess</label>
 										<Input id="inv-c" type="number" min="0" value={String(invitationC)} class="h-8 tabular-nums"
 											onchange={(e) => handleEstateItemChange('crimson_court_invitation_C', Number((e.target as HTMLInputElement).value))} />
 									</div>
@@ -318,27 +338,30 @@
 
 							<!-- Blood Vials -->
 							<div class="space-y-2">
-								<div class="flex items-center gap-2">
-									<DropIcon size={16} class="text-muted-foreground" />
+								<div class="flex h-6 items-center gap-2">
+									<GameAssetIcon gamePath={settings.gamePath} relativePath="dlc/580100_crimson_court/features/crimson_court/panels/icons_equip/estate/inv_estate+the_blood.png" alt="Blood" class="h-10 w-auto">
+										{#snippet fallback()}<DropIcon class="text-muted-foreground size-10" />{/snippet}
+									</GameAssetIcon>
 									<span class="text-sm font-medium">Blood</span>
 								</div>
 								<div class="space-y-1">
-									<Input type="number" min="0" value={String(bloodAmount)} class="h-8 tabular-nums"
+									<label for="blood-amount" class="text-xs text-muted-foreground">Amount</label>
+									<Input id="blood-amount" type="number" min="0" value={String(bloodAmount)} class="h-8 tabular-nums"
 										onchange={(e) => handleEstateItemChange('the_blood', Number((e.target as HTMLInputElement).value))} />
-									<p class="text-[10px] text-muted-foreground/70">
-										type: "estate" (not "estate_currency")
-									</p>
 								</div>
 							</div>
 
 							<!-- Blueprints -->
 							<div class="space-y-2">
-								<div class="flex items-center gap-2">
-									<WrenchIcon size={16} class="text-muted-foreground" />
+								<div class="flex h-6 items-center gap-2">
+									<GameAssetIcon gamePath={settings.gamePath} relativePath="dlc/580100_crimson_court/features/districts/shared/estate/currency.blueprint.icon.png" alt="Blueprints" class="h-10 w-auto">
+										{#snippet fallback()}<WrenchIcon class="text-muted-foreground size-10" />{/snippet}
+									</GameAssetIcon>
 									<span class="text-sm font-medium">Blueprints</span>
 								</div>
 								<div class="space-y-1">
-									<Input type="number" min="0" value={String(blueprintCount)} class="h-8 tabular-nums"
+									<label for="blueprint-amount" class="text-xs text-muted-foreground">Amount</label>
+									<Input id="blueprint-amount" type="number" min="0" value={String(blueprintCount)} class="h-8 tabular-nums"
 										onchange={(e) => handleBlueprintChange(Number((e.target as HTMLInputElement).value))} />
 								</div>
 							</div>
@@ -350,15 +373,29 @@
 
 		<!-- Trinket Storage Section -->
 		<section>
-			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+			<div class="mb-4 flex items-center justify-between gap-3">
+				<h2 class="shrink-0 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 					Trinket Storage
 				</h2>
-				{#if equippedTrinketCount > 0}
-					<Badge variant="outline" class="text-xs font-normal">
-						{equippedTrinketCount} trinket{equippedTrinketCount !== 1 ? 's' : ''} equipped on heroes
-					</Badge>
-				{/if}
+				<div class="flex items-center gap-2">
+					{#if equippedTrinketCount > 0}
+						<Badge variant="outline" class="text-xs font-normal">
+							{equippedTrinketCount} equipped
+						</Badge>
+					{/if}
+					<TrinketPicker onselect={handleTrinketSelected} placeholder="Add Trinket" />
+					<div class="relative">
+						<MagnifyingGlassIcon
+							class="text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2"
+							size={14}
+						/>
+						<Input
+							placeholder="Search trinkets..."
+							bind:value={trinketSearch}
+							class="h-7 w-48 pl-7 text-xs"
+						/>
+					</div>
+				</div>
 			</div>
 
 			{#if trinkets.length === 0}
@@ -367,37 +404,27 @@
 						<div class="flex min-h-30 flex-col items-center justify-center gap-3 text-center">
 							<p class="text-sm text-muted-foreground">No trinkets in storage</p>
 							<p class="text-xs text-muted-foreground/70">
-								Trinkets unequipped from heroes or added via the button below will appear here.
+								Use "Add Trinket" above to add trinkets to storage.
 							</p>
-							<Button variant="outline" size="sm" onclick={handleAddTrinket}>
-								<PlusIcon size={14} />
-								Add Trinket
-							</Button>
 						</div>
 					</Card.Content>
 				</Card.Root>
 			{:else}
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-					{#each trinkets as trinket, i (i)}
-						<TrinketCard
-							id={trinket.id}
-							type={trinket.type}
-							onremove={handleRemoveTrinket}
-						/>
-					{/each}
-				</div>
-				<div class="mt-3">
-					<Button variant="outline" size="sm" onclick={handleAddTrinket}>
-						<PlusIcon size={14} />
-						Add Trinket
-					</Button>
-				</div>
-			{/if}
-
-			{#if showTrinketPicker}
-				<div class="mt-3 max-w-xs">
-					<TrinketPicker onselect={handleTrinketSelected} />
-				</div>
+				<ScrollArea class="h-[270px]">
+					<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pr-3">
+						{#each filteredTrinkets as trinket, i (i)}
+							<TrinketCard
+								id={trinket.id}
+								type={trinket.type}
+								gamePath={settings.gamePath}
+								onremove={handleRemoveTrinket}
+							/>
+						{/each}
+					</div>
+					{#if filteredTrinkets.length === 0 && trinkets.length > 0}
+						<p class="py-8 text-center text-sm text-muted-foreground">No trinkets match your search.</p>
+					{/if}
+				</ScrollArea>
 			{/if}
 		</section>
 	</div>

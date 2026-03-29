@@ -3,33 +3,56 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
-	import { snakeToTitle } from '$lib/utils';
+	import { snakeToTitle, getTrinketIconPath } from '$lib/utils';
+	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
+	import { localize } from '$lib/stores/game-data.svelte';
 
 	let {
 		id,
 		type = 'trinket',
+		gamePath,
 		onremove
 	}: {
 		id: string;
 		type?: string;
+		gamePath?: string;
 		onremove?: (id: string) => void;
 	} = $props();
 
-	let displayName = $derived(snakeToTitle(id));
+	let displayName = $derived(localize(`str_inventory_title_trinket${id}`) === snakeToTitle(`str_inventory_title_trinket${id}`)
+		? snakeToTitle(id)
+		: localize(`str_inventory_title_trinket${id}`));
 </script>
 
-<Card.Root class="group relative p-3 gap-2">
+<Card.Root class="group relative p-2 gap-2">
 	<div class="flex items-start justify-between gap-2">
 		<div class="flex items-center gap-2 min-w-0">
-			<!-- Placeholder trinket icon -->
-			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-muted text-xs font-bold text-muted-foreground"
-			>
-				T
-			</div>
+			<!-- Trinket icon -->
+			{#if gamePath}
+				<GameAssetIcon
+					{gamePath}
+					relativePath={getTrinketIconPath(id)}
+					alt={displayName}
+					class="size-16 shrink-0 object-contain"
+				>
+					{#snippet fallback()}
+						<div
+							class="flex size-16 shrink-0 items-center justify-center rounded-sm bg-muted text-xs font-bold text-muted-foreground"
+						>
+							T
+						</div>
+					{/snippet}
+				</GameAssetIcon>
+			{:else}
+				<div
+					class="flex size-16 shrink-0 items-center justify-center rounded-sm bg-muted text-xs font-bold text-muted-foreground"
+				>
+					T
+				</div>
+			{/if}
 			<div class="min-w-0">
 				<p class="truncate text-sm font-medium" title={id}>{displayName}</p>
-				<p class="text-xs text-muted-foreground">{id}</p>
+				<p class="truncate text-xs text-muted-foreground">{id}</p>
 			</div>
 		</div>
 		<Button

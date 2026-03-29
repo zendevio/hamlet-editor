@@ -372,12 +372,26 @@ export function setHeroArmourRank(guid: string, rank: number) {
 	markDirty('persist.roster.json');
 }
 
-/** Update a hero's affliction. */
-export function setHeroAffliction(guid: string, afflictionId: string) {
+const VIRTUE_IDS = new Set(['courageous', 'focused', 'powerful', 'vigorous', 'stalwart']);
+
+/** Update a hero's affliction or virtue. Clears the opposing field automatically. */
+export function setHeroAffliction(guid: string, valueId: string) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw.affliction_type_id = afflictionId;
-	raw.affliction_severity = afflictionId ? 1 : 0;
+	if (!valueId) {
+		// Clear both
+		raw.affliction_type_id = '';
+		raw.virtue_type_id = '';
+		raw.affliction_severity = 0;
+	} else if (VIRTUE_IDS.has(valueId)) {
+		raw.virtue_type_id = valueId;
+		raw.affliction_type_id = '';
+		raw.affliction_severity = 0;
+	} else {
+		raw.affliction_type_id = valueId;
+		raw.virtue_type_id = '';
+		raw.affliction_severity = raw.affliction_severity || 1;
+	}
 	markDirty('persist.roster.json');
 }
 

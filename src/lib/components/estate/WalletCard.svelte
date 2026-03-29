@@ -1,17 +1,22 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
+	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
 	import type { Component } from 'svelte';
 
 	let {
 		name,
 		value = $bindable(0),
 		icon: Icon,
+		gameAssetPath,
+		gamePath,
 		onchange
 	}: {
 		name: string;
 		value: number;
 		icon?: Component<{ size?: number; class?: string }>;
+		gameAssetPath?: string;
+		gamePath?: string;
 		onchange?: (value: number) => void;
 	} = $props();
 
@@ -55,8 +60,25 @@
 
 <Card.Root class="p-4 gap-3">
 	<div class="flex items-center gap-2 px-0">
-		{#if Icon}
-			<Icon size={20} class="text-muted-foreground shrink-0" />
+		{#if gameAssetPath && gamePath}
+			<GameAssetIcon
+				{gamePath}
+				relativePath={gameAssetPath}
+				alt={name}
+				class="size-10"
+			>
+				{#snippet fallback()}
+					{#if Icon}
+						<Icon class="text-muted-foreground shrink-0 size-10" />
+					{:else}
+						<div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-muted text-[10px] font-bold text-muted-foreground">
+							{name.charAt(0).toUpperCase()}
+						</div>
+					{/if}
+				{/snippet}
+			</GameAssetIcon>
+		{:else if Icon}
+			<Icon class="text-muted-foreground shrink-0 size-10" />
 		{:else}
 			<div
 				class="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-muted text-[10px] font-bold text-muted-foreground"

@@ -12,11 +12,6 @@
 		SelectItem,
 		SelectTrigger
 	} from '$lib/components/ui/select';
-	import {
-		Collapsible,
-		CollapsibleContent,
-		CollapsibleTrigger
-	} from '$lib/components/ui/collapsible';
 	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
 	import {
 		Dialog,
@@ -27,8 +22,6 @@
 		DialogFooter
 	} from '$lib/components/ui/dialog';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
-	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
@@ -41,6 +34,7 @@
 	import TrashIcon from 'phosphor-svelte/lib/TrashIcon';
 	import DropIcon from 'phosphor-svelte/lib/DropIcon';
 	import GameAssetImage from '$lib/components/GameAssetImage.svelte';
+	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
 	import { getSettings } from '$lib/stores/settings.svelte';
 	import { getPortraitPath } from '$lib/utils';
 	import type { HeroSummary, HeroQuirk } from '$lib/stores/save-data.svelte';
@@ -85,15 +79,6 @@
 
 	const settings = getSettings();
 	const dlcFlags = getDlcFlags();
-
-	// ── Section open states ──
-	let identityOpen = $state(true);
-	let vitalsOpen = $state(true);
-	let quirksOpen = $state(false);
-	let skillsOpen = $state(false);
-	let equipmentOpen = $state(false);
-	let bloodCurseOpen = $state(false);
-	let actionsOpen = $state(true);
 
 	// ── Quirk picker ──
 	let showQuirkPicker = $state(false);
@@ -367,167 +352,127 @@
 <ScrollArea class="h-full">
 	<div class="space-y-4 p-4">
 		<!-- Header -->
-		<div class="flex items-start justify-between">
-			<div class="flex items-center gap-3">
-				<!-- Portrait -->
-				<div class="relative h-16 w-16 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
-					{#if isDead}
-						<div class="bg-muted flex h-full w-full items-center justify-center">
-							<SkullIcon size={28} class="text-muted-foreground" />
-						</div>
-					{:else}
-						<GameAssetImage
-							gamePath={settings.gamePath}
-							relativePath={getPortraitPath(hero.heroClass)}
-							alt="{hero.name} portrait"
-							class="h-full w-full object-cover"
-						/>
-					{/if}
-				</div>
-				<div>
-					<!-- Status badge -->
-					<div class="mb-1 flex items-center gap-1.5">
-						<span class="h-2 w-2 rounded-full {hero.statusDotClass}"></span>
-						<span class="text-xs font-medium {isDead ? 'text-red-500' : 'text-muted-foreground'}">
-							{hero.statusLabel}
-						</span>
+		<div class="flex gap-3">
+			<!-- Portrait -->
+			<div class="relative h-16 w-16 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
+				{#if isDead}
+					<div class="bg-muted flex h-full w-full items-center justify-center">
+						<SkullIcon size={28} class="text-muted-foreground" />
 					</div>
-					<div class="text-muted-foreground text-xs">{hero.classDisplayName}</div>
+				{:else}
+					<GameAssetImage
+						gamePath={settings.gamePath}
+						relativePath={getPortraitPath(hero.heroClass)}
+						alt="{hero.name} portrait"
+						class="h-full w-full object-cover"
+					/>
+				{/if}
+			</div>
+			<!-- Info -->
+			<div class="flex min-w-0 flex-1 flex-col justify-center gap-1">
+				<div class="flex items-center justify-between">
+					{#if editingName}
+						<Input
+							bind:value={nameValue}
+							onblur={saveName}
+							onkeydown={handleNameKeydown}
+							class="h-7 text-sm font-medium"
+							autofocus
+						/>
+					{:else}
+						<button
+							type="button"
+							class="group flex min-w-0 cursor-pointer items-center gap-1 rounded-none border border-transparent px-1 py-0.5 text-sm font-medium transition-colors hover:border-border hover:bg-muted/50"
+							onclick={startEditName}
+						>
+							<span class="truncate">{hero.name}</span>
+							<PencilIcon
+								size={12}
+								class="text-muted-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+							/>
+						</button>
+					{/if}
+					<Tooltip>
+						<TooltipTrigger>
+							<Button variant="ghost" size="sm" class="h-7 shrink-0 gap-1 text-xs" onclick={handleRevert}>
+								<ArrowCounterClockwiseIcon size={12} />
+								Reset
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>Revert all unsaved changes for this hero</TooltipContent>
+					</Tooltip>
+				</div>
+				<div class="flex items-center justify-between px-1 text-xs text-muted-foreground">
+					<div class="flex items-center gap-2">
+						<span>{hero.classDisplayName}</span>
+						<span class="h-2 w-2 shrink-0 rounded-full {hero.statusDotClass}"></span>
+						<span class="{isDead ? 'text-red-500' : ''}">{hero.statusLabel}</span>
+					</div>
+					<Select type="single" value={String(resolveLevel)} onValueChange={(v: string) => handleLevelChange(v)}>
+						<SelectTrigger class="h-6 w-auto text-xs">
+							<span class="truncate">Lv {resolveLevel} — {RESOLVE_LEVEL_NAMES[resolveLevel]}</span>
+						</SelectTrigger>
+						<SelectContent>
+							{#each Array(7) as _, i}
+								<SelectItem value={String(i)}>
+									Lv {i} — {RESOLVE_LEVEL_NAMES[i]} (XP: {RESOLVE_XP_THRESHOLDS[i]})
+								</SelectItem>
+							{/each}
+						</SelectContent>
+					</Select>
 				</div>
 			</div>
-			<Tooltip>
-				<TooltipTrigger>
-					<Button variant="ghost" size="sm" class="h-7 gap-1 text-xs" onclick={handleRevert}>
-						<ArrowCounterClockwiseIcon size={12} />
-						Reset
-					</Button>
-				</TooltipTrigger>
-				<TooltipContent>Revert all unsaved changes for this hero</TooltipContent>
-			</Tooltip>
 		</div>
 
 		<Separator />
 
-		<!-- ═══════ Identity Section ═══════ -->
-		<Collapsible bind:open={identityOpen}>
-			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-				{#if identityOpen}
-					<CaretDownIcon size={14} class="text-muted-foreground" />
-				{:else}
-					<CaretRightIcon size={14} class="text-muted-foreground" />
-				{/if}
-				<span class="text-xs font-semibold uppercase tracking-wider">Identity</span>
-			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="mt-2 space-y-3">
-					<!-- Name -->
-					<div>
-						<span class="text-muted-foreground mb-1 block text-[11px]">Name</span>
-						{#if editingName}
-							<Input
-								bind:value={nameValue}
-								onblur={saveName}
-								onkeydown={handleNameKeydown}
-								class="h-8 text-sm"
-								autofocus
-							/>
-						{:else}
-							<button
-								type="button"
-							class="group flex w-full cursor-pointer items-center gap-2 rounded-none border border-transparent px-2 py-1 text-sm font-medium transition-colors hover:border-border hover:bg-muted/50"
-								onclick={startEditName}
-							>
-								<span class="flex-1 text-left">{hero.name}</span>
-								<PencilIcon
-									size={12}
-									class="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-								/>
-							</button>
-						{/if}
-					</div>
-
-					<!-- Class (read-only) -->
-					<div>
-						<span class="text-muted-foreground mb-1 block text-[11px]">Class</span>
-						<div class="flex items-center gap-2 px-2 py-1 text-sm">
-							<span>{hero.classDisplayName}</span>
-							<Tooltip>
-								<TooltipTrigger>
-									<Badge variant="outline" class="h-4 text-[10px]">{hero.heroClass}</Badge>
-								</TooltipTrigger>
-								<TooltipContent>Internal class ID</TooltipContent>
-							</Tooltip>
-						</div>
-					</div>
-
-					<!-- Resolve Level -->
-					<div>
-						<span class="text-muted-foreground mb-1 block text-[11px]">Resolve Level</span>
-						<Select type="single" value={String(resolveLevel)} onValueChange={(v: string) => handleLevelChange(v)}>
-							<SelectTrigger class="h-8 w-full text-xs">
-								<span>Lv {resolveLevel} — {RESOLVE_LEVEL_NAMES[resolveLevel]}</span>
-							</SelectTrigger>
-							<SelectContent>
-								{#each Array(7) as _, i}
-									<SelectItem value={String(i)}>
-										Lv {i} — {RESOLVE_LEVEL_NAMES[i]} (XP: {RESOLVE_XP_THRESHOLDS[i]})
-									</SelectItem>
-								{/each}
-							</SelectContent>
-						</Select>
-						<!-- D7: Inline gear match confirmation -->
-						{#if pendingLevel !== null}
-							<div class="mt-2 rounded-none border border-amber-500/30 bg-amber-500/5 p-2 text-[11px]">
-								<p class="mb-1.5 font-medium text-amber-700 dark:text-amber-400">
-									Update weapon &amp; armour rank to {pendingMaxGear}?
-								</p>
-								<div class="flex gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										class="h-6 flex-1 text-[11px]"
-										onclick={confirmGearMatch}
-									>
-										Yes
-									</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										class="h-6 flex-1 text-[11px]"
-										onclick={declineGearMatch}
-									>
-										No
-									</Button>
-								</div>
-							</div>
-						{/if}
+		<!-- ═══════ Vitals Section ═══════ -->
+		<div>
+			<div class="flex w-full items-center gap-2 py-1">
+				<span class="text-xs font-semibold uppercase tracking-wider">Vitals</span>
+			</div>
+			<!-- D7: Inline gear match confirmation -->
+			{#if pendingLevel !== null}
+				<div class="rounded-none border border-amber-500/30 bg-amber-500/5 p-2 text-[11px]">
+					<p class="mb-1.5 font-medium text-amber-700 dark:text-amber-400">
+						Update weapon &amp; armour rank to {pendingMaxGear}?
+					</p>
+					<div class="flex gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							class="h-6 flex-1 text-[11px]"
+							onclick={confirmGearMatch}
+						>
+							Yes
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							class="h-6 flex-1 text-[11px]"
+							onclick={declineGearMatch}
+						>
+							No
+						</Button>
 					</div>
 				</div>
-			</CollapsibleContent>
-		</Collapsible>
-
-		<Separator />
-
-		<!-- ═══════ Vitals Section ═══════ -->
-		<Collapsible bind:open={vitalsOpen}>
-			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-				{#if vitalsOpen}
-					<CaretDownIcon size={14} class="text-muted-foreground" />
-				{:else}
-					<CaretRightIcon size={14} class="text-muted-foreground" />
-				{/if}
-				<span class="text-xs font-semibold uppercase tracking-wider">Vitals</span>
-			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="mt-2 space-y-4">
-					<!-- HP -->
-					<div>
-						<div class="mb-2 flex items-center justify-between">
-							<div class="flex items-center gap-1.5">
-								<HeartIcon size={14} class="text-red-500" />
-								<span class="text-[11px] font-medium">HP</span>
-							</div>
-							<div class="flex items-center gap-2">
+			{/if}
+			<div class="mt-2 space-y-4">
+					<div class="flex gap-4">
+						<!-- HP -->
+						<div class="flex-1">
+							<div class="mb-1 flex items-center justify-between">
+								<div class="flex items-center gap-1.5">
+									<GameAssetIcon
+										gamePath={settings.gamePath}
+										relativePath="raid/skill_attributes/skill_attribute_heal.png"
+										alt="HP"
+										class="size-3.5"
+									>
+										{#snippet fallback()}<HeartIcon size={14} class="text-red-500" />{/snippet}
+									</GameAssetIcon>
+									<span class="text-[11px] font-medium">HP</span>
+								</div>
 								<span
 									class="text-xs font-mono {hero.currentHp < maxHp * 0.5
 										? 'text-red-500 font-bold'
@@ -535,35 +480,40 @@
 								>
 									{hero.currentHp} / {maxHp}
 								</span>
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-6 text-[11px]"
-									onclick={() => healHeroToMax(hero.guid)}
-									disabled={hero.currentHp >= maxHp}
-								>
-									Heal to Max
-								</Button>
 							</div>
+							<Slider
+								value={hero.currentHp}
+								max={maxHp}
+								min={0}
+								step={1}
+								type="single"
+								onValueChange={(v) => handleHpSlider(v)}
+							/>
+							<Button
+								variant="outline"
+								size="sm"
+								class="mt-1.5 h-6 w-full text-[11px]"
+								onclick={() => healHeroToMax(hero.guid)}
+								disabled={hero.currentHp >= maxHp}
+							>
+								Heal to Max
+							</Button>
 						</div>
-						<Slider
-							value={hero.currentHp}
-							max={maxHp}
-							min={0}
-							step={1}
-							type="single"
-							onValueChange={(v) => handleHpSlider(v)}
-						/>
-					</div>
 
-					<!-- Stress -->
-					<div>
-						<div class="mb-2 flex items-center justify-between">
-							<div class="flex items-center gap-1.5">
-								<BrainIcon size={14} class="text-yellow-500" />
-								<span class="text-[11px] font-medium">Stress</span>
-							</div>
-							<div class="flex items-center gap-2">
+						<!-- Stress -->
+						<div class="flex-1">
+							<div class="mb-1 flex items-center justify-between">
+								<div class="flex items-center gap-1.5">
+									<GameAssetIcon
+										gamePath={settings.gamePath}
+										relativePath="raid/skill_attributes/skill_attribute_stress.png"
+										alt="Stress"
+										class="size-3.5"
+									>
+										{#snippet fallback()}<BrainIcon size={14} class="text-yellow-500" />{/snippet}
+									</GameAssetIcon>
+									<span class="text-[11px] font-medium">Stress</span>
+								</div>
 								<span
 									class="text-xs font-mono {hero.stress >= 100
 										? 'text-red-500 font-bold'
@@ -571,30 +521,30 @@
 								>
 									{hero.stress} / 200
 								</span>
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-6 text-[11px]"
-									onclick={() => setHeroStress(hero.guid, 0)}
-									disabled={hero.stress === 0}
-								>
-									Clear
-								</Button>
 							</div>
+							<Slider
+								value={hero.stress}
+								max={200}
+								min={0}
+								step={1}
+								type="single"
+								onValueChange={(v) => handleStressSlider(v)}
+							/>
+							<Button
+								variant="outline"
+								size="sm"
+								class="mt-1.5 h-6 w-full text-[11px]"
+								onclick={() => setHeroStress(hero.guid, 0)}
+								disabled={hero.stress === 0}
+							>
+								Clear Stress
+							</Button>
+							{#if hero.stress >= 100}
+								<p class="text-destructive mt-1 text-[11px]">
+									Affliction threshold reached ({hero.afflictionTypeId || 'none set'})
+								</p>
+							{/if}
 						</div>
-						<Slider
-							value={hero.stress}
-							max={200}
-							min={0}
-							step={1}
-							type="single"
-							onValueChange={(v) => handleStressSlider(v)}
-						/>
-						{#if hero.stress >= 100}
-							<p class="text-destructive mt-1 text-[11px]">
-								Affliction threshold reached ({hero.afflictionTypeId || 'none set'})
-							</p>
-						{/if}
 					</div>
 
 					<!-- Affliction / Virtue and Deaths Door
@@ -603,88 +553,89 @@
 					     They persist across raids and are NOT in persist.raid.json.
 					     Changes here are written to persist.roster.json. -->
 
-					<!-- Affliction -->
-					<div>
-						<div class="mb-1 flex items-center justify-between">
-							<span class="text-[11px] font-medium">Affliction / Virtue</span>
-							{#if hero.afflictionTypeId}
-								<Button
-									variant="ghost"
-									size="sm"
-									class="h-5 text-[10px]"
-									onclick={() => setHeroAffliction(hero.guid, '')}
-								>
-									Clear
-								</Button>
-							{/if}
+					<div class="flex gap-4">
+						<!-- Affliction -->
+						<div class="flex-1">
+							<div class="mb-1 flex items-center justify-between">
+								<span class="text-[11px] font-medium">Affliction / Virtue</span>
+								{#if hero.afflictionTypeId || hero.virtueTypeId}
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-5 text-[10px]"
+										onclick={() => setHeroAffliction(hero.guid, '')}
+									>
+										Clear
+									</Button>
+								{/if}
+							</div>
+							<Select
+								type="single"
+								value={hero.virtueTypeId || hero.afflictionTypeId || '_none'}
+								onValueChange={(v: string) => setHeroAffliction(hero.guid, v === '_none' ? '' : v)}
+							>
+								<SelectTrigger class="h-8 text-xs">
+									<span>{hero.virtueTypeId ? snakeToTitle(hero.virtueTypeId) : hero.afflictionTypeId ? snakeToTitle(hero.afflictionTypeId) : 'None'}</span>
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="_none">None</SelectItem>
+									<SelectItem value="paranoid">Paranoid</SelectItem>
+									<SelectItem value="depressed">Hopeless</SelectItem>
+									<SelectItem value="selfish">Selfish</SelectItem>
+									<SelectItem value="abusive">Abusive</SelectItem>
+									<SelectItem value="fearful">Fearful</SelectItem>
+									<SelectItem value="irrational">Irrational</SelectItem>
+									<SelectItem value="masochistic">Masochistic</SelectItem>
+									<SelectItem value="berserk">Rapturous (Flagellant)</SelectItem>
+									{#if dlcFlags.hasColorOfMadness}
+										<SelectItem value="color_madness">Refracted (Color of Madness)</SelectItem>
+									{/if}
+									<SelectItem value="courageous">Courageous (Virtue)</SelectItem>
+									<SelectItem value="focused">Focused (Virtue)</SelectItem>
+									<SelectItem value="powerful">Powerful (Virtue)</SelectItem>
+									<SelectItem value="vigorous">Vigorous (Virtue)</SelectItem>
+									<SelectItem value="stalwart">Stalwart (Virtue)</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
-						<Select
-							type="single"
-							value={hero.afflictionTypeId || '_none'}
-							onValueChange={(v: string) => setHeroAffliction(hero.guid, v === '_none' ? '' : v)}
-						>
-							<SelectTrigger class="h-8 text-xs">
-								<span>{hero.afflictionTypeId ? snakeToTitle(hero.afflictionTypeId) : 'None'}</span>
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="_none">None</SelectItem>
-								<SelectItem value="paranoid">Paranoid</SelectItem>
-								<SelectItem value="hopeless">Hopeless</SelectItem>
-								<SelectItem value="selfish">Selfish</SelectItem>
-								<SelectItem value="abusive">Abusive</SelectItem>
-								<SelectItem value="fearful">Fearful</SelectItem>
-								<SelectItem value="irrational">Irrational</SelectItem>
-								<SelectItem value="masochistic">Masochistic</SelectItem>
-								<SelectItem value="rapturous">Rapturous (Virtue)</SelectItem>
-								<SelectItem value="courageous">Courageous (Virtue)</SelectItem>
-								<SelectItem value="focused">Focused (Virtue)</SelectItem>
-								<SelectItem value="powerful">Powerful (Virtue)</SelectItem>
-								<SelectItem value="vigorous">Vigorous (Virtue)</SelectItem>
-								<SelectItem value="stalwart">Stalwart (Virtue)</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
 
-					<!-- Deaths Door -->
-					<div class="bg-muted/30 flex items-center justify-between rounded-none p-2">
-						<div>
-							<span class="text-[11px] font-medium">Death's Door Visited</span>
-							<Tooltip>
-								<TooltipTrigger>
-									<p class="text-muted-foreground text-[10px]">Historical flag only</p>
-								</TooltipTrigger>
-								<TooltipContent class="max-w-60">
-									Indicates this hero has previously reached Death's Door. Does not directly affect
-									current gameplay state.
-								</TooltipContent>
-							</Tooltip>
+						<!-- Deaths Door -->
+						<div class="flex-1">
+							<div class="mb-1 flex items-center justify-between">
+								<span class="text-[11px] font-medium">Death's Door</span>
+								<Tooltip>
+									<TooltipTrigger>
+										<span class="text-muted-foreground text-[10px]">Historical flag</span>
+									</TooltipTrigger>
+									<TooltipContent class="max-w-60">
+										Indicates this hero has previously reached Death's Door. Does not directly affect
+										current gameplay state.
+									</TooltipContent>
+								</Tooltip>
+							</div>
+							<div class="flex h-8 items-center justify-between rounded-none border px-2">
+								<span class="text-xs text-muted-foreground">{hero.visitedDeathsDoor ? 'Visited' : 'Never'}</span>
+								<Switch
+									checked={hero.visitedDeathsDoor}
+									onCheckedChange={(checked) => setHeroDeathsDoor(hero.guid, checked)}
+								/>
+							</div>
 						</div>
-						<Switch
-							checked={hero.visitedDeathsDoor}
-							onCheckedChange={(checked) => setHeroDeathsDoor(hero.guid, checked)}
-						/>
 					</div>
-				</div>
-			</CollapsibleContent>
-		</Collapsible>
+			</div>
+		</div>
 
 		<Separator />
 
 		<!-- ═══════ Quirks Section ═══════ -->
-		<Collapsible bind:open={quirksOpen}>
-			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-				{#if quirksOpen}
-					<CaretDownIcon size={14} class="text-muted-foreground" />
-				{:else}
-					<CaretRightIcon size={14} class="text-muted-foreground" />
-				{/if}
+		<div>
+			<div class="flex w-full items-center gap-2 py-1">
 				<span class="text-xs font-semibold uppercase tracking-wider">Quirks</span>
 				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
 					{positiveQuirks.length}+ / {negativeCount}-
 				</Badge>
-			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="mt-2 grid grid-cols-2 gap-4">
+			</div>
+			<div class="mt-2 grid grid-cols-2 gap-4">
 					<!-- Positive Column -->
 					<div>
 						<div class="mb-2 flex items-center justify-between">
@@ -799,26 +750,19 @@
 						</div>
 					</div>
 				{/if}
-			</CollapsibleContent>
-		</Collapsible>
+		</div>
 
 		<Separator />
 
 		<!-- ═══════ D1: Skills Section ═══════ -->
-		<Collapsible bind:open={skillsOpen}>
-			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-				{#if skillsOpen}
-					<CaretDownIcon size={14} class="text-muted-foreground" />
-				{:else}
-					<CaretRightIcon size={14} class="text-muted-foreground" />
-				{/if}
+		<div>
+			<div class="flex w-full items-center gap-2 py-1">
 				<span class="text-xs font-semibold uppercase tracking-wider">Skills</span>
 				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
 					{combatSkillIds.length}C / {campingSkillIds.length}K
 				</Badge>
-			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="mt-2 space-y-3">
+			</div>
+			<div class="mt-2 space-y-3">
 					<!-- Combat Skills -->
 					<div>
 						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
@@ -826,17 +770,17 @@
 						</span>
 						{#if availableCombat.length > 0}
 							{#if isAbomination}
-								<div class="space-y-0.5">
+								<div class="grid grid-cols-3 gap-0.5">
 									{#each availableCombat as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px] opacity-60">
 											<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
-											<span class="font-mono">{snakeToTitle(skillId)}</span>
+											<span class="truncate font-mono">{snakeToTitle(skillId)}</span>
 										</div>
 									{/each}
 								</div>
 								<p class="text-muted-foreground mt-1 text-[10px]">Fixed skill set.</p>
 							{:else}
-								<div class="space-y-0.5">
+								<div class="grid grid-cols-3 gap-0.5">
 									{#each availableCombat as skillId (skillId)}
 										{@const isSelected = combatSkillIds.includes(skillId)}
 										{@const disableOn = !isSelected && combatSkillIds.length >= MAX_COMBAT_SKILLS}
@@ -858,7 +802,7 @@
 													{:else}
 														<span class="h-2 w-2 rounded-full border border-orange-400 shrink-0"></span>
 													{/if}
-													<span class="font-mono">{snakeToTitle(skillId)}</span>
+													<span class="truncate font-mono">{snakeToTitle(skillId)}</span>
 												</button>
 											</TooltipTrigger>
 											<TooltipContent>
@@ -879,11 +823,11 @@
 						{:else}
 							<!-- Fallback: game data not loaded -->
 							{#if combatSkillIds.length > 0}
-								<div class="space-y-0.5">
+								<div class="grid grid-cols-3 gap-0.5">
 									{#each combatSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
-											<span class="font-mono">{skillId}</span>
+											<span class="truncate font-mono">{skillId}</span>
 										</div>
 									{/each}
 								</div>
@@ -902,7 +846,7 @@
 							Camping Skills ({campingSkillIds.length})
 						</span>
 						{#if availableCamping.length > 0}
-							<div class="space-y-0.5">
+							<div class="grid grid-cols-3 gap-0.5">
 								{#each availableCamping as skillId (skillId)}
 									{@const isSelected = campingSkillIds.includes(skillId)}
 									<Tooltip>
@@ -920,7 +864,7 @@
 												{:else}
 													<span class="h-2 w-2 rounded-full border border-blue-400 shrink-0"></span>
 												{/if}
-												<span class="font-mono">{snakeToTitle(skillId)}</span>
+												<span class="truncate font-mono">{snakeToTitle(skillId)}</span>
 											</button>
 										</TooltipTrigger>
 										<TooltipContent>
@@ -932,11 +876,11 @@
 						{:else}
 							<!-- Fallback: game data not loaded -->
 							{#if campingSkillIds.length > 0}
-								<div class="space-y-0.5">
+								<div class="grid grid-cols-3 gap-0.5">
 									{#each campingSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
-											<span class="font-mono">{skillId}</span>
+											<span class="truncate font-mono">{skillId}</span>
 										</div>
 									{/each}
 								</div>
@@ -948,70 +892,65 @@
 							</p>
 						{/if}
 					</div>
-				</div>
-			</CollapsibleContent>
-		</Collapsible>
+			</div>
+		</div>
 
 		<Separator />
 
 		<!-- ═══════ Equipment Section ═══════ -->
-		<Collapsible bind:open={equipmentOpen}>
-			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-				{#if equipmentOpen}
-					<CaretDownIcon size={14} class="text-muted-foreground" />
-				{:else}
-					<CaretRightIcon size={14} class="text-muted-foreground" />
-				{/if}
+		<div>
+			<div class="flex w-full items-center gap-2 py-1">
 				<span class="text-xs font-semibold uppercase tracking-wider">Equipment</span>
 				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
 					W{hero.weaponRank} / A{hero.armourRank}
 				</Badge>
-			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="mt-2 space-y-3">
-					<!-- Weapon Rank -->
-					<div>
-						<span class="text-muted-foreground mb-1 block text-[11px]">
-							Weapon Rank (max: {maxGear})
-						</span>
-						<Select
-							type="single"
-							value={String(hero.weaponRank)}
-							onValueChange={(v: string) => setHeroWeaponRank(hero.guid, parseInt(v))}
-						>
-							<SelectTrigger class="h-8 text-xs">
-								<span>Rank {hero.weaponRank}</span>
-							</SelectTrigger>
-							<SelectContent>
-								{#each Array(maxGear + 1) as _, i}
-									<SelectItem value={String(i)}>Rank {i}</SelectItem>
-								{/each}
-							</SelectContent>
-						</Select>
-					</div>
+			</div>
+			<div class="mt-2 space-y-3">
+					<div class="flex gap-4">
+						<!-- Weapon Rank -->
+						<div class="flex-1">
+							<span class="text-muted-foreground mb-1 block text-[11px]">
+								Weapon (max: {maxGear})
+							</span>
+							<Select
+								type="single"
+								value={String(hero.weaponRank)}
+								onValueChange={(v: string) => setHeroWeaponRank(hero.guid, parseInt(v))}
+							>
+								<SelectTrigger class="h-8 text-xs">
+									<span>Rank {hero.weaponRank}</span>
+								</SelectTrigger>
+								<SelectContent>
+									{#each Array(maxGear + 1) as _, i}
+										<SelectItem value={String(i)}>Rank {i}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
 
-					<!-- Armour Rank -->
-					<div>
-						<span class="text-muted-foreground mb-1 block text-[11px]">
-							Armour Rank (max: {maxGear})
-						</span>
-						<Select
-							type="single"
-							value={String(hero.armourRank)}
-							onValueChange={(v: string) => setHeroArmourRank(hero.guid, parseInt(v))}
-						>
-							<SelectTrigger class="h-8 text-xs">
-								<span>Rank {hero.armourRank}</span>
-							</SelectTrigger>
-							<SelectContent>
-								{#each Array(maxGear + 1) as _, i}
-									<SelectItem value={String(i)}>Rank {i}</SelectItem>
-								{/each}
-							</SelectContent>
-						</Select>
-						<p class="text-muted-foreground mt-1 text-[10px]">
-							Max HP at current armour rank: {maxHp}
-						</p>
+						<!-- Armour Rank -->
+						<div class="flex-1">
+							<span class="text-muted-foreground mb-1 block text-[11px]">
+								Armour (max: {maxGear})
+							</span>
+							<Select
+								type="single"
+								value={String(hero.armourRank)}
+								onValueChange={(v: string) => setHeroArmourRank(hero.guid, parseInt(v))}
+							>
+								<SelectTrigger class="h-8 text-xs">
+									<span>Rank {hero.armourRank}</span>
+								</SelectTrigger>
+								<SelectContent>
+									{#each Array(maxGear + 1) as _, i}
+										<SelectItem value={String(i)}>Rank {i}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+							<p class="text-muted-foreground mt-1 text-[10px]">
+								Max HP at current armour rank: {maxHp}
+							</p>
+						</div>
 					</div>
 
 					<!-- D3: Trinket Slots -->
@@ -1050,20 +989,14 @@
 							</div>
 						</div>
 					</div>
-				</div>
-			</CollapsibleContent>
-		</Collapsible>
+			</div>
+		</div>
 
 		<!-- D2: Blood Curse Section (visible only if Crimson Court DLC is installed AND hero has disease_vampire_* quirk) -->
 		{#if dlcFlags.hasCrimsonCourt && hasBloodCurse}
 			<Separator />
-			<Collapsible bind:open={bloodCurseOpen}>
-				<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-					{#if bloodCurseOpen}
-						<CaretDownIcon size={14} class="text-muted-foreground" />
-					{:else}
-						<CaretRightIcon size={14} class="text-muted-foreground" />
-					{/if}
+			<div>
+				<div class="flex w-full items-center gap-2 py-1">
 					<DropIcon size={14} class="text-red-500" />
 					<span class="text-xs font-semibold uppercase tracking-wider">Blood Curse</span>
 					{#if vampireQuirkId}
@@ -1071,9 +1004,8 @@
 							{VAMPIRE_STATE_LABELS[vampireQuirkId] ?? vampireQuirkId}
 						</Badge>
 					{/if}
-				</CollapsibleTrigger>
-				<CollapsibleContent>
-					<div class="mt-2 space-y-2">
+				</div>
+				<div class="mt-2 space-y-2">
 						<div>
 							<span class="text-muted-foreground mb-1 block text-[11px]">Current State</span>
 							<Select
@@ -1095,24 +1027,17 @@
 							Only one Blood Curse state can be active at a time. Changing state replaces the current quirk.
 						</p>
 					</div>
-				</CollapsibleContent>
-			</Collapsible>
+			</div>
 		{/if}
 
 		<Separator />
 
 		<!-- ═══════ Actions Section ═══════ -->
-		<Collapsible bind:open={actionsOpen}>
-			<CollapsibleTrigger class="flex w-full items-center gap-2 py-1">
-				{#if actionsOpen}
-					<CaretDownIcon size={14} class="text-muted-foreground" />
-				{:else}
-					<CaretRightIcon size={14} class="text-muted-foreground" />
-				{/if}
+		<div>
+			<div class="flex w-full items-center gap-2 py-1">
 				<span class="text-xs font-semibold uppercase tracking-wider">Actions</span>
-			</CollapsibleTrigger>
-			<CollapsibleContent>
-				<div class="mt-2 space-y-2">
+			</div>
+			<div class="mt-2 space-y-2">
 					{#if isDead}
 						<Button
 							variant="outline"
@@ -1144,9 +1069,8 @@
 							Dismiss {hero.name}
 						</Button>
 					</div>
-				</div>
-			</CollapsibleContent>
-		</Collapsible>
+			</div>
+		</div>
 	</div>
 </ScrollArea>
 

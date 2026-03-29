@@ -32,6 +32,24 @@ export function getPortraitPath(heroClass: string): string {
 	return `${base}/${heroClass}_A/${heroClass}_portrait_roster.png`;
 }
 
+/** Get the relative icon path for a trinket based on its ID prefix (handles DLC trinkets). */
+export function getTrinketIconPath(id: string): string {
+	const filename = `inv_trinket+${id}.png`;
+	if (id.startsWith('cc_') || id.startsWith('cc_set_')) {
+		return `dlc/580100_crimson_court/features/crimson_court/panels/icons_equip/trinket/${filename}`;
+	}
+	if (id.startsWith('flag_')) {
+		return `dlc/580100_crimson_court/features/flagellant/panels/icons_equip/trinket/${filename}`;
+	}
+	if (id.startsWith('sb_')) {
+		return `dlc/702540_shieldbreaker/panels/icons_equip/trinket/${filename}`;
+	}
+	if (id.startsWith('com_')) {
+		return `dlc/735730_color_of_madness/panels/icons_equip/trinket/${filename}`;
+	}
+	return `panels/icons_equip/trinket/${filename}`;
+}
+
 export type WithoutChild<T> = T extends { child?: unknown } ? Omit<T, "child"> : T;
 export type WithoutChildren<T> = T extends { children?: unknown } ? Omit<T, "children"> : T;
 export type WithoutChildrenOrChild<T> = WithoutChildren<WithoutChild<T>>;

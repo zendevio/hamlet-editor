@@ -53,6 +53,7 @@
 		DialogDescription
 	} from '$lib/components/ui/dialog';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
+	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
 	import { getSettings, setSavePath, setProfileId } from '$lib/stores/settings.svelte';
 	import {
 		getSaveData,
@@ -542,11 +543,11 @@
 	// ── Navigation ──
 
 	const navItems = [
-		{ href: '/heroes', label: 'Heroes', icon: UsersThreeIcon, isRaid: false },
-		{ href: '/estate', label: 'Estate', icon: BankIcon, isRaid: false },
-		{ href: '/town', label: 'Town', icon: BuildingsIcon, isRaid: false },
-		{ href: '/raid', label: 'Raid', icon: CompassIcon, isRaid: true },
-		{ href: '/settings', label: 'Settings', icon: GearIcon, isRaid: false }
+		{ href: '/heroes', label: 'Heroes', icon: UsersThreeIcon, isRaid: false, asset: 'campaign/town/buildings/stage_coach/stage_coach.upgraded_recruits.icon.png' },
+		{ href: '/estate', label: 'Estate', icon: BankIcon, isRaid: false, asset: 'campaign/town/realm_inventory/realm_inventory.icon.png' },
+		{ href: '/town', label: 'Town', icon: BuildingsIcon, isRaid: false, asset: 'campaign/town/activity_log/activity_log.icon.png' },
+		{ href: '/raid', label: 'Raid', icon: CompassIcon, isRaid: true, asset: 'campaign/town/quest_select/quest_select.icon.png' },
+		{ href: '/settings', label: 'Settings', icon: GearIcon, isRaid: false, asset: 'campaign/town/town_event/town_event.icon.png' }
 	];
 
 	const viewTitles: Record<string, string> = {
@@ -657,7 +658,9 @@
 										{#snippet child({ props })}
 											<a href={item.href} {...props} class:pointer-events-none={saveData.raid === null}>
 												<span class="relative inline-flex">
-													<item.icon size={20} />
+													<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={item.label} class="size-10">
+														{#snippet fallback()}<item.icon class="size-10" />{/snippet}
+													</GameAssetIcon>
 													{#if raidActive}
 														<span class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500"></span>
 													{/if}
@@ -670,7 +673,9 @@
 									<SidebarMenuButton isActive={currentPath === item.href}>
 										{#snippet child({ props })}
 											<a href={item.href} {...props}>
-												<item.icon size={20} />
+												<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={item.label} class="size-10">
+													{#snippet fallback()}<item.icon class="size-10" />{/snippet}
+												</GameAssetIcon>
 												<span>{item.label}</span>
 											</a>
 										{/snippet}

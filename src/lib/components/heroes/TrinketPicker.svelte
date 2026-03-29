@@ -11,7 +11,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
 	import { snakeToTitle } from '$lib/utils';
-	import { getGameData } from '$lib/stores/game-data.svelte';
+	import { getGameData, localize } from '$lib/stores/game-data.svelte';
 
 	// ── Static trinket list (from docs/game-data.md) — fallback only ──
 
@@ -53,9 +53,11 @@
 
 	let {
 		value = '',
+		placeholder = 'Select trinket...',
 		onselect
 	}: {
 		value?: string;
+		placeholder?: string;
 		onselect?: (trinketId: string) => void;
 	} = $props();
 
@@ -64,6 +66,14 @@
 	const gameData = getGameData();
 
 	let gameDataLoaded = $derived(gameData.trinkets.length > 0);
+
+	function trinketDisplayName(id: string): string {
+		return localize(`str_inventory_title_trinket${id}`) || snakeToTitle(id);
+	}
+
+	let sortedTrinkets = $derived(
+		[...gameData.trinkets].sort((a, b) => trinketDisplayName(a.id).localeCompare(trinketDisplayName(b.id)))
+	);
 
 	function handleSelect(id: string) {
 		open = false;
@@ -82,7 +92,7 @@
 				{...props}
 			>
 				<span class="truncate {value ? '' : 'text-muted-foreground'}">
-					{value ? snakeToTitle(value) : 'Select trinket...'}
+					{value ? localize(`str_inventory_title_trinket${value}`) || snakeToTitle(value) : placeholder}
 				</span>
 				<CaretUpDownIcon size={14} class="ml-2 shrink-0 text-muted-foreground" />
 			</Button>
@@ -96,36 +106,33 @@
 
 				{#if gameDataLoaded}
 					<CommandGroup heading="All Trinkets">
-						{#each gameData.trinkets as trinket (trinket.id)}
+						{#each sortedTrinkets as trinket (trinket.id)}
 							<CommandItem value={trinket.id} onSelect={() => handleSelect(trinket.id)} class="text-xs">
-								{snakeToTitle(trinket.id)}
-								{#if trinket.rarity}
-									<span class="ml-auto text-[10px] text-muted-foreground/50">{trinket.rarity}</span>
-								{/if}
+								{trinketDisplayName(trinket.id)}
 							</CommandItem>
 						{/each}
 					</CommandGroup>
 				{:else}
 					<CommandGroup heading="Ancestor Trinkets">
-						{#each ANCESTOR_TRINKETS as id (id)}
+						{#each [...ANCESTOR_TRINKETS].sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))) as id (id)}
 							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-								{snakeToTitle(id)}
+								{trinketDisplayName(id)}
 							</CommandItem>
 						{/each}
 					</CommandGroup>
 
 					<CommandGroup heading="Boss Drops">
-						{#each BOSS_DROP_TRINKETS as id (id)}
+						{#each [...BOSS_DROP_TRINKETS].sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))) as id (id)}
 							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-								{snakeToTitle(id)}
+								{trinketDisplayName(id)}
 							</CommandItem>
 						{/each}
 					</CommandGroup>
 
 					<CommandGroup heading="Core Stackable">
-						{#each CORE_STACKABLE_TRINKETS as id (id)}
+						{#each [...CORE_STACKABLE_TRINKETS].sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))) as id (id)}
 							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-								{snakeToTitle(id)}
+								{trinketDisplayName(id)}
 							</CommandItem>
 						{/each}
 					</CommandGroup>

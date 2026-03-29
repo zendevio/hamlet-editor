@@ -454,7 +454,7 @@ fn scan_localization_dir(dir: &Path, map: &mut HashMap<String, String>) {
         if path.is_file() {
             if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                 if name.ends_with(".string_table.xml") {
-                    parse_string_table(&path, map);
+                    parse_string_table(&path, map, "english");
                 }
             }
         }
@@ -463,22 +463,81 @@ fn scan_localization_dir(dir: &Path, map: &mut HashMap<String, String>) {
 
 /// Parse a `*.string_table.xml` file extracting `id → CDATA` pairs.
 ///
+/// Only entries inside the `<language id="{language}">` block are collected.
+/// Entries from other language blocks are skipped so that later languages
+/// (e.g. Korean) do not overwrite English entries.
+///
 /// Expected format:
 /// ```xml
-/// <entry id="KEY"><![CDATA[display text]]></entry>
+/// <language id="english">
+///   <entry id="KEY"><![CDATA[display text]]></entry>
+/// </language>
 /// ```
-fn parse_string_table(path: &Path, map: &mut HashMap<String, String>) {
+fn parse_string_table(path: &Path, map: &mut HashMap<String, String>, language: &str) {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(_) => return,
     };
 
-    let re =
+    let re_lang_open = Regex::new(r#"<language id="([^"]+)">"#).unwrap();
+    let re_lang_close = Regex::new(r"</language>").unwrap();
+    let re_entry =
         Regex::new(r#"<entry id="([^"]+)"><!\[CDATA\[([^\]]*)\]\]></entry>"#).unwrap();
 
-    for cap in re.captures_iter(&content) {
-        let id = cap[1].to_string();
-        let text = cap[2].to_string();
-        map.insert(id, text);
+    // Walk through the file tracking which language block we are inside.
+    // We collect byte positions of language open/close tags, then only extract
+    // entries that fall within the target language's span.
+    struct Span {
+        start: usize,
+        end: usize,
+    }
+
+    let mut target_spans: Vec<Span> = Vec::new();
+    let mut open_stack: Vec<(usize, bool)> = Vec::new(); // (start_pos, is_target)
+
+    for cap in re_lang_open.captures_iter(&content) {
+        let is_target = &cap[1] == language;
+        let start = cap.get(0).unwrap().start();
+        open_stack.push((start, is_target));
+    }
+
+    // Match close tags in order and pair with open tags.
+    let closes: Vec<usize> = re_lang_close
+        .find_iter(&content)
+        .map(|m| m.end())
+        .collect();
+
+    for (i, close_end) in closes.iter().enumerate() {
+        if let Some((start, is_target)) = open_stack.get(i) {
+            if *is_target {
+                target_spans.push(Span {
+                    start: *start,
+                    end: *close_end,
+                });
+            }
+        }
+    }
+
+    // If no language blocks were found at all (flat format without <language> wrappers),
+    // fall back to parsing the whole file so older/simpler string tables still work.
+    if open_stack.is_empty() {
+        for cap in re_entry.captures_iter(&content) {
+            let id = cap[1].to_string();
+            let text = cap[2].to_string();
+            map.insert(id, text);
+        }
+        return;
+    }
+
+    for cap in re_entry.captures_iter(&content) {
+        let entry_pos = cap.get(0).unwrap().start();
+        let in_target = target_spans
+            .iter()
+            .any(|s| entry_pos >= s.start && entry_pos < s.end);
+        if in_target {
+            let id = cap[1].to_string();
+            let text = cap[2].to_string();
+            map.insert(id, text);
+        }
     }
 }

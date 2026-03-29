@@ -178,7 +178,7 @@
 	<!-- Search & Controls -->
 	<div class="flex flex-col gap-2 border-b p-3">
 		<div class="flex items-center gap-2">
-			<div class="relative flex-1">
+			<div class="relative min-w-0 flex-2">
 				<MagnifyingGlassIcon
 					class="text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2"
 					size={14}
@@ -206,8 +206,8 @@
 				<TooltipContent>Toggle filters</TooltipContent>
 			</Tooltip>
 			<Select type="single" bind:value={sortBy}>
-				<SelectTrigger class="h-8 w-27.5 text-xs">
-					<span class="text-xs">Sort: {sortBy}</span>
+				<SelectTrigger class="h-8 flex-1 min-w-0 text-xs">
+					<span class="text-xs truncate">Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</span>
 				</SelectTrigger>
 				<SelectContent>
 					<SelectItem value="status">Status</SelectItem>
@@ -319,9 +319,9 @@
 						</div>
 
 						<!-- Portrait -->
-						<div class="relative h-10 w-10 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
+						<div class="relative size-12 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
 							{#if isDead}
-								<div class="bg-muted flex h-10 w-10 items-center justify-center">
+								<div class="bg-muted flex size-12 items-center justify-center">
 									<SkullIcon size={18} class="text-muted-foreground" />
 								</div>
 							{:else}
@@ -329,7 +329,7 @@
 									gamePath={settings.gamePath}
 									relativePath={getPortraitPath(hero.heroClass)}
 									alt={hero.name}
-									class="h-10 w-10 object-cover"
+									class="size-12 object-cover"
 								/>
 							{/if}
 						</div>
