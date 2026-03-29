@@ -41,7 +41,7 @@
 
 	// ── Filters & Sort ──
 	let searchQuery = $state('');
-	let sortBy = $state<string>('status');
+	let sortBy = $state<string>('name');
 	let statusFilter = $state<Set<number>>(new Set());
 	let classFilter = $state<Set<string>>(new Set());
 	let showFilters = $state(false);
@@ -210,8 +210,8 @@
 					<span class="text-xs truncate">Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</span>
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value="status">Status</SelectItem>
 					<SelectItem value="name">Name</SelectItem>
+					<SelectItem value="status">Status</SelectItem>
 					<SelectItem value="class">Class</SelectItem>
 					<SelectItem value="level">Level</SelectItem>
 					<SelectItem value="hp">HP</SelectItem>
