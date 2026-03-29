@@ -424,12 +424,11 @@
 			</div>
 		</div>
 
-		<Separator />
-
 		<!-- ═══════ Vitals Section ═══════ -->
 		<div>
-			<div class="flex w-full items-center gap-2 py-1">
-				<span class="text-xs font-semibold uppercase tracking-wider">Vitals</span>
+			<div class="flex items-center gap-2 py-1">
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Vitals</span>
+				<Separator class="flex-1" />
 			</div>
 			<!-- D7: Inline gear match confirmation -->
 			{#if pendingLevel !== null}
@@ -625,15 +624,11 @@
 			</div>
 		</div>
 
-		<Separator />
-
 		<!-- ═══════ Quirks Section ═══════ -->
 		<div>
-			<div class="flex w-full items-center gap-2 py-1">
-				<span class="text-xs font-semibold uppercase tracking-wider">Quirks</span>
-				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
-					{positiveQuirks.length}+ / {negativeCount}-
-				</Badge>
+			<div class="flex items-center gap-2 py-1">
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Quirks</span>
+				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 grid grid-cols-2 gap-4">
 					<!-- Positive Column -->
@@ -752,15 +747,11 @@
 				{/if}
 		</div>
 
-		<Separator />
-
 		<!-- ═══════ D1: Skills Section ═══════ -->
 		<div>
-			<div class="flex w-full items-center gap-2 py-1">
-				<span class="text-xs font-semibold uppercase tracking-wider">Skills</span>
-				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
-					{combatSkillIds.length}C / {campingSkillIds.length}K
-				</Badge>
+			<div class="flex items-center gap-2 py-1">
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Skills</span>
+				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-3">
 					<!-- Combat Skills -->
@@ -770,7 +761,7 @@
 						</span>
 						{#if availableCombat.length > 0}
 							{#if isAbomination}
-								<div class="grid grid-cols-3 gap-0.5">
+								<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
 									{#each availableCombat as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px] opacity-60">
 											<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
@@ -780,7 +771,7 @@
 								</div>
 								<p class="text-muted-foreground mt-1 text-[10px]">Fixed skill set.</p>
 							{:else}
-								<div class="grid grid-cols-3 gap-0.5">
+								<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
 									{#each availableCombat as skillId (skillId)}
 										{@const isSelected = combatSkillIds.includes(skillId)}
 										{@const disableOn = !isSelected && combatSkillIds.length >= MAX_COMBAT_SKILLS}
@@ -823,7 +814,7 @@
 						{:else}
 							<!-- Fallback: game data not loaded -->
 							{#if combatSkillIds.length > 0}
-								<div class="grid grid-cols-3 gap-0.5">
+								<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
 									{#each combatSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
@@ -846,7 +837,7 @@
 							Camping Skills ({campingSkillIds.length})
 						</span>
 						{#if availableCamping.length > 0}
-							<div class="grid grid-cols-3 gap-0.5">
+							<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
 								{#each availableCamping as skillId (skillId)}
 									{@const isSelected = campingSkillIds.includes(skillId)}
 									<Tooltip>
@@ -876,7 +867,7 @@
 						{:else}
 							<!-- Fallback: game data not loaded -->
 							{#if campingSkillIds.length > 0}
-								<div class="grid grid-cols-3 gap-0.5">
+								<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
 									{#each campingSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
@@ -895,15 +886,11 @@
 			</div>
 		</div>
 
-		<Separator />
-
 		<!-- ═══════ Equipment Section ═══════ -->
 		<div>
-			<div class="flex w-full items-center gap-2 py-1">
-				<span class="text-xs font-semibold uppercase tracking-wider">Equipment</span>
-				<Badge variant="outline" class="ml-auto h-4 text-[10px]">
-					W{hero.weaponRank} / A{hero.armourRank}
-				</Badge>
+			<div class="flex items-center gap-2 py-1">
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Equipment</span>
+				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-3">
 					<div class="flex gap-4">
@@ -994,13 +981,13 @@
 
 		<!-- D2: Blood Curse Section (visible only if Crimson Court DLC is installed AND hero has disease_vampire_* quirk) -->
 		{#if dlcFlags.hasCrimsonCourt && hasBloodCurse}
-			<Separator />
 			<div>
-				<div class="flex w-full items-center gap-2 py-1">
-					<DropIcon size={14} class="text-red-500" />
-					<span class="text-xs font-semibold uppercase tracking-wider">Blood Curse</span>
+				<div class="flex items-center gap-2 py-1">
+					<DropIcon size={14} class="shrink-0 text-red-500" />
+					<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Blood Curse</span>
+					<Separator class="flex-1" />
 					{#if vampireQuirkId}
-						<Badge variant="outline" class="ml-auto h-4 text-[10px] text-red-600 dark:text-red-400">
+						<Badge variant="outline" class="shrink-0 h-4 text-[10px] text-red-600 dark:text-red-400">
 							{VAMPIRE_STATE_LABELS[vampireQuirkId] ?? vampireQuirkId}
 						</Badge>
 					{/if}
@@ -1030,12 +1017,11 @@
 			</div>
 		{/if}
 
-		<Separator />
-
 		<!-- ═══════ Actions Section ═══════ -->
 		<div>
-			<div class="flex w-full items-center gap-2 py-1">
-				<span class="text-xs font-semibold uppercase tracking-wider">Actions</span>
+			<div class="flex items-center gap-2 py-1">
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Actions</span>
+				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-2">
 					{#if isDead}
