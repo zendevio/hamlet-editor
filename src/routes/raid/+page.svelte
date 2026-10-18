@@ -1,13 +1,13 @@
 <script lang="ts">
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import PartySlot from '$lib/components/raid/PartySlot.svelte';
-	import RaidInfoCard from '$lib/components/raid/RaidInfoCard.svelte';
-	import * as Alert from '$lib/components/ui/alert/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Slider } from '$lib/components/ui/slider/index.js';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PartySlot from '#lib/components/raid/PartySlot.svelte';
+	import RaidInfoCard from '#lib/components/raid/RaidInfoCard.svelte';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Slider } from '#lib/components/ui/slider/index.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 	import BackpackIcon from 'phosphor-svelte/lib/BackpackIcon';
 	import {
@@ -17,18 +17,18 @@
 		markDirty,
 		abandonRaid,
 		swapPartyPositions
-	} from '$lib/stores/save-data.svelte';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { stripDsonPrefix } from '$lib/utils';
-	import type { RaidData, InventoryItem } from '$lib/types/save-data';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
+	} from '#lib/stores/save-data.svelte.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import { stripDsonPrefix } from '#lib/utils.js';
+	import type { RaidData, InventoryItem } from '#lib/types/save-data.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
 	import ArrowDownIcon from 'phosphor-svelte/lib/ArrowDownIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
 	import { toast } from 'svelte-sonner';
-	import { createBackup } from '$lib/api/backup';
-	import { getSettings } from '$lib/stores/settings.svelte';
+	import { createBackup } from '#lib/api/backup.js';
+	import { getSettings } from '#lib/stores/settings.svelte.js';
 
 	// ── Constants ──
 

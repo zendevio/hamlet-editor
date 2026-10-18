@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
+	import { Popover, PopoverContent, PopoverTrigger } from '#lib/components/ui/popover/index.js';
 	import {
 		Command,
 		CommandEmpty,
@@ -7,11 +7,11 @@
 		CommandInput,
 		CommandItem,
 		CommandList
-	} from '$lib/components/ui/command';
-	import { Button } from '$lib/components/ui/button';
+	} from '#lib/components/ui/command/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
-	import { snakeToTitle } from '$lib/utils';
-	import { getGameData, localize } from '$lib/stores/game-data.svelte';
+	import { snakeToTitle } from '#lib/utils.js';
+	import { getGameData, localize } from '#lib/stores/game-data.svelte.js';
 
 	// ── Static trinket list (from docs/game-data.md) — fallback only ──
 

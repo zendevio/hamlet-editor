@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
-	import { Separator } from '$lib/components/ui/separator';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/select/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
-	import type { HeroSummary } from '$lib/stores/save-data.svelte';
+	import type { HeroSummary } from '#lib/stores/save-data.svelte.js';
 	import {
 		healHeroToMax,
 		setHeroStress,
@@ -21,7 +21,7 @@
 		maxGearRank,
 		reviveHero,
 		RESOLVE_LEVEL_NAMES
-	} from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
 
 	let {
 		selectedHeroes,

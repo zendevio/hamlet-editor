@@ -1,11 +1,11 @@
 <script lang="ts">
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import WalletCard from '$lib/components/estate/WalletCard.svelte';
-	import TrinketCard from '$lib/components/estate/TrinketCard.svelte';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import WalletCard from '#lib/components/estate/WalletCard.svelte';
+	import TrinketCard from '#lib/components/estate/TrinketCard.svelte';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 	import CurrencyDollarIcon from 'phosphor-svelte/lib/CurrencyDollarIcon';
 	import ScrollIcon from 'phosphor-svelte/lib/ScrollIcon';
 	import ImageIcon from 'phosphor-svelte/lib/ImageIcon';
@@ -16,14 +16,14 @@
 	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
-	import TrinketPicker from '$lib/components/heroes/TrinketPicker.svelte';
-	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData, getHeroes } from '$lib/stores/save-data.svelte';
-	import { localize } from '$lib/stores/game-data.svelte';
-	import { snakeToTitle } from '$lib/utils';
-	import { getSettings } from '$lib/stores/settings.svelte';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import type { WalletEntry, TrinketEntry, EstateItem } from '$lib/types/save-data';
+	import TrinketPicker from '#lib/components/heroes/TrinketPicker.svelte';
+	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData, getHeroes } from '#lib/stores/save-data.svelte.js';
+	import { localize } from '#lib/stores/game-data.svelte.js';
+	import { snakeToTitle } from '#lib/utils.js';
+	import { getSettings } from '#lib/stores/settings.svelte.js';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import type { WalletEntry, TrinketEntry, EstateItem } from '#lib/types/save-data.js';
 
 	// ----- Props / State -----
 

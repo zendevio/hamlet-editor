@@ -2,30 +2,30 @@
      For typical DD1 rosters (< 30 heroes), this performs well.
      Virtual scrolling can be added later if needed for heavily modded games. -->
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/select/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import FunnelSimpleIcon from 'phosphor-svelte/lib/FunnelSimpleIcon';
-	import GameAssetImage from '$lib/components/GameAssetImage.svelte';
-	import { getSettings } from '$lib/stores/settings.svelte';
-	import { getPortraitPath } from '$lib/utils';
-	import type { HeroSummary } from '$lib/stores/save-data.svelte';
+	import GameAssetImage from '#lib/components/GameAssetImage.svelte';
+	import { getSettings } from '#lib/stores/settings.svelte.js';
+	import { getPortraitPath } from '#lib/utils.js';
+	import type { HeroSummary } from '#lib/stores/save-data.svelte.js';
 	import {
 		STATUS_MAP,
 		RESOLVE_LEVEL_NAMES,
 		CLASS_DISPLAY_NAMES
-	} from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
 
 	const settings = getSettings();
 

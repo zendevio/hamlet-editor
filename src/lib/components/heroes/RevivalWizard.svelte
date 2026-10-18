@@ -6,16 +6,16 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Separator } from '$lib/components/ui/separator';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import FileTextIcon from 'phosphor-svelte/lib/FileTextIcon';
 	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
-	import { reviveHero, addHeroToRaidParty, type HeroSummary } from '$lib/stores/save-data.svelte';
+	import { reviveHero, addHeroToRaidParty, type HeroSummary } from '#lib/stores/save-data.svelte.js';
 
 	let {
 		hero,

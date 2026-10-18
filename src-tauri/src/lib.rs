@@ -16,11 +16,13 @@ impl Default for NameTableState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_shell::init())
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .manage(NameTableState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -46,6 +48,7 @@ pub fn run() {
             commands::backup::list_backups,
             commands::backup::restore_backup,
             commands::backup::restore_game_backup,
+            commands::backup::open_backup_folder,
             commands::assets::load_game_asset,
             commands::names::generate_name_table,
             commands::names::load_localization,

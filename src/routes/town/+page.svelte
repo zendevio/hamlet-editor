@@ -1,15 +1,15 @@
 <script lang="ts">
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import BuildingCard from '$lib/components/town/BuildingCard.svelte';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import BuildingCard from '#lib/components/town/BuildingCard.svelte';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Card,
 		CardContent
-	} from '$lib/components/ui/card';
-	import { Switch } from '$lib/components/ui/switch';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { Separator } from '$lib/components/ui/separator';
+	} from '#lib/components/ui/card/index.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
 		getSaveData,
 		loadMockData,
@@ -21,7 +21,7 @@
 		DISTRICT_IDS,
 		DISTRICT_DISPLAY_NAMES,
 		type BuildingUpgradeGroup
-	} from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
 
 	const saveData = getSaveData();
 	const dlcFlags = getDlcFlags();

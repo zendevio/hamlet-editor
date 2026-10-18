@@ -6,10 +6,10 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
-import { loadProfile } from '$lib/api/save';
-import { stripDsonPrefix } from '$lib/utils';
-import { getSettings } from '$lib/stores/settings.svelte';
-import { localize, getMaxHp as getGameDataMaxHp } from '$lib/stores/game-data.svelte';
+import { loadProfile } from '#lib/api/save.js';
+import { stripDsonPrefix } from '#lib/utils.js';
+import { getSettings } from '#lib/stores/settings.svelte.js';
+import { localize, getMaxHp as getGameDataMaxHp } from '#lib/stores/game-data.svelte.js';
 import {
 	TREATMENT_BUILDINGS,
 	BUILDING_ACTIVITIES,
@@ -23,8 +23,8 @@ import {
 	STATUS_MAP,
 	HP_TABLE,
 	CLASS_DISPLAY_NAMES
-} from '$lib/data/constants';
-import { createMockRoster, createMockUpgrades, createMockEstate, createMockTown } from '$lib/data/mock';
+} from '#lib/data/constants.js';
+import { createMockRoster, createMockUpgrades, createMockEstate, createMockTown } from '#lib/data/mock.js';
 
 // ── Re-export types so existing imports from this module still work ──
 
@@ -52,7 +52,7 @@ export type {
 	RaidParty,
 	RaidInstance,
 	RaidData
-} from '$lib/types/save-data';
+} from '#lib/types/save-data.js';
 
 // ── Re-export constants so existing imports from this module still work ──
 
@@ -71,7 +71,7 @@ export {
 	CLASS_DISPLAY_NAMES
 };
 
-export type { TreatmentBuildingName } from '$lib/data/constants';
+export type { TreatmentBuildingName } from '#lib/data/constants.js';
 
 // ── Import types for internal use ──
 
@@ -90,8 +90,8 @@ import type {
 	BuildingUpgradeGroup,
 	SaveFileName,
 	RaidData
-} from '$lib/types/save-data';
-import type { TreatmentBuildingName } from '$lib/data/constants';
+} from '#lib/types/save-data.js';
+import type { TreatmentBuildingName } from '#lib/data/constants.js';
 
 // ── Reactive State ──
 

@@ -5,15 +5,10 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "fs:default",
-    "fs:allow-read-file",
-    "fs:allow-write-file",
-    "fs:allow-exists",
-    "fs:allow-read-dir",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
     "dialog:default",
     "dialog:allow-open",
-    "store:default",
-    "os:default",
-    "shell:allow-open"
+    "store:default"
   ]
 }

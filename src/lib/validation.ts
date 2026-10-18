@@ -13,10 +13,10 @@ import {
 	maxGearRank,
 	xpToLevel,
 	type HeroSummary
-} from '$lib/stores/save-data.svelte';
-import { loadProfile } from '$lib/api/save';
-import type { GameInstall } from '$lib/api/detect';
-import { getSettings } from '$lib/stores/settings.svelte';
+} from '#lib/stores/save-data.svelte.js';
+import { loadProfile } from '#lib/api/save.js';
+import type { GameInstall } from '#lib/api/detect.js';
+import { getSettings } from '#lib/stores/settings.svelte.js';
 
 // ── Types ──
 

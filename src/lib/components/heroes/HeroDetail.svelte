@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Slider } from '$lib/components/ui/slider';
-	import { Switch } from '$lib/components/ui/switch';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import { Slider } from '#lib/components/ui/slider/index.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/select/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -20,8 +20,8 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Checkbox } from '$lib/components/ui/checkbox';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
@@ -33,11 +33,11 @@
 	import PencilIcon from 'phosphor-svelte/lib/PencilIcon';
 	import TrashIcon from 'phosphor-svelte/lib/TrashIcon';
 	import DropIcon from 'phosphor-svelte/lib/DropIcon';
-	import GameAssetImage from '$lib/components/GameAssetImage.svelte';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
-	import { getSettings } from '$lib/stores/settings.svelte';
-	import { getPortraitPath } from '$lib/utils';
-	import type { HeroSummary, HeroQuirk } from '$lib/stores/save-data.svelte';
+	import GameAssetImage from '#lib/components/GameAssetImage.svelte';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
+	import { getSettings } from '#lib/stores/settings.svelte.js';
+	import { getPortraitPath } from '#lib/utils.js';
+	import type { HeroSummary, HeroQuirk } from '#lib/stores/save-data.svelte.js';
 	import {
 		getMaxHp,
 		maxGearRank,
@@ -61,13 +61,13 @@
 		RESOLVE_LEVEL_NAMES,
 		RESOLVE_XP_THRESHOLDS,
 		getDlcFlags
-	} from '$lib/stores/save-data.svelte';
-	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '$lib/data/quirks';
-	import { snakeToTitle } from '$lib/utils';
+	} from '#lib/stores/save-data.svelte.js';
+	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '#lib/data/quirks.js';
+	import { snakeToTitle } from '#lib/utils.js';
 	import RevivalWizard from './RevivalWizard.svelte';
 	import TrinketPicker from './TrinketPicker.svelte';
-	import { getAvailableCombatSkills, getAvailableCampingSkills } from '$lib/stores/game-data.svelte';
-	import { toggleCombatSkill, toggleCampingSkill } from '$lib/stores/save-data.svelte';
+	import { getAvailableCombatSkills, getAvailableCampingSkills } from '#lib/stores/game-data.svelte.js';
+	import { toggleCombatSkill, toggleCampingSkill } from '#lib/stores/save-data.svelte.js';
 
 	let {
 		hero,

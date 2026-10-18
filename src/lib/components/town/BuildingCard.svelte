@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import {
 		Card,
 		CardContent,
 		CardHeader,
 		CardTitle
-	} from '$lib/components/ui/card';
+	} from '#lib/components/ui/card/index.js';
 	import {
 		Collapsible,
 		CollapsibleContent,
 		CollapsibleTrigger
-	} from '$lib/components/ui/collapsible';
+	} from '#lib/components/ui/collapsible/index.js';
 	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 	import CaretRightIcon from 'phosphor-svelte/lib/CaretRightIcon';
 	import UserCircleIcon from 'phosphor-svelte/lib/UserCircleIcon';
@@ -25,7 +25,7 @@
 		type TreatmentHero,
 		type BuildingUpgradeGroup,
 		releaseHeroFromTreatment
-	} from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
 	import UpgradeTree from './UpgradeTree.svelte';
 
 	let {

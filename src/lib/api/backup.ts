@@ -50,3 +50,11 @@ export async function restoreBackup(backupPath: string, profilePath: string): Pr
 export async function restoreGameBackup(profilePath: string): Promise<void> {
 	await invoke<void>('restore_game_backup', { profilePath });
 }
+
+/**
+ * Open the editor's backups directory in the system file manager.
+ * Returns the directory path.
+ */
+export async function openBackupFolder(): Promise<string> {
+	return await invoke<string>('open_backup_folder');
+}

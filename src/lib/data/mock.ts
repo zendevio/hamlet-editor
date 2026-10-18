@@ -11,8 +11,8 @@ import type {
 	EstateData,
 	TownData,
 	UpgradesData
-} from '$lib/types/save-data';
-import { RESOLVE_XP_THRESHOLDS } from '$lib/data/constants';
+} from '#lib/types/save-data.js';
+import { RESOLVE_XP_THRESHOLDS } from '#lib/data/constants.js';
 
 export function createMockHero(
 	name: string,

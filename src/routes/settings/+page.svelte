@@ -5,18 +5,18 @@
 		CardDescription,
 		CardHeader,
 		CardTitle
-	} from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Input } from '$lib/components/ui/input';
-	import { Switch } from '$lib/components/ui/switch';
-	import { Separator } from '$lib/components/ui/separator';
+	} from '#lib/components/ui/card/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
+	} from '#lib/components/ui/select/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -24,25 +24,32 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import {
 		getSettings,
 		setGamePath,
 		setSavePath,
 		setProfileId,
 		setAutoBackup
-	} from '$lib/stores/settings.svelte';
-	import { loadProfileFromBackend } from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/settings.svelte.js';
+	import { loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
 		detectGameInstallations,
 		detectSaveLocations,
 		type GameInstall,
 		type SaveLocation
-	} from '$lib/api/detect';
-	import { createBackup, listBackups, restoreBackup, restoreGameBackup, type BackupEntry } from '$lib/api/backup';
+	} from '#lib/api/detect.js';
+	import {
+		createBackup,
+		listBackups,
+		openBackupFolder,
+		restoreBackup,
+		restoreGameBackup,
+		type BackupEntry
+	} from '#lib/api/backup.js';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
 	import { onMount } from 'svelte';
@@ -242,17 +249,11 @@
 	}
 
 	async function handleOpenBackupFolder() {
-		if (!settings.savePath) {
-			toast.error('No save path configured');
-			return;
-		}
 		try {
-			const { open } = await import('@tauri-apps/plugin-shell');
-			await open(settings.savePath);
-		} catch {
-			// Not in Tauri environment or shell.open unavailable — show path as fallback.
-			toast.info('Backup folder', {
-				description: settings.savePath
+			await openBackupFolder();
+		} catch (err) {
+			toast.error('Could not open backup folder', {
+				description: String(err)
 			});
 		}
 	}

@@ -6,8 +6,8 @@
  * Also holds quirk and trinket definitions loaded from game JSON files.
  */
 
-import { snakeToTitle } from '$lib/utils';
-import type { ClassSkills, ClassStats, QuirkDef, TrinketDef } from '$lib/api/gamedata';
+import { snakeToTitle } from '#lib/utils.js';
+import type { ClassSkills, ClassStats, QuirkDef, TrinketDef } from '#lib/api/gamedata.js';
 
 // ── State ──
 

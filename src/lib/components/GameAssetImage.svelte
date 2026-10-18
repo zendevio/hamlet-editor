@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { loadGameAsset } from '$lib/api/assets';
-	import { Skeleton } from '$lib/components/ui/skeleton';
+	import { loadGameAsset } from '#lib/api/assets.js';
+	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 
 	interface Props {
 		gamePath: string;

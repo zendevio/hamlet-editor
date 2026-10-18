@@ -6,22 +6,22 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 	import {
 		setGamePath,
 		setSavePath,
 		setProfileId,
 		setGameInstall,
 		completeSetup
-	} from '$lib/stores/settings.svelte';
+	} from '#lib/stores/settings.svelte.js';
 	import {
 		detectGameInstallations,
 		detectSaveLocations,
 		type GameInstall,
 		type SaveLocation
-	} from '$lib/api/detect';
+	} from '#lib/api/detect.js';
 	import GameControllerIcon from 'phosphor-svelte/lib/GameControllerIcon';
 	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';

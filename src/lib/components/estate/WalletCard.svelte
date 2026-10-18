@@ -1,7 +1,7 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
 	import type { Component } from 'svelte';
 
 	let {

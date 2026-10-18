@@ -6,7 +6,7 @@
  * and to populate the "Add Quirk" combobox.
  */
 
-import { snakeToTitle } from '$lib/utils';
+import { snakeToTitle } from '#lib/utils.js';
 
 export type QuirkCategory = 'positive' | 'negative' | 'disease';
 

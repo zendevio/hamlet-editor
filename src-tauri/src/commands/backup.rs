@@ -2,6 +2,7 @@ use chrono::{DateTime, Local, NaiveDateTime, Utc};
 use serde::Serialize;
 use std::path::Path;
 use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
 
 // ---------------------------------------------------------------------------
 // Data structures
@@ -193,6 +194,30 @@ pub fn restore_game_backup(
     copy_save_files(&game_backup_dir, profile_dir)?;
 
     Ok(())
+}
+
+/// Open the editor's backups directory in the system file manager.
+///
+/// Creates `<app_local_data_dir>/backups/` first if no backup exists yet.
+/// Returns the directory path so the UI can show it if opening fails.
+#[tauri::command]
+pub fn open_backup_folder(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let backups_root = app_handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("Failed to resolve app local data dir: {e}"))?
+        .join("backups");
+
+    std::fs::create_dir_all(&backups_root)
+        .map_err(|e| format!("Failed to create backups directory: {e}"))?;
+
+    let path = backups_root.to_string_lossy().to_string();
+    app_handle
+        .opener()
+        .open_path(path.clone(), None::<&str>)
+        .map_err(|e| format!("Failed to open backups directory {path}: {e}"))?;
+
+    Ok(path)
 }
 
 // ---------------------------------------------------------------------------

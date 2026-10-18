@@ -1,8 +1,8 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '#lib/assets/favicon.svg';
 	import { ModeWatcher } from 'mode-watcher';
-	import { Toaster } from '$lib/components/ui/sonner';
+	import { Toaster } from '#lib/components/ui/sonner/index.js';
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -21,11 +21,11 @@
 		SidebarRail,
 		SidebarTrigger,
 		SidebarInset
-	} from '$lib/components/ui/sidebar';
-	import { Button } from '$lib/components/ui/button';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/sidebar/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import { toggleMode } from 'mode-watcher';
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
 	import BankIcon from 'phosphor-svelte/lib/BankIcon';
@@ -39,20 +39,20 @@
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotchIcon';
 	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
-	import SetupWizard from '$lib/components/SetupWizard.svelte';
-	import ValidationDialog from '$lib/components/ValidationDialog.svelte';
-	import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
-	import DiscardConfirmDialog from '$lib/components/DiscardConfirmDialog.svelte';
+	import SetupWizard from '#lib/components/SetupWizard.svelte';
+	import ValidationDialog from '#lib/components/ValidationDialog.svelte';
+	import UnsavedChangesDialog from '#lib/components/UnsavedChangesDialog.svelte';
+	import DiscardConfirmDialog from '#lib/components/DiscardConfirmDialog.svelte';
 	import {
 		Dialog,
 		DialogContent,
 		DialogHeader,
 		DialogTitle,
 		DialogDescription
-	} from '$lib/components/ui/dialog';
-	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
-	import { getSettings, setSavePath, setProfileId } from '$lib/stores/settings.svelte';
+	} from '#lib/components/ui/dialog/index.js';
+	import LoadingScreen from '#lib/components/LoadingScreen.svelte';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
+	import { getSettings, setSavePath, setProfileId } from '#lib/stores/settings.svelte.js';
 	import {
 		getSaveData,
 		hasDirtyFiles,
@@ -62,21 +62,21 @@
 		loadProfileFromBackend,
 		getHeroes,
 		CLASS_DISPLAY_NAMES
-	} from '$lib/stores/save-data.svelte';
-	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills } from '$lib/stores/game-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
+	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills } from '#lib/stores/game-data.svelte.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { isGameRunning, detectSaveLocations, type SaveLocation } from '$lib/api/detect';
-	import { saveProfile } from '$lib/api/save';
-	import { createBackup } from '$lib/api/backup';
-	import { generateNameTable, loadLocalization, setNameTableOnBackend } from '$lib/api/names';
-	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills } from '$lib/api/gamedata';
-	import { scanModDirectories } from '$lib/api/mods';
-	import { runPreSaveValidation, validateRoundTrip, type ValidationIssue } from '$lib/validation';
+	} from '#lib/components/ui/select/index.js';
+	import { isGameRunning, detectSaveLocations, type SaveLocation } from '#lib/api/detect.js';
+	import { saveProfile } from '#lib/api/save.js';
+	import { createBackup } from '#lib/api/backup.js';
+	import { generateNameTable, loadLocalization, setNameTableOnBackend } from '#lib/api/names.js';
+	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills } from '#lib/api/gamedata.js';
+	import { scanModDirectories } from '#lib/api/mods.js';
+	import { runPreSaveValidation, validateRoundTrip, type ValidationIssue } from '#lib/validation.js';
 
 	let { children } = $props();
 

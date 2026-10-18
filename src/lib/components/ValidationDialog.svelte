@@ -1,8 +1,8 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import type { ValidationIssue } from '$lib/validation';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import type { ValidationIssue } from '#lib/validation.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 	import WarningCircleIcon from 'phosphor-svelte/lib/WarningCircleIcon';
 
