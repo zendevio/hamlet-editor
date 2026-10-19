@@ -9,8 +9,8 @@ import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Save all dirty file data for the active profile.
- * The backend checks load provenance and performs atomic writes per file.
- * The caller handles backups and post-save validation.
+ * The backend checks load provenance and disk freshness, then commits all writes and deletions transactionally.
+ * The caller handles backups and input validation.
  */
 export async function saveProfile(
 	profilePath: string,
@@ -32,12 +32,3 @@ export interface LoadedProfile {
 export async function loadProfile(profilePath: string): Promise<LoadedProfile> {
 	return await invoke<LoadedProfile>('load_profile', { profilePath });
 }
-
-// TODO: decodeSaveFile(path: string): Promise<unknown>
-// The `decode_save_file` command was removed from the public Tauri command handler
-// (it is now used internally by `load_profile`). If a standalone decode command is
-// re-added to the backend, add the wrapper here:
-//
-// export async function decodeSaveFile(path: string): Promise<unknown> {
-//   return await invoke<unknown>('decode_save_file', { path });
-// }

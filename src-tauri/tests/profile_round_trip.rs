@@ -454,3 +454,223 @@ fn control_character_save_errors_name_the_file_and_field_without_writing() {
     }
     assert_eq!(tree(&sandbox.profile()), before);
 }
+
+#[test]
+fn disk_changes_file_addition_removal_and_inactive_subfolder_changes_block_all_writes() {
+    for mode in ["modify", "add", "remove", "raid", "map"] {
+        let sandbox = Sandbox::new();
+        let (mut table, mut data) = sandbox.load();
+        match mode {
+            "modify" => fs::write(
+                sandbox.profile().join("persist.roster.json"),
+                b"new game data",
+            )
+            .unwrap(),
+            "add" => fs::write(sandbox.profile().join("persist.new.json"), b"new save").unwrap(),
+            "remove" => fs::remove_file(sandbox.profile().join("persist.estate.json")).unwrap(),
+            "raid" => fs::write(
+                sandbox
+                    .profile()
+                    .join("plot_crimson_court_1/persist.raid.json"),
+                b"new raid",
+            )
+            .unwrap(),
+            "map" => fs::write(
+                sandbox
+                    .profile()
+                    .join("plot_crimson_court_1/persist.map.json"),
+                b"new map",
+            )
+            .unwrap(),
+            _ => unreachable!(),
+        }
+        let before = tree(&sandbox.profile());
+        data["persist.game.json"]["base_root"]["estatename"] = json!("Must not overwrite the game");
+        let error = sandbox.save(&mut table, data).unwrap_err();
+        assert!(
+            error.contains("Save files changed on disk since load; reload"),
+            "{mode}: {error}"
+        );
+        assert_eq!(tree(&sandbox.profile()), before, "{mode}");
+    }
+}
+
+#[test]
+fn unknown_mod_upgrade_hash_loads_and_round_trips_when_other_purchases_change() {
+    let sandbox = Sandbox::new();
+    let path = sandbox.profile().join("persist.upgrades.json");
+    let file = File::try_from_bin(fs::read(&path).unwrap().as_slice()).unwrap();
+    let mut value = file.to_json_value(&Unhasher::empty());
+    let purchases = value["base_root"]["purchases"].as_object_mut().unwrap();
+    let unknown_key = purchases
+        .iter()
+        .find(|(_, p)| p["instance_number"] == 221)
+        .unwrap()
+        .0
+        .clone();
+    purchases[&unknown_key]["tree_id"] = json!(-123456789);
+    let mut bytes = Vec::new();
+    file.merge_json_value(&value)
+        .unwrap()
+        .write_to_bin(&mut bytes)
+        .unwrap();
+    fs::write(&path, bytes).unwrap();
+    let (mut table, mut data) = sandbox.load();
+    assert_eq!(
+        data["persist.upgrades.json"]["base_root"]["purchases"][&unknown_key]["tree_id"],
+        -123456789
+    );
+    let known = data["persist.upgrades.json"]["base_root"]["purchases"]
+        .as_object_mut()
+        .unwrap()
+        .values_mut()
+        .find(|p| p["tree_id"].is_string())
+        .unwrap();
+    known["is_purchased"] = json!(!known["is_purchased"].as_bool().unwrap());
+    sandbox
+        .save(
+            &mut table,
+            json!({"persist.upgrades.json": data["persist.upgrades.json"]}),
+        )
+        .unwrap();
+    let decoded = File::try_from_bin(fs::read(path).unwrap().as_slice())
+        .unwrap()
+        .to_json_value(&Unhasher::empty());
+    assert_eq!(
+        decoded["base_root"]["purchases"][&unknown_key]["tree_id"],
+        -123456789
+    );
+}
+
+#[test]
+fn core_decode_failure_is_visible_and_clears_write_authorization() {
+    for name in [
+        "persist.game.json",
+        "persist.roster.json",
+        "persist.estate.json",
+        "persist.town.json",
+        "persist.upgrades.json",
+        "persist.campaign_log.json",
+        "persist.progression.json",
+    ] {
+        let sandbox = Sandbox::new();
+        let (mut table, _) = sandbox.load();
+        fs::write(sandbox.profile().join(name), b"not a DSON file").unwrap();
+        let before = tree(&sandbox.profile());
+        let error = save::load_profile_with_table(
+            sandbox.profile().to_string_lossy().into_owned(),
+            &mut table,
+        )
+        .unwrap_err();
+        assert!(
+            error.contains(name) && error.contains("Failed to decode core save"),
+            "{error}"
+        );
+        assert!(table.loaded_profile.is_none());
+        assert!(sandbox.save(&mut table, json!({})).is_err());
+        assert_eq!(tree(&sandbox.profile()), before);
+    }
+}
+
+#[test]
+fn deletion_allow_list_refuses_every_non_raid_file_before_writing() {
+    let sandbox = Sandbox::new();
+    let (mut table, data) = sandbox.load();
+    let before = tree(&sandbox.profile());
+    for name in data.as_object().unwrap().keys() {
+        let error = sandbox
+            .save(
+                &mut table,
+                json!({"_deleted": [name], "persist.game.json": data["persist.game.json"]}),
+            )
+            .unwrap_err();
+        assert!(
+            error.contains("only persist.raid.json can be deleted"),
+            "{error}"
+        );
+        assert_eq!(tree(&sandbox.profile()), before);
+    }
+}
+
+#[test]
+fn progression_duplicate_scalar_edits_reach_both_copies_and_repeat_safely() {
+    let sandbox = Sandbox::new();
+    let (mut table, mut data) = sandbox.load();
+    let achievement = &mut data["persist.progression.json"]["base_root"]["real_achievements"]
+        ["slay_a_squiffy_with_jester"];
+    assert!(achievement.is_object());
+    // Use the actual scalar field names and types from the duplicated achievement.
+    let key = achievement
+        .as_object()
+        .unwrap()
+        .iter()
+        .find(|(_, v)| v.is_i64())
+        .unwrap()
+        .0
+        .clone();
+    achievement[&key] = json!(17);
+    sandbox
+        .save(
+            &mut table,
+            json!({"persist.progression.json": data["persist.progression.json"]}),
+        )
+        .unwrap();
+    let bytes = fs::read(sandbox.profile().join("persist.progression.json")).unwrap();
+    let text = raw_json(&bytes);
+    let copies: Vec<_> = text
+        .split("\"slay_a_squiffy_with_jester\" : {")
+        .skip(1)
+        .map(|s| s.split('}').next().unwrap())
+        .collect();
+    assert_eq!(copies.len(), 2);
+    for copy in copies {
+        assert!(copy.contains(&format!("\"{key}\" : 17")), "{copy}");
+    }
+    sandbox
+        .save(
+            &mut table,
+            json!({"persist.progression.json": data["persist.progression.json"]}),
+        )
+        .unwrap();
+    assert_eq!(
+        fs::read(sandbox.profile().join("persist.progression.json")).unwrap(),
+        bytes
+    );
+}
+
+#[test]
+fn last_party_guid_removal_round_trips_the_real_int_vector() {
+    let sandbox = Sandbox::new();
+    let (mut table, mut data) = sandbox.load();
+    assert_eq!(
+        data["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"],
+        json!([1, 48, 34, -1])
+    );
+    data["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"] = json!([1, 48, -1]);
+    sandbox
+        .save(
+            &mut table,
+            json!({"persist.roster.json":data["persist.roster.json"]}),
+        )
+        .unwrap();
+    let (_, reloaded) = sandbox.load();
+    assert_eq!(
+        reloaded["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"],
+        json!([1, 48, -1])
+    );
+}
+
+#[test]
+fn backup_listing_uses_manifest_counts_and_skips_invalid_entries() {
+    let sandbox = Sandbox::new();
+    let good = backup::create_backup_at(&sandbox.profile(), &sandbox.backups()).unwrap();
+    let expected_count = tree(&good).len() - 1;
+    // A manifest listing does not read each save's bytes, even if a file is gone.
+    fs::remove_file(good.join("persist.roster.json")).unwrap();
+    let bad = sandbox.backups().join("profile_0__bad");
+    fs::create_dir(&bad).unwrap();
+    fs::write(bad.join(".hamlet-backup.json"), b"invalid manifest").unwrap();
+    let listed = backup::list_backups_at(&sandbox.profile(), &sandbox.backups()).unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].file_count, expected_count);
+}

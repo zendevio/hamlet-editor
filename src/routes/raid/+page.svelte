@@ -21,6 +21,7 @@
 		swapPartyPositions
 	} from '#lib/stores/save-data.svelte.js';
 	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import { abandonRaidBlockReason } from '#lib/raid.js';
 	import { stripDsonPrefix } from '#lib/utils.js';
 	import type { RaidData, InventoryItem } from '#lib/types/save-data.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
@@ -66,6 +67,7 @@
 
 	/** Raid data from persist.raid.json — sourced from the shared save-data store. */
 	let raidData = $derived(saveData.raid as RaidData | null);
+	let abandonBlockedReason = $derived(saveData.game ? abandonRaidBlockReason(saveData.game) : null);
 
 	/** Whether persist.game.json reports inraid: true — sourced from the shared save-data store. */
 	let gameInRaid = $derived(saveData.gameInRaid);
@@ -219,11 +221,12 @@
 				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 					Raid Info
 				</h2>
-				<Button variant="destructive" size="sm" class="gap-1.5 text-xs" onclick={openAbandonDialog}>
+				<Button variant="destructive" size="sm" class="gap-1.5 text-xs" disabled={!!abandonBlockedReason} onclick={openAbandonDialog}>
 					<SkullIcon size={14} />
 					Abandon Raid
 				</Button>
 			</div>
+			{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{abandonBlockedReason}</p>{/if}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 				<RaidInfoCard label="Dungeon" value={dungeonLabel || 'Unknown'} />
 				<RaidInfoCard label="Difficulty" value={difficultyLabel || 'Unknown'} />
@@ -371,7 +374,8 @@
 					</Card.Content>
 				</Card.Root>
 			{:else}
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+				{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{abandonBlockedReason}</p>{/if}
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 					{#each inventoryItems as item (item.key)}
 						<Card.Root class="gap-2 p-3">
 							<div class="flex items-center gap-2">
@@ -403,7 +407,7 @@
 				Abandon Raid
 			</Dialog.Title>
 			<Dialog.Description>
-				This returns living party members to town, clears the raid pointer and deletes the raid save when you Save. Discard restores the expedition before saving.
+				This returns living expedition heroes to town, clears the raid pointer and deletes the raid save when you Save. Discard restores the expedition before saving.
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -411,8 +415,7 @@
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-					Abandoning a raid will remove the party from the dungeon. Heroes in the raid
-					party will have their town status restored. Create a backup before proceeding.
+					Abandoning a raid will remove the party from the dungeon. All living heroes marked as on an expedition will have their town status restored. Create a backup before proceeding.
 				</p>
 			</div>
 

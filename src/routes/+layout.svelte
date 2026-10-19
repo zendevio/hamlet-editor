@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount, setContext } from 'svelte';
-	import { createSaveWorkflow, createUnsavedGuard, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
+	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
 		Sidebar,
@@ -59,6 +59,8 @@
 		hasDirtyFiles,
 		getDirtyData,
 		clearAllDirty,
+		markProfileStale,
+		getUnknownUpgrades,
 		discardAllChanges,
 		loadProfileFromBackend,
 		getHeroes,
@@ -77,7 +79,7 @@
 	import { ensureNameTable, loadLocalization } from '#lib/api/names.js';
 	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills } from '#lib/api/gamedata.js';
 	import { scanModDirectories } from '#lib/api/mods.js';
-	import { runPreSaveValidation, validateRoundTrip, type ValidationIssue } from '#lib/validation.js';
+	import { runPreSaveValidation, type ValidationIssue } from '#lib/validation.js';
 
 	let { children } = $props();
 
@@ -102,14 +104,14 @@
 	let sidebarSaveLocations = $state<SaveLocation[]>([]);
 
 	/** Switch to a different profile from the sidebar selector. */
-	async function handleSidebarProfileChange(newProfileId: string) {
-		if (newProfileId === settings.profileId || isProfileLoading) return;
-		const loc = sidebarSaveLocations.find((l) => l.profile_id === newProfileId);
+	async function handleSidebarProfileChange(newProfilePath: string) {
+		if (newProfilePath === settings.savePath || isProfileLoading) return;
+		const loc = sidebarSaveLocations.find((l) => l.path === newProfilePath);
 		if (!loc) return;
 
 		await requestDataChange(async () => {
 			setSavePath(loc.path);
-			setProfileId(newProfileId);
+			setProfileId(loc.profile_id);
 
 			isProfileLoading = true;
 			try {
@@ -117,7 +119,7 @@
 				if (settings.gamePath) {
 					await initGameData(settings.gamePath);
 				}
-				toast.success('Profile loaded', { description: `Switched to ${newProfileId}` });
+				toast.success('Profile loaded', { description: `Switched to ${loc.profile_id}` });
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				toast.error(`Failed to switch profile: ${message}`);
@@ -199,12 +201,14 @@
 	// Poll game running status every 5 seconds
 	$effect(() => {
 		let cancelled = false;
+		const observeGameStatus = createGameStoppedObserver(markProfileStale);
 
 		async function poll() {
 			if (cancelled) return;
 			try {
 				const result = await isGameRunning();
 				if (!cancelled) {
+					observeGameStatus(result);
 					gameRunning = result.running;
 					gameDetectionUncertain = result.uncertain;
 				}
@@ -232,14 +236,14 @@
 	let saveDisabled = $derived(
 		!saveData.isLoaded || saveData.isLoading ||
 		saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath ||
-		isGameBlocking || !isDirty || isSaving
+		isGameBlocking || saveData.isStale || !isDirty || isSaving
 	);
 
 	// C2: Modded content detection
 	let hasModdedContent = $derived.by(() => {
 		if (!saveData.isLoaded) return false;
 		const heroes = getHeroes();
-		return heroes.some((h) => !(h.heroClass in CLASS_DISPLAY_NAMES));
+		return getUnknownUpgrades().length > 0 || heroes.some((h) => !(h.heroClass in CLASS_DISPLAY_NAMES));
 	});
 
 	// C3: Raid status badges
@@ -257,6 +261,7 @@
 		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) {
 			return 'Paths changed. Reload the profile before saving.';
 		}
+		if (saveData.isStale) return 'Save files may have changed. Reload the profile before saving.';
 		if (gameRunning) return 'DD Running. Close the game before saving.';
 		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
 		if (isSaving) return 'Saving...';
@@ -372,6 +377,7 @@
 	function saveBlockReason(): string | null {
 		if (!saveData.isLoaded || saveData.isLoading || isProfileLoading) return 'Load a profile before saving.';
 		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) return 'Paths changed. Reload the profile before saving.';
+		if (saveData.isStale) return 'Save files may have changed. Reload the profile before saving.';
 		if (gameRunning) return 'DD Running. Close the game before saving.';
 		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
 		if (!hasDirtyFiles()) return 'No unsaved changes';
@@ -395,13 +401,12 @@
 		},
 		write: async () => {
 			await saveProfile(settings.savePath, getDirtyData(), saveData.nameTableVersion);
-			if (saveData.roster) {
-				const ok = await validateRoundTrip(settings.savePath, 'persist.roster.json', saveData.roster as unknown as Record<string, unknown>);
-				if (!ok) toast.warning('Round-trip validation warning: saved file may differ from expected. Check your save.');
-			}
 		},
 		saved: () => { clearAllDirty(); toast.success('Saved successfully'); },
-		failed: (error) => toast.error(`Save failed: ${String(error)}`),
+		failed: (error) => {
+			if (String(error).includes('Save files changed on disk')) markProfileStale();
+			toast.error(`Save failed: ${String(error)}`);
+		},
 		busy: (value) => { isSaving = value; }
 	});
 
@@ -437,6 +442,13 @@
 		return guardChanges(action);
 	};
 	setContext(DATA_CHANGE_CONTEXT, requestDataChange);
+
+	async function reloadProfile() {
+		await requestDataChange(async () => {
+			try { await loadProfileFromBackend(settings.savePath); }
+			catch (error) { toast.error(`Reload failed: ${String(error)}`); }
+		});
+	}
 
 	function finishUnsaved(choice: UnsavedChoice) {
 		const resolve = resolveUnsaved;
@@ -595,7 +607,7 @@
 					{#if sidebarSaveLocations.length > 1}
 						<Select
 							type="single"
-							value={settings.profileId}
+							value={settings.savePath}
 							disabled={isProfileLoading}
 							onValueChange={handleSidebarProfileChange}
 						>
@@ -603,8 +615,8 @@
 								<span class="text-xs">Profile: {settings.profileId}</span>
 							</SelectTrigger>
 							<SelectContent>
-								{#each sidebarSaveLocations as loc (loc.profile_id)}
-									<SelectItem value={loc.profile_id}>{loc.profile_id}</SelectItem>
+								{#each sidebarSaveLocations as loc (loc.path)}
+									<SelectItem value={loc.path}>{loc.profile_id} · {loc.steam_user_id ?? loc.path}</SelectItem>
 								{/each}
 							</SelectContent>
 						</Select>
@@ -719,6 +731,11 @@
 						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
 						Game Status Unknown: Save Blocked
 					</Badge>
+				{/if}
+
+				{#if saveData.isStale}
+					<Badge variant="outline">Profile stale: Reload required</Badge>
+					<Button variant="outline" size="sm" disabled={isSaving || saveData.isLoading || isGameBlocking} onclick={reloadProfile}>Reload</Button>
 				{/if}
 
 				<!-- C2: Modded content -->

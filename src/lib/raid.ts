@@ -23,10 +23,22 @@ export function updateRaidAmount(raid: RaidData, key: string, input: unknown): b
 	return true;
 }
 
-/** Return living party members to town without reviving dead members. */
+export function abandonRaidBlockReason(game: GameData): string | null {
+	return game.base_root.raid_save
+		? 'Abandon Raid is unavailable for plot and Courtyard raids until the file transition is verified in game. Return to town in the game.'
+		: null;
+}
+
+/** Return all expedition heroes to town without reviving dead members. */
 export function abandonRaidData(game: GameData, raid: RaidData, roster: RosterData, town: TownData): Set<string> {
 	const changed = new Set<string>();
+	if (abandonRaidBlockReason(game)) return changed;
 	const party = new Set(raid.base_root.party.heroes);
+	// In the fixture all four former raid heroes have before-town status 1.
+	// Reset current status 1 even when a hero is omitted from party.heroes.
+	for (const [guid, entry] of Object.entries(roster.base_root.heroes)) {
+		if (entry.hero_file_data.raw_data.base_root['roster.status'] === 1) party.add(Number(guid));
+	}
 	for (const treatment of readTreatmentSlots(town)) {
 		if (treatment.slot.hero !== 0 && party.has(treatment.slot.hero)) {
 			clearTreatmentSlot(treatment);

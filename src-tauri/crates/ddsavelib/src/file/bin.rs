@@ -22,7 +22,8 @@ impl File {
         let mut f = Fields::try_from_bin(reader, &h)?;
         let dat = decode_fields_bin(reader, &mut f, &o, &h)?;
         let file = File { h, o, f, dat };
-        file.validate_values().map_err(FromBinError::InvalidValue)?;
+        file.validate_values(false)
+            .map_err(FromBinError::InvalidValue)?;
         Ok(file)
     }
 

@@ -29,6 +29,7 @@ export function validateHeroName(input: string): { value: string; error?: never 
 		return { error: 'Names cannot contain control or invisible formatting characters.' };
 	}
 	const value = input.trim();
+	if (value.startsWith('###')) return { error: 'Names cannot start with ### because it is reserved for save identifiers.' };
 	if (!value || [...value].length > HERO_NAME_MAX_LENGTH) {
 		return { error: `Enter a name from 1 to ${HERO_NAME_MAX_LENGTH} characters.` };
 	}

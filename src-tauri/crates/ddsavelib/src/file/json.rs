@@ -320,22 +320,31 @@ fn build_file_from_map_value(
 // Streaming serde Visitor (used by try_from_json, preserves duplicate keys)
 // ---------------------------------------------------------------------------
 
-struct TopLevelSeed;
+struct TopLevelSeed<'a> {
+    merging: bool,
+    original: Option<&'a serde_json::Value>,
+}
 
-impl<'de> DeserializeSeed<'de> for TopLevelSeed {
+impl<'de> DeserializeSeed<'de> for TopLevelSeed<'_> {
     type Value = File;
 
     fn deserialize<D: serde::Deserializer<'de>>(
         self,
         deserializer: D,
     ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_map(TopLevelVisitor)
+        deserializer.deserialize_map(TopLevelVisitor {
+            merging: self.merging,
+            original: self.original,
+        })
     }
 }
 
-struct TopLevelVisitor;
+struct TopLevelVisitor<'a> {
+    merging: bool,
+    original: Option<&'a serde_json::Value>,
+}
 
-impl<'de> Visitor<'de> for TopLevelVisitor {
+impl<'de> Visitor<'de> for TopLevelVisitor<'_> {
     type Value = File;
 
     fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -343,11 +352,15 @@ impl<'de> Visitor<'de> for TopLevelVisitor {
     }
 
     fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
-        build_file_from_map_access(map)
+        build_file_from_map_access(map, self.merging, self.original)
     }
 }
 
-fn build_file_from_map_access<'de, A: MapAccess<'de>>(mut map: A) -> Result<File, A::Error> {
+fn build_file_from_map_access<'de, A: MapAccess<'de>>(
+    mut map: A,
+    merging: bool,
+    original: Option<&serde_json::Value>,
+) -> Result<File, A::Error> {
     let mut version: Option<u32> = None;
     let mut file = File::default();
     let mut root_processed = false;
@@ -359,6 +372,8 @@ fn build_file_from_map_access<'de, A: MapAccess<'de>>(mut map: A) -> Result<File
         } else {
             let seed = FieldValueSeed {
                 file: &mut file,
+                merging,
+                original: original.and_then(|value| value.get(&key)),
                 name: key,
                 parent: None,
                 name_stack: &mut name_stack,
@@ -389,6 +404,8 @@ struct FieldValueSeed<'a> {
     name: String,
     parent: Option<ObjIdx>,
     name_stack: &'a mut Vec<NameType>,
+    merging: bool,
+    original: Option<&'a serde_json::Value>,
 }
 
 impl<'de, 'a> DeserializeSeed<'de> for FieldValueSeed<'a> {
@@ -404,6 +421,8 @@ impl<'de, 'a> DeserializeSeed<'de> for FieldValueSeed<'a> {
         deserializer
             .deserialize_any(FieldValueVisitor {
                 file: self.file,
+                merging: self.merging,
+                original: self.original,
                 name: self.name,
                 parent: self.parent,
                 name_stack: self.name_stack,
@@ -417,6 +436,8 @@ struct FieldValueVisitor<'a> {
     name: String,
     parent: Option<ObjIdx>,
     name_stack: &'a mut Vec<NameType>,
+    merging: bool,
+    original: Option<&'a serde_json::Value>,
 }
 
 impl<'a> FieldValueVisitor<'a> {
@@ -482,7 +503,9 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-        if v.chars().any(char::is_control) {
+        if v.chars()
+            .any(|c| c == '\0' || (!self.merging && c.is_control()))
+        {
             return Err(E::custom(
                 "strings cannot contain control characters or NUL",
             ));
@@ -497,7 +520,10 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
                 }
             }
             _ => {
-                if let Some(rest) = v.strip_prefix("###") {
+                if let Some(rest) = v
+                    .strip_prefix("###")
+                    .filter(|_| !self.original.is_some_and(|value| value.is_string()))
+                {
                     FieldType::Int(name_hash(rest))
                 } else {
                     FieldType::String(v.to_owned().into_boxed_str())
@@ -593,7 +619,7 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
         let name_stack = self.name_stack;
 
         if name == "raw_data" || name == "static_save" {
-            let inner = build_file_from_map_access(&mut map)?;
+            let inner = build_file_from_map_access(&mut map, self.merging, self.original)?;
             let field_idx = file
                 .f
                 .create_field(&name)
@@ -620,6 +646,8 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
             while let Some(key) = map.next_key::<String>()? {
                 let seed = FieldValueSeed {
                     file,
+                    merging: self.merging,
+                    original: self.original.and_then(|value| value.get(&key)),
                     name: key,
                     parent: Some(obj_idx),
                     name_stack,
@@ -649,17 +677,27 @@ impl File {
     ///
     /// Uses `serde_json::Deserializer` with a custom Visitor that preserves
     /// duplicate keys at all nesting levels.
-    pub fn try_from_json<R: Read>(mut reader: R) -> Result<Self, FromJsonError> {
+    pub fn try_from_json<R: Read>(reader: R) -> Result<Self, FromJsonError> {
+        Self::read_json(reader, None)
+    }
+
+    // A merge preserves the original String type even for a leading ###.
+    // Only the merge walker can authorize existing controls, never edited text.
+    pub(super) fn read_json<R: Read>(
+        mut reader: R,
+        original: Option<&serde_json::Value>,
+    ) -> Result<Self, FromJsonError> {
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf)?;
 
         let mut de = serde_json::Deserializer::from_slice(&buf);
-        let file = TopLevelSeed
+        let merging = original.is_some();
+        let file = TopLevelSeed { merging, original }
             .deserialize(&mut de)
             .map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
         de.end()
             .map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
-        file.validate_values()
+        file.validate_values(!merging)
             .map_err(FromJsonError::InvalidValue)?;
         Ok(file)
     }
@@ -679,7 +717,7 @@ impl File {
             .as_object()
             .ok_or_else(|| FromJsonError::Expected("top-level object".to_owned(), 0, 0))?;
         let file = build_file_from_map_value(map)?;
-        file.validate_values()
+        file.validate_values(true)
             .map_err(FromJsonError::InvalidValue)?;
         Ok(file)
     }
@@ -831,8 +869,7 @@ impl File {
             }
             Char(c) => {
                 writer.write_all(b"\"")?;
-                let buf = [*c as u8];
-                writer.write_all(&buf)?;
+                writer.write_all(escape(&c.to_string()).as_bytes())?;
                 writer.write_all(b"\"")?;
             }
             String(s) => {

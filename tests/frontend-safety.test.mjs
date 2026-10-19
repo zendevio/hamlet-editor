@@ -16,12 +16,13 @@ const server = await createServer({
 after(() => server.close());
 const load = (name) => server.ssrLoadModule(`/src/lib/${name}.ts`);
 const store = await load('stores/save-data.svelte');
+const { runPreSaveValidation } = await load('validation');
 const inputs = await load('input-validation');
 const estate = await load('estate');
 const raid = await load('raid');
 const districts = await load('districts');
 const safety = await load('hero-safety');
-const { createSaveWorkflow, createUnsavedGuard } = await load('save-workflow');
+const { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver } = await load('save-workflow');
 const reference = JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8'));
 let fixture;
 beforeEach(() => {
@@ -45,7 +46,7 @@ test('hero names trim, accept Unicode and reject controls, blank and over 32 cha
 	assert.equal(inputs.validateHeroName('  Réynauld  ').value, 'Réynauld');
 	assert.equal(inputs.validateHeroName('勇'.repeat(32)).value.length, 32);
 	assert.equal([...inputs.validateHeroName('😀'.repeat(32)).value].length, 32);
-	for (const name of ['', '  ', 'x'.repeat(33), 'bad\0name', 'bad\nname', '\tname', 'a\u007fb', 'a\u0085b', 'a\u200bb', 'a\u2028b']) {
+	for (const name of ['', '  ', 'x'.repeat(33), 'bad\0name', 'bad\nname', '\tname', 'a\u007fb', 'a\u0085b', 'a\u200bb', 'a\u2028b', '###Reynauld', '  ###Estate']) {
 		assert.ok(inputs.validateHeroName(name).error, JSON.stringify(name));
 	}
 	const original = store.getHeroRawData('34').actor.name;
@@ -65,8 +66,8 @@ test('wallet creates missing types and blueprints use wallet, preserving other e
 	assert.equal(root.wallet['7'].amount, 9);
 	assert.deepEqual(root.estate_items, beforeItems);
 	delete root.wallet['0'];
-	assert.equal(estate.updateWallet(fixture.estate, 'gold', 2147483647), true);
-	assert.equal(Object.values(root.wallet).find((v) => v.type === 'gold').amount, 2147483647);
+	assert.equal(estate.updateWallet(fixture.estate, 'gold', estate.WALLET_MAX), true);
+	assert.equal(Object.values(root.wallet).find((v) => v.type === 'gold').amount, estate.WALLET_MAX);
 	assert.equal(estate.updateWallet(fixture.estate, 'unknown', 7), false);
 });
 
@@ -125,7 +126,12 @@ test('raid updates verified root torchlight and party hunger, leaving inventory 
 });
 
 test('abandon clears game pointers, returns living party to town, releases treatment and schedules deletion; discard restores all', () => {
+	assert.deepEqual(Object.entries(fixture.roster.base_root.heroes).filter(([, h]) => h.hero_file_data.raw_data.base_root['roster.before_on_start_town_visit_status'] === 1).map(([guid]) => Number(guid)).sort((a,b) => a-b), [...fixture.raid.base_root.party.heroes].sort((a,b) => a-b));
 	fixture.game.base_root.inraid = true;
+	fixture.game.base_root.raid_save = '';
+	// Expedition status can exist outside party.heroes; this injected hero is not in the raid list.
+	fixture.roster.base_root.heroes['44'] = structuredClone(fixture.roster.base_root.heroes['96']);
+	fixture.roster.base_root.heroes['44'].hero_file_data.raw_data.base_root['roster.status'] = 1;
 	store.loadGame(fixture.game);
 	store.setGameInRaid(true);
 	store.getHeroRawData('96')['roster.status'] = 3;
@@ -138,7 +144,7 @@ test('abandon clears game pointers, returns living party to town, releases treat
 	assert.equal(data['persist.game.json'].base_root.inraid, false);
 	assert.equal(data['persist.game.json'].base_root.raid_save, '');
 	assert.equal(data['persist.game.json'].base_root.raiddungeon, 'none');
-	for (const guid of ['1', '34', '48']) {
+	for (const guid of ['1', '34', '48', '44']) {
 		const hero = store.getHeroRawData(guid);
 		assert.equal(hero['roster.status'], 0);
 		assert.equal(hero['roster.before_on_start_town_visit_status'], 0);
@@ -177,44 +183,59 @@ test('districts enumerate saved keys and built state, preserve buffs and never i
 	assert.deepEqual(districts.readDistricts(null), []);
 });
 
-function unreferenced() {
-	const root = store.getHeroRawData('34');
-	root['roster.status'] = 0; root['roster.building_name'] = '';
-	store.loadTown({ base_root: { buildings: {} } });
-	store.loadRaid({ base_root: { party: { heroes: [] } } });
-	store.loadUpgrades({ base_root: { purchases: {} } });
-	store.loadGame({ base_root: { inraid: false } });
-	store.loadCampaignLog({ base_root: {} });
-	store.loadProgression({ base_root: {} });
-	store.getSaveData().roster.base_root.last_party.last_party_guids = [];
+const dismissReference = JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'));
+function loadDismissReference() {
+	store.resetSaveData();
+	for (const [name, value] of Object.entries(structuredClone(dismissReference))) {
+		store[`load${name[0].toUpperCase()}${name.slice(1)}`](value);
+	}
 }
 
-test('dismiss blocks treatment, current party, last party, upgrade, campaign and progression references without any changes', () => {
-	assert.match(store.dismissHero('34'), /treatment/);
-	unreferenced();
-	const cases = [
-		[() => { store.getSaveData().raid.base_root.party.heroes = [34]; }, /raid party/],
-		[() => { store.getSaveData().roster.base_root.last_party.last_party_guids = [34]; }, /last party/],
-		[() => { store.getSaveData().upgrades.base_root.purchases['0'] = { instance_number: 34 }; }, /upgrade/],
-		[() => { store.loadCampaignLog({ base_root: { chapters: { 1: { heroes: { 0: { guid: 34 } } } } } }); }, /Other save/],
-		[() => { store.loadProgression({ base_root: { completed_plot_quests_data: { 0: { heroes: { 0: { guid: 34, survived: false } } } } } }); }, /Other save/]
-	];
-	for (const [setup, pattern] of cases) {
-		unreferenced(); setup();
-		const before = JSON.stringify(store.getSaveData().roster);
-		assert.match(store.dismissHero('34'), pattern);
-		assert.equal(JSON.stringify(store.getSaveData().roster), before);
-		assert.equal(store.hasDirtyFiles(), false);
-	}
+test('dismiss uses real profile purchases and history, removes live references and supports discard', () => {
+	loadDismissReference();
+	const data = store.getSaveData();
+	assert.equal(Object.keys(data.roster.base_root.heroes).length, 29);
+	assert.equal(data.roster.base_root.heroes['36'], undefined);
+	assert.equal(Object.values(data.upgrades.base_root.purchases).filter((p) => p.instance_number === 36).length, 0);
+	assert.equal((JSON.stringify(data.campaignLog).match(/"guid":36/g) ?? []).length, 4);
+	assert.ok(JSON.stringify(data.campaignLog).includes('"guid":44,'));
+	const history = JSON.stringify([data.campaignLog, data.progression]);
+	// GUID 44 is available, with real upgrade purchases and historical references.
+	assert.ok(Object.values(data.upgrades.base_root.purchases).some((p) => p.instance_number === 44));
+	const count = data.roster.base_root.dismissed_hero_count;
+	const otherPurchases = Object.values(data.upgrades.base_root.purchases).filter((p) => p.instance_number !== 44);
+	assert.equal(store.dismissHero('44'), null);
+	assert.equal(store.getHeroRawData('44'), null);
+	assert.equal(data.roster.base_root.dismissed_hero_count, count + 1);
+	assert.deepEqual(Object.values(data.upgrades.base_root.purchases), otherPurchases);
+	assert.equal(JSON.stringify([data.campaignLog, data.progression]), history);
+	assert.deepEqual(new Set(data.dirtyFiles), new Set(['persist.roster.json', 'persist.upgrades.json']));
+	store.discardAllChanges();
+	assert.deepEqual(data.roster, dismissReference.roster);
+	assert.deepEqual(data.upgrades, dismissReference.upgrades);
 });
 
-test('dismiss succeeds only for an unreferenced hero and increments a valid counter', () => {
-	unreferenced();
-	const count = store.getSaveData().roster.base_root.dismissed_hero_count;
+test('dismiss cleans a real last-party vector after treatment release and blocks live state', () => {
+	loadDismissReference();
+	assert.match(store.dismissHero('34'), /treatment/);
+	store.releaseHeroFromTreatment('34');
+	store.clearAllDirty();
 	assert.equal(store.dismissHero('34'), null);
-	assert.equal(store.getHeroRawData('34'), null);
-	assert.equal(store.getSaveData().roster.base_root.dismissed_hero_count, count + 1);
-	assert.deepEqual([...store.getSaveData().dirtyFiles], ['persist.roster.json']);
+	assert.deepEqual(store.getSaveData().roster.base_root.last_party.last_party_guids, [1, 48, -1]);
+	assert.deepEqual(store.getSaveData().campaignLog, dismissReference.campaignLog);
+	assert.deepEqual(store.getSaveData().progression, dismissReference.progression);
+	for (const mode of ['party', 'status', 'raid', 'shape']) {
+		loadDismissReference();
+		const data = store.getSaveData();
+		if (mode === 'party') store.loadRaid(structuredClone(reference.raid));
+		if (mode === 'status') store.getHeroRawData('96')['roster.status'] = 1;
+		if (mode === 'raid') data.game.base_root.inraid = true;
+		if (mode === 'shape') data.roster.base_root.last_party.last_party_guids = {};
+		const before = JSON.stringify([data.roster, data.upgrades, data.town]);
+		assert.match(store.dismissHero('96'), /raid party|during a raid|unsupported shape/);
+		assert.equal(JSON.stringify([data.roster, data.upgrades, data.town]), before);
+		assert.equal(store.hasDirtyFiles(), false);
+	}
 });
 
 test('unverified revival is blocked in town and raid with no writes, including generic status transition', () => {
@@ -223,7 +244,7 @@ test('unverified revival is blocked in town and raid with no writes, including g
 	hero['roster.status'] = 3;
 	for (const active of [false, true]) {
 		store.setGameInRaid(active);
-		assert.match(store.reviveHero('34'), /unverified|unavailable/);
+		assert.match(store.getRevivalBlockReason(), /unverified|unavailable/);
 		store.setHeroStatus('34', 0);
 		assert.equal(hero['roster.status'], 3);
 		assert.deepEqual(store.getDirtyData(), {});
@@ -331,22 +352,18 @@ test('profile and path guard handles Save, Discard, Cancel, failed saves and cle
 	}
 });
 
-test('dismiss refuses missing reference files, town slots despite available status, and references from another hero', () => {
-	unreferenced();
-	store.loadTown({ base_root: { buildings: { abbey: { activities: { prayer: { 0: { hero: 34 } } } } } } });
+test('dismiss refuses missing live data and treatment slots despite available status', () => {
+	loadDismissReference();
+	store.getHeroRawData('34')['roster.status'] = 0;
+	store.getHeroRawData('34')['roster.building_name'] = '';
 	assert.match(store.dismissHero('34'), /treatment/);
-	unreferenced();
-	store.getHeroRawData('1').actor.buff_group = { 0: { source_guid: 34 } };
-	assert.match(store.dismissHero('34'), /Other save/);
-	assert.equal(store.hasDirtyFiles(), false);
 	const roster = store.getSaveData().roster;
 	store.resetSaveData(); store.loadRoster(roster);
-	assert.match(store.dismissHero('34'), /reference data is missing/);
+	assert.match(store.dismissHero('96'), /reference data is missing/);
 	assert.equal(store.hasDirtyFiles(), false);
 });
 
 test('validation gear repairs mark roster dirty so a pending Save includes them', async () => {
-	const { runPreSaveValidation } = await load('validation');
 	store.getHeroRawData('34').resolveXp = 0;
 	store.getHeroRawData('34').weapon_rank = 4;
 	store.getHeroRawData('34').armour_rank = 4;
@@ -371,4 +388,74 @@ test('a pending profile decision cannot be replaced by a second path change', as
 	decide('cancel');
 	assert.equal(await first, false);
 	assert.deepEqual(calls, []);
+});
+
+test('plot raid abandonment is blocked without mutations, including pure data helper', () => {
+	const before = JSON.stringify([fixture.game, fixture.raid, fixture.roster, fixture.town]);
+	assert.match(store.abandonRaid(), /plot and Courtyard/);
+	assert.equal(raid.abandonRaidData(fixture.game, fixture.raid, fixture.roster, fixture.town).size, 0);
+	assert.equal(JSON.stringify([fixture.game, fixture.raid, fixture.roster, fixture.town]), before);
+	assert.deepEqual(store.getDirtyData(), {});
+});
+
+test('estate names share hero validation and invalid input never dirties game data', () => {
+	const before = fixture.game.base_root.estatename;
+	for (const name of ['###estate', '  ###estate', 'bad\nname', '', 'x'.repeat(33)]) {
+		assert.ok(store.setEstateName(name));
+		assert.equal(store.getSaveData().game.base_root.estatename, before);
+		assert.equal(store.hasDirtyFiles(), false);
+	}
+	assert.equal(store.setEstateName('  Estate  '), null);
+	assert.equal(store.getSaveData().game.base_root.estatename, 'Estate');
+});
+
+test('wallet cap leaves income headroom and rejects overflow without mutation', () => {
+	for (const value of [estate.WALLET_MAX + 1, 2147483647]) {
+		store.setWalletAmount('gold', value);
+		assert.equal(store.hasDirtyFiles(), false);
+	}
+	store.setWalletAmount('gold', estate.WALLET_MAX);
+	assert.equal(store.getSaveData().estate.base_root.wallet['0'].amount, estate.WALLET_MAX);
+});
+
+test('numeric upgrade hashes are visible raw and cannot be toggled', () => {
+	const unknown = { instance_number: 0, tree_id: -123456789, requirement_code: 'a', is_purchased: true };
+	const heroUnknown = { ...unknown, instance_number: 44 };
+	store.loadUpgrades({ base_root: { purchases: { 0: unknown, 1: heroUnknown } } });
+	assert.equal(store.stripDsonPrefix(unknown.tree_id), '-123456789');
+	assert.equal(store.getUnknownUpgrades().length, 2);
+	assert.deepEqual(store.getBuildingUpgrades(), []);
+	store.toggleUpgrade(unknown); store.toggleUpgrade(heroUnknown);
+	assert.equal(unknown.is_purchased, true);
+	assert.equal(store.hasDirtyFiles(), false);
+});
+
+test('stale profile reload uses Save Discard Cancel guard and Discard alone does not clear stale state', async () => {
+	store.loadMockData();
+	store.markProfileStale();
+	assert.equal(store.getSaveData().isStale, true);
+	store.discardAllChanges();
+	assert.equal(store.getSaveData().isStale, true);
+	for (const choice of ['save', 'discard', 'cancel']) {
+		const calls = [];
+		const guard = createUnsavedGuard({
+			hasChanges: () => true, choose: async () => choice,
+			save: async () => { calls.push('save-blocked-stale'); return false; },
+			discard: () => calls.push('discard')
+		});
+		await guard(async () => calls.push('reload'));
+		assert.deepEqual(calls, { save: ['save-blocked-stale'], discard: ['discard', 'reload'], cancel: [] }[choice]);
+	}
+});
+
+test('game polls mark a loaded profile stale on confirmed running-to-stopped transitions', () => {
+	store.loadMockData();
+	const observe = createGameStoppedObserver(store.markProfileStale);
+	observe({ running: false, uncertain: false });
+	assert.equal(store.getSaveData().isStale, false);
+	observe({ running: true, uncertain: false });
+	observe({ running: false, uncertain: true });
+	assert.equal(store.getSaveData().isStale, false);
+	observe({ running: false, uncertain: false });
+	assert.equal(store.getSaveData().isStale, true);
 });

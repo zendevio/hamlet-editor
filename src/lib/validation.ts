@@ -17,7 +17,6 @@ import {
 	xpToLevel,
 	type HeroSummary
 } from '#lib/stores/save-data.svelte.js';
-import { loadProfile } from '#lib/api/save.js';
 import type { GameInstall } from '#lib/api/detect.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
 
@@ -214,56 +213,6 @@ function checkDuplicateTrinkets(): ValidationIssue[] {
 	}
 
 	return issues;
-}
-
-// ── Round-Trip Validation ──
-
-/**
- * Validate that a just-written save file decodes back to the expected data.
- *
- * Re-loads the entire profile via `load_profile` and compares the top-level
- * key count of the specified file's decoded object against the in-memory
- * representation. A key-count mismatch indicates a gross encoding failure
- * (e.g. fields were silently dropped or the file could not be re-decoded).
- *
- * This is a lightweight sanity check — it does NOT guarantee field-level
- * correctness. A full semantic comparison is non-trivial because ddsavelib
- * may reorder fields or normalise numeric representations during encode/decode.
- *
- * @param profilePath  - Absolute path to the profile directory.
- * @param filename     - Name of the specific save file to check (e.g. `persist.roster.json`).
- * @param inMemoryData - The in-memory object that was encoded and written.
- * @returns            - `true` if the top-level key count matches, `false` on mismatch or error.
- */
-export async function validateRoundTrip(
-	profilePath: string,
-	filename: string,
-	inMemoryData: Record<string, unknown>
-): Promise<boolean> {
-	try {
-		const reloaded = await loadProfile(profilePath);
-		const reloadedFile = reloaded.data[filename];
-
-		if (typeof reloadedFile !== 'object' || reloadedFile === null) {
-			console.warn(`[validateRoundTrip] ${filename}: re-decoded value is not an object`);
-			return false;
-		}
-
-		const inMemoryKeyCount = Object.keys(inMemoryData).length;
-		const reloadedKeyCount = Object.keys(reloadedFile as Record<string, unknown>).length;
-
-		if (inMemoryKeyCount !== reloadedKeyCount) {
-			console.warn(
-				`[validateRoundTrip] ${filename}: key count mismatch — in-memory ${inMemoryKeyCount} vs re-decoded ${reloadedKeyCount}`
-			);
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		console.warn(`[validateRoundTrip] ${filename}: error during re-load — ${err}`);
-		return false;
-	}
 }
 
 // ── DLC Field Injection Guards ──

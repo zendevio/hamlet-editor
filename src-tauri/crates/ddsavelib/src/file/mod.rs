@@ -85,9 +85,9 @@ pub struct File {
 }
 
 impl File {
-    fn validate_values(&self) -> Result<(), String> {
+    fn validate_values(&self, edited: bool) -> Result<(), String> {
         for field in self.dat.iter() {
-            let invalid_text = |s: &str| s.chars().any(char::is_control);
+            let invalid_text = |s: &str| s.chars().any(|c| c == '\0' || (edited && c.is_control()));
             let reason = if invalid_text(field.name.as_ref()) {
                 Some("field names cannot contain control characters or NUL")
             } else {
@@ -98,7 +98,7 @@ impl File {
                     FieldType::StringVector(v) if v.iter().any(|s| invalid_text(s)) => {
                         Some("strings cannot contain control characters or NUL")
                     }
-                    FieldType::Char(c) if c.is_control() => {
+                    FieldType::Char(c) if *c == '\0' || (edited && c.is_control()) => {
                         Some("strings cannot contain control characters or NUL")
                     }
                     FieldType::Float(f) if !f.is_finite() => {
@@ -108,7 +108,7 @@ impl File {
                         Some("float must be finite and within f32 range")
                     }
                     FieldType::File(Some(inner)) => {
-                        inner.validate_values()?;
+                        inner.validate_values(edited)?;
                         None
                     }
                     _ => None,

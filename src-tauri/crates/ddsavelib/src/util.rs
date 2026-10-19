@@ -10,18 +10,17 @@ pub fn name_hash(s: &'_ str) -> i32 {
 pub fn escape(arg: &str) -> Cow<'_, str> {
     if arg
         .chars()
-        .any(|c| matches!(c, '\x08' | '\x0C' | '\n' | '\r' | '\t' | '\\' | '"'))
+        .any(|c| c.is_control() || matches!(c, '\\' | '"'))
     {
         let mut s = String::new();
         for c in arg.chars() {
             match c {
-                '\x08' => s.push_str("\\b"),
-                '\x0C' => s.push_str("\\f"),
-                '\n' => s.push_str("\\n"),
-                '\r' => s.push_str("\\r"),
-                '\t' => s.push_str("\\t"),
                 '"' => s.push_str("\\\""),
                 '\\' => s.push_str("\\\\"),
+                c if c.is_control() => {
+                    use std::fmt::Write;
+                    write!(&mut s, "\\u{:04x}", c as u32).unwrap();
+                }
                 _ => s.push(c),
             }
         }
@@ -46,11 +45,11 @@ mod tests {
     fn test_escape_all_sequences() {
         let input = "tab\there\nnewline\rcarriage\x08back\x0Cform\"quote\\backslash";
         let escaped = escape(input);
-        assert!(escaped.contains("\\t"));
-        assert!(escaped.contains("\\n"));
-        assert!(escaped.contains("\\r"));
-        assert!(escaped.contains("\\b"));
-        assert!(escaped.contains("\\f"));
+        assert!(escaped.contains("\\u0009"));
+        assert!(escaped.contains("\\u000a"));
+        assert!(escaped.contains("\\u000d"));
+        assert!(escaped.contains("\\u0008"));
+        assert!(escaped.contains("\\u000c"));
         assert!(escaped.contains("\\\""));
         assert!(escaped.contains("\\\\"));
     }

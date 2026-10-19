@@ -101,8 +101,10 @@ pub fn list_backups_at(profile: &Path, root: &Path) -> Result<Vec<BackupEntry>, 
     }
     let mut backups = Vec::new();
     for entry in std::fs::read_dir(root).map_err(|e| format!("Failed to read backups: {e}"))? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        if !entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        if !entry.file_type().is_ok_and(|kind| kind.is_dir()) {
             continue;
         }
         let directory = entry.path();
@@ -114,21 +116,28 @@ pub fn list_backups_at(profile: &Path, root: &Path) -> Result<Vec<BackupEntry>, 
                 continue;
             }
         };
-        let timestamp = if let Some(manifest) = manifest {
+        let (timestamp, file_count) = if let Some(manifest) = manifest {
             if manifest.source_profile != source {
                 continue;
             }
-            manifest.timestamp
+            (manifest.timestamp, manifest.files.len())
         } else {
             if !name.starts_with(&format!("{id}__")) {
                 continue;
             }
-            parse_timestamp_from_dirname(&name).unwrap_or(name)
+            let count = match count_save_files(&directory) {
+                Ok(count) => count,
+                Err(e) => {
+                    log::warn!("Skipping unreadable backup {}: {e}", directory.display());
+                    continue;
+                }
+            };
+            (parse_timestamp_from_dirname(&name).unwrap_or(name), count)
         };
         backups.push(BackupEntry {
             path: directory.to_string_lossy().into_owned(),
             timestamp,
-            file_count: read_save_tree(&directory)?.len(),
+            file_count,
             profile_id: id.to_owned(),
         });
     }
@@ -302,6 +311,26 @@ pub(crate) fn read_save_tree(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>, 
     let mut files = BTreeMap::new();
     visit(root, Path::new(""), &mut files)?;
     Ok(files)
+}
+
+/// Legacy listings inspect directory metadata only, never file contents.
+fn count_save_files(directory: &Path) -> Result<usize, std::io::Error> {
+    let mut count = 0;
+    for entry in std::fs::read_dir(directory)? {
+        let entry = entry?;
+        let kind = entry.file_type()?;
+        if kind.is_dir()
+            && !entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".hamlet-transaction-")
+        {
+            count += count_save_files(&entry.path())?;
+        } else if kind.is_file() && super::is_save_file(&entry.file_name().to_string_lossy()) {
+            count += 1;
+        }
+    }
+    Ok(count)
 }
 
 fn restore_deletions(

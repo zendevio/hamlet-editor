@@ -17,6 +17,7 @@
 		loadMockData,
 		getHeroesInBuilding,
 		getBuildingUpgrades,
+		getUnknownUpgrades,
 		setDistrictBuilt,
 		TREATMENT_BUILDINGS,
 		DISTRICT_DISPLAY_NAMES,
@@ -27,6 +28,7 @@
 
 	// Derive building upgrade groups
 	let upgradeGroups = $derived(getBuildingUpgrades());
+	let unknownUpgrades = $derived(getUnknownUpgrades());
 
 	// Derive treatment heroes for each building
 	let abbeyHeroes = $derived(getHeroesInBuilding('abbey'));
@@ -142,6 +144,16 @@
 					</p>
 				{/if}
 			</section>
+
+			{#if unknownUpgrades.length > 0}
+				<section class="space-y-2">
+					<h2 class="text-lg font-semibold">Unknown / Modded Upgrades</h2>
+					<p class="text-xs text-muted-foreground">These raw identifiers are preserved and cannot be edited without matching game data.</p>
+					{#each unknownUpgrades as purchase}
+						<p class="text-sm tabular-nums">{purchase.tree_id} · Hero / instance {purchase.instance_number} · Tier {purchase.requirement_code} · {purchase.is_purchased ? 'Purchased' : 'Not purchased'}</p>
+					{/each}
+				</section>
+			{/if}
 
 			{#if districts.length > 0}
 			<Separator />

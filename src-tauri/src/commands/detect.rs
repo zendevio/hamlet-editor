@@ -1,6 +1,5 @@
 use serde::Serialize;
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use super::save::decode_save_file;
@@ -167,20 +166,22 @@ pub fn detect_game_installations() -> Result<Vec<GameInstall>, String> {
 
 /// Check if Darkest Dungeon is currently running.
 ///
-/// Uses `sysinfo` to scan for a process named `Darkest.exe` (Windows)
-/// or `Darkest` (macOS/Linux).
+/// Covers Windows, macOS and Linux, including Linux's 15-byte comm name.
 #[tauri::command]
 pub fn is_game_running() -> Result<bool, String> {
-    let target: &OsStr = if cfg!(target_os = "windows") {
-        OsStr::new("Darkest.exe")
-    } else {
-        OsStr::new("Darkest")
-    };
-
     let mut sys = sysinfo::System::new();
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-    let found = sys.processes().values().any(|p| p.name() == target);
-    Ok(found)
+    Ok(sys
+        .processes()
+        .values()
+        .any(|p| is_game_process(&p.name().to_string_lossy())))
+}
+
+fn is_game_process(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "darkest" | "darkest.exe" | "darkest.bin.x86_64" | "darkest.bin.x86_" | "darkest.bin.x86"
+    )
 }
 
 pub(crate) fn ensure_game_stopped(
@@ -602,5 +603,24 @@ mod tests {
         super::super::save::encode_save_file(game_path, &game).unwrap();
         assert!(!scan());
         std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod process_name_tests {
+    #[test]
+    fn matches_platform_names_and_linux_truncation() {
+        for name in [
+            "Darkest",
+            "DARKEST.EXE",
+            "darkest.bin.x86_64",
+            "darkest.bin.x86_",
+            "darkest.bin.x86",
+        ] {
+            assert!(super::is_game_process(name), "{name}");
+        }
+        for name in ["steam", "darkest-helper", "other.exe"] {
+            assert!(!super::is_game_process(name));
+        }
     }
 }

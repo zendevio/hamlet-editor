@@ -8,7 +8,7 @@
 
 import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 import { updateWallet, updateEstateItem } from '#lib/estate.js';
-import { updateTorchlight, updateHungerBuffer, updateRaidAmount, abandonRaidData } from '#lib/raid.js';
+import { updateTorchlight, updateHungerBuffer, updateRaidAmount, abandonRaidData, abandonRaidBlockReason } from '#lib/raid.js';
 import { updateDistrict } from '#lib/districts.js';
 import { canPickQuirk, changeCurseState, dismissBlockReason, revivalBlockReason } from '#lib/hero-safety.js';
 import { ensureNameTable } from '#lib/api/names.js';
@@ -110,6 +110,7 @@ let campaignLog = $state<Record<string, unknown> | null>(null);
 let progression = $state<Record<string, unknown> | null>(null);
 let gameInRaid = $state(false);
 let isLoaded = $state(false);
+let isStale = $state(false);
 let nameTableVersion = $state(0);
 let isLoading = $state(false);
 let loadedProfilePath = $state('');
@@ -312,10 +313,18 @@ export function getSaveData() {
 		get nameTableVersion() {
 			return nameTableVersion;
 		},
+		get isStale() {
+			return isStale;
+		},
 		get isLoaded() {
 			return isLoaded;
 		}
 	};
+}
+
+/** Staleness survives Discard and clears only when the profile is loaded again. */
+export function markProfileStale() {
+	if (isLoaded) isStale = true;
 }
 
 /** Get all heroes as HeroSummary[]. */
@@ -519,10 +528,6 @@ export function getRevivalBlockReason(): string {
 	return revivalBlockReason(gameInRaid || !!game?.base_root.inraid || raid !== null);
 }
 
-export function reviveHero(_guid: string): string {
-	return getRevivalBlockReason();
-}
-
 export function setHeroCurseState(guid: string, id: string) {
 	const raw = getHeroRawData(guid);
 	if (raw && changeCurseState(raw, id)) markDirty('persist.roster.json');
@@ -530,22 +535,35 @@ export function setHeroCurseState(guid: string, id: string) {
 
 /** Update the estate name in persist.game.json. */
 export function setEstateName(name: string) {
-	if (!game) return;
-	game.base_root.estatename = name;
-	markDirty('persist.game.json');
+	if (!game) return 'No game data loaded.';
+	const parsed = validateHeroName(name);
+	if (parsed.error !== undefined) return parsed.error;
+	if (game.base_root.estatename !== parsed.value) {
+		game.base_root.estatename = parsed.value;
+		markDirty('persist.game.json');
+	}
+	return null;
 }
 
 export function getDismissBlockReason(guid: string): string | null {
-	return dismissBlockReason(guid, { roster, town, upgrades, game, raid, campaignLog, progression });
+	return dismissBlockReason(guid, { roster, town, upgrades, game, raid });
 }
 
-/** Leave all files untouched when any reference cannot be safely cleaned. */
+/** Remove live roster/purchase references, preserving campaign and progression history. */
 export function dismissHero(guid: string): string | null {
 	const reason = getDismissBlockReason(guid);
 	if (reason) return reason;
 	if (!roster) return 'No roster loaded.';
 	const count = parseInteger(roster.base_root.dismissed_hero_count, 0, 2147483646);
 	if (count.error !== undefined) return count.error;
+	if (!upgrades) return 'No upgrade data loaded.';
+	for (const [key, purchase] of Object.entries(upgrades.base_root.purchases)) {
+		if (purchase.instance_number === Number(guid)) {
+			delete upgrades.base_root.purchases[key];
+			markDirty('persist.upgrades.json');
+		}
+	}
+	roster.base_root.last_party.last_party_guids = roster.base_root.last_party.last_party_guids.filter((id) => id !== Number(guid));
 	delete roster.base_root.heroes[guid];
 	roster.base_root.dismissed_hero_count = count.value + 1;
 	markDirty('persist.roster.json');
@@ -646,14 +664,20 @@ export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 		.sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
+/** Unresolved hashes have no verified tree, so display them as raw read-only entries. */
+export function getUnknownUpgrades(): UpgradePurchase[] {
+	return Object.values(upgrades?.base_root.purchases ?? {}).filter((purchase) => typeof purchase.tree_id === 'number');
+}
+
 /** Toggle an upgrade purchase state with cascade logic. */
 export function toggleUpgrade(purchase: UpgradePurchase) {
-	if (!upgrades) return;
+	if (!upgrades || typeof purchase.tree_id !== 'string' || purchase.instance_number !== 0) return;
 	const newState = !purchase.is_purchased;
 	const treeId = stripDsonPrefix(purchase.tree_id);
 	const dotIndex = treeId.indexOf('.');
 	if (dotIndex === -1) return;
 	const buildingName = treeId.substring(0, dotIndex);
+	if (!BUILDING_UPGRADE_PREFIXES.includes(buildingName as (typeof BUILDING_UPGRADE_PREFIXES)[number])) return;
 
 	if (!newState) {
 		// Turning OFF: cascade — also turn off all higher-tier upgrades in the same
@@ -685,9 +709,11 @@ export function setDistrictBuilt(districtId: string, built: boolean) {
 	if (town && updateDistrict(town, districtId, built)) markDirty('persist.town.json');
 }
 
-/** Clear the active raid pointer, return its party to town, and delete its file on Save. */
+/** Abandon regular raids; plot raids stay blocked pending a verified game transition. */
 export function abandonRaid(): string | null {
 	if (!game || !raid || !roster || !town) return 'Game, raid, roster and town data must be loaded before abandoning a raid.';
+	const reason = abandonRaidBlockReason(game);
+	if (reason) return reason;
 	for (const filename of abandonRaidData(game, raid, roster, town)) {
 		markDirty(filename as SaveFileName);
 	}
@@ -819,7 +845,7 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 		if (data['persist.progression.json']) {
 			loadProgression(data['persist.progression.json'] as Record<string, unknown>);
 		}
-		// persist.novelty_tracker.json is intentionally not loaded into the store (v0.1.0).
+		// novelty_tracker.json is intentionally not loaded into the frontend store.
 		// Unmodified files are left on disk without being re-encoded.
 
 		loadedProfilePath = profilePath;
@@ -928,6 +954,7 @@ export function resetSaveData() {
 	progression = null;
 	gameInRaid = false;
 	isLoaded = false;
+	isStale = false;
 	nameTableVersion = 0;
 	loadedProfilePath = '';
 	loadedGamePath = '';

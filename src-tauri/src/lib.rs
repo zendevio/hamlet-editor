@@ -14,6 +14,7 @@ pub struct NameTable {
     pub names: Vec<String>,
     pub version: u64,
     pub loaded_profile: Option<PathBuf>,
+    pub loaded_fingerprint: std::collections::BTreeMap<PathBuf, [u8; 32]>,
     pub loaded_files: std::collections::HashMap<String, commands::save::LoadedSave>,
 }
 

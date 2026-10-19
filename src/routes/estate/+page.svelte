@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { WALLET_MAX } from '#lib/estate.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import IntegerInput from '#lib/components/IntegerInput.svelte';
 	import WalletCard from '#lib/components/estate/WalletCard.svelte';
@@ -48,6 +49,7 @@
 	// D6: Estate name
 	let estateNameValue = $state('');
 	let estateNameEditing = $state(false);
+	let estateNameError = $state('');
 
 	$effect(() => {
 		if (!estateNameEditing) {
@@ -56,11 +58,8 @@
 	});
 
 	function handleEstateNameBlur() {
-		const trimmed = estateNameValue.trim();
-		if (trimmed && trimmed !== (saveData.game?.base_root?.estatename ?? '')) {
-			setEstateName(trimmed);
-		}
-		estateNameEditing = false;
+		estateNameError = setEstateName(estateNameValue) ?? '';
+		if (!estateNameError) estateNameEditing = false;
 	}
 
 	function handleEstateNameKeydown(e: KeyboardEvent) {
@@ -69,6 +68,7 @@
 		}
 		if (e.key === 'Escape') {
 			estateNameValue = saveData.game?.base_root?.estatename ?? '';
+			estateNameError = '';
 			estateNameEditing = false;
 		}
 	}
@@ -217,9 +217,10 @@
 							onblur={handleEstateNameBlur}
 							onkeydown={handleEstateNameKeydown}
 							placeholder="Enter estate name..."
-							maxlength={32}
+							aria-invalid={!!estateNameError}
 							class="h-9 text-sm"
 						/>
+						{#if estateNameError}<p class="mt-1 text-xs text-destructive">{estateNameError}</p>{/if}
 					</div>
 				</div>
 				{#if hasColorOfMadness && estateData?.endless_wave_highscore !== undefined}
@@ -326,7 +327,7 @@
 								</div>
 								<div class="space-y-1">
 									<label for="blueprint-amount" class="text-xs text-muted-foreground">Amount</label>
-									<IntegerInput id="blueprint-amount" label="Blueprint amount" value={blueprintCount} class="h-8 tabular-nums"
+									<IntegerInput id="blueprint-amount" max={WALLET_MAX} label="Blueprint amount" value={blueprintCount} class="h-8 tabular-nums"
 										onchange={(value) => setWalletAmount('blueprint', value)} />
 								</div>
 							</div>

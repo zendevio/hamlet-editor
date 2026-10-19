@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { parseInteger, I32_MAX } from '#lib/input-validation.js';
+	import { parseInteger } from '#lib/input-validation.js';
+	import { WALLET_MAX } from '#lib/estate.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
@@ -38,7 +39,7 @@
 	}
 
 	function confirmEdit() {
-		const parsed = parseInteger(editValue);
+		const parsed = parseInteger(editValue, 0, WALLET_MAX);
 		error = parsed.error ?? '';
 		if (parsed.error !== undefined) return;
 		onchange?.(parsed.value);
@@ -96,7 +97,7 @@
 				bind:ref={inputRef}
 				type="number"
 				min="0"
-				max={I32_MAX}
+				max={WALLET_MAX}
 				step="1"
 				aria-label={name}
 				aria-invalid={!!error}

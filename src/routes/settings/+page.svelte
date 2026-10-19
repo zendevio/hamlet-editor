@@ -126,8 +126,8 @@
 	);
 	let profileOptions = $derived.by(() => {
 		return availableSaveLocations.map((loc) => ({
-			id: loc.profile_id,
-			label: loc.profile_id,
+			id: loc.path,
+			label: `${loc.profile_id} · ${loc.steam_user_id ?? loc.path}`,
 			hasRaid: loc.has_active_raid,
 			source: loc.source
 		}));
@@ -169,7 +169,7 @@
 			saveLocations = await detectSaveLocations();
 			if (saveLocations.length > 0) {
 				const current = saveLocations.find((loc) => loc.path === settings.savePath) ?? saveLocations[0];
-				await handleProfileChange(current.profile_id);
+				await handleProfileChange(current.path);
 				savePathValid = true;
 				toast.success('Save files detected', {
 					description: `Found ${saveLocations.length} profile(s).`
@@ -232,11 +232,11 @@
 	}
 
 	async function handleProfileChange(value: string) {
-		const loc = availableSaveLocations.find((l) => l.profile_id === value);
+		const loc = availableSaveLocations.find((l) => l.path === value);
 		if (!loc) return;
 		try {
-			if (await changeProfilePath(loc.path, value)) {
-				toast.success('Profile loaded', { description: `Switched to profile ${value}` });
+			if (await changeProfilePath(loc.path, loc.profile_id)) {
+				toast.success('Profile loaded', { description: `Switched to profile ${loc.profile_id}` });
 			}
 		} catch (err) {
 			toast.error('Failed to load profile', { description: String(err) });
@@ -294,13 +294,15 @@
 		restoringBackup = restoreTarget.path;
 		restoreDialogOpen = false;
 		try {
-			await restoreBackup(restoreTarget.path, settings.savePath);
+			const target = restoreTarget;
+			if (!await requestDataChange(async () => {
+				await restoreBackup(target.path, settings.savePath);
+				await loadProfileFromBackend(settings.savePath);
+			})) return;
 			toast.success('Backup restored', {
 				description: `Restored from ${formatTimestamp(restoreTarget.timestamp)}.`
 			});
 			await loadBackupList();
-			// Reload the in-memory profile so the UI reflects the restored files
-			await loadProfileFromBackend(settings.savePath);
 		} catch (err) {
 			toast.error('Restore failed', {
 				description: String(err)
@@ -322,13 +324,14 @@
 		restoringGameBackup = true;
 		restoreGameBackupDialogOpen = false;
 		try {
-			await restoreGameBackup(settings.savePath);
+			if (!await requestDataChange(async () => {
+				await restoreGameBackup(settings.savePath);
+				await loadProfileFromBackend(settings.savePath);
+			})) return;
 			toast.success('Game backup restored', {
 				description: 'The game\'s own backup has been restored successfully.'
 			});
 			await loadBackupList();
-			// Reload the in-memory profile so the UI reflects the restored files
-			await loadProfileFromBackend(settings.savePath);
 		} catch (err) {
 			toast.error('Restore failed', {
 				description: String(err)
@@ -516,7 +519,7 @@
 					{#if profileOptions.length > 0}
 						<Select
 							type="single"
-							value={settings.profileId}
+							value={settings.savePath}
 							onValueChange={(v: string) => handleProfileChange(v)}
 						>
 							<SelectTrigger class="h-8 text-xs">

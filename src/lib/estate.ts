@@ -7,6 +7,8 @@ export const ESTATE_ITEM_TYPES: Record<string, string> = {
 	crimson_court_invitation_C: 'estate_currency',
 	the_blood: 'estate'
 };
+// Editor cap leaves over one billion of i32 headroom for subsequent game income.
+export const WALLET_MAX = 999_999_999;
 const WALLET_TYPES = new Set(['gold', 'bust', 'portrait', 'deed', 'crest', 'shard', 'memory', 'blueprint']);
 
 function nextItemKey(items: Record<string, unknown>): string {
@@ -16,7 +18,7 @@ function nextItemKey(items: Record<string, unknown>): string {
 }
 
 export function updateWallet(estate: EstateData, type: string, input: unknown): boolean {
-	const parsed = parseInteger(input);
+	const parsed = parseInteger(input, 0, WALLET_MAX);
 	if (parsed.error !== undefined || !WALLET_TYPES.has(type)) return false;
 	const wallet = estate.base_root.wallet;
 	const entry: WalletEntry | undefined = Object.values(wallet).find((item) => item.type === type);

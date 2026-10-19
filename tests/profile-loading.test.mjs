@@ -58,7 +58,10 @@ test('startup waits for name generation AND publication; switches and restores u
 	assert.equal(store.getSaveData().nameTableVersion, 7);
 	assert.equal(store.getSaveData().isLoading, false);
 	await store.loadProfileFromBackend('/profiles/profile_1');
+	store.markProfileStale();
+	assert.equal(store.getSaveData().isStale, true);
 	await store.loadProfileFromBackend('/profiles/profile_1');
+	assert.equal(store.getSaveData().isStale, false);
 	assert.deepEqual(calls.map(([command]) => command), [
 		'generate_name_table', 'set_name_table', 'load_profile', 'load_profile', 'load_profile'
 	]);

@@ -50,7 +50,7 @@ Contents top-to-bottom:
    - **Heroes** (ph:users-four) — Default landing page.
    - **Estate** (ph:bank) — Wallet, trinket storage, estate currencies.
    - **Town** (ph:buildings) — Building upgrades, treatment slots.
-   - **Raid** (ph:compass) — Visible only when BOTH `persist.raid.json` exists AND `inraid: true` in `persist.game.json`. If only one condition is true (inconsistent state), the nav item is visible with an amber warning icon and tooltip: "Raid state is inconsistent between persist.raid.json and persist.game.json. Backup recommended before editing."
+   - **Raid** (ph:compass): Visible only when BOTH `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in `persist.game.json`. If only one condition is true (inconsistent state), the nav item is visible with an amber warning icon and tooltip: "Raid state is inconsistent between persist.raid.json and persist.game.json. Backup recommended before editing."
    - **Settings** (ph:gear) — Paths, backups, preferences.
 4. **Sidebar footer**:
    - Backup status indicator (last backup timestamp or "No backup").
@@ -69,7 +69,7 @@ Horizontal bar across the top of the main content area.
 | Badge | Condition | Color | Text |
 |-------|-----------|-------|------|
 | Game running | `is_game_running()` returns true | Red | "DD Running — Save Blocked" |
-| Raid active | `persist.raid.json` exists AND `inraid: true` in game.json. If only one condition is true, show amber "Raid State Inconsistent" warning instead. | Amber | "Raid Active" |
+| Raid active | `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in game.json. If only one condition is true, show amber "Raid State Inconsistent" warning instead. | Amber | "Raid Active" |
 | Mod content | Modded class/trinket/quirk IDs detected | Amber | "Modded Content" |
 | Unsaved changes | Any in-memory edit differs from on-disk state | Orange dot on Save button + ARIA label "Unsaved changes" | Tooltip: "Unsaved changes" (accessible to screen readers) |
 
@@ -327,7 +327,7 @@ Provides editing for `persist.town.json` and the building-related entries in `pe
 
 ### 3.5 Raid View
 
-Only accessible when `persist.raid.json` exists AND `inraid: true` in `persist.game.json`. If conditions are inconsistent (one true, one false), show a warning state instead of the normal raid view: "Raid state is inconsistent. persist.raid.json exists but inraid flag disagrees. Backup recommended before editing." with a "Create Backup Now" button. If neither condition is true: empty state "No active raid. Start a dungeon in-game to see raid data here."
+Only accessible when `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in `persist.game.json`. If conditions are inconsistent (one true, one false), show a warning state instead of the normal raid view: "Raid state is inconsistent. persist.raid.json exists but inraid flag disagrees. Backup recommended before editing." with a "Create Backup Now" button. If neither condition is true: empty state "No active raid. Start a dungeon in-game to see raid data here."
 
 ```
 +--- SIDEBAR ---+------------ MAIN CONTENT ----------------------------+
@@ -427,7 +427,7 @@ Sectioned form layout.
 1. App opens. Persisted paths re-validated.
 2. Last-used profile loaded automatically with LoadingScreen overlay.
 3. If `is_game_running()` returns true: red "DD Running — Save Blocked" badge. Save button disabled. All fields remain viewable. Toast: "Save is disabled while Darkest Dungeon is running."
-4. If `persist.raid.json` exists AND `inraid: true`: Raid nav item appears, amber "Raid Active" badge shown.
+4. If `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true`: Raid nav item appears, amber "Raid Active" badge shown.
 5. If modded content detected in the roster: amber "Modded Content" badge shown.
 6. Heroes view loads as default.
 

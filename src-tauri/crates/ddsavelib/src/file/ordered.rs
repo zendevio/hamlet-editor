@@ -4,7 +4,7 @@ use serde::de::{MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 /// Objects use a sequence so repeated names and original order survive edits.
 enum OrderedValue {
@@ -26,26 +26,74 @@ impl OrderedValue {
         }
     }
 
+    fn validate_edits(&self, edited: &Value, path: &str) -> Result<(), FromJsonError> {
+        let invalid = || {
+            FromJsonError::InvalidValue(format!(
+                "{path}: strings cannot contain control characters or NUL"
+            ))
+        };
+        match (self, edited) {
+            (Self::Scalar(Value::String(original)), Value::String(text)) if original == text => {
+                Ok(())
+            }
+            (_, Value::String(text)) if text.chars().any(char::is_control) => Err(invalid()),
+            (Self::Object(entries), Value::Object(map)) => {
+                for (key, value) in map {
+                    if key.chars().any(char::is_control) && !entries.iter().any(|(k, _)| k == key) {
+                        return Err(invalid());
+                    }
+                    let empty = Self::Scalar(Value::Null);
+                    let original = entries
+                        .iter()
+                        .rev()
+                        .find(|(k, _)| k == key)
+                        .map(|(_, v)| v)
+                        .unwrap_or(&empty);
+                    original.validate_edits(value, &format!("{path}.{key}"))?;
+                }
+                Ok(())
+            }
+            (Self::Array(entries), Value::Array(values)) => {
+                for (i, value) in values.iter().enumerate() {
+                    let empty = Self::Scalar(Value::Null);
+                    entries
+                        .get(i)
+                        .unwrap_or(&empty)
+                        .validate_edits(value, &format!("{path}[{i}]"))?;
+                }
+                Ok(())
+            }
+            // New containers have no authorized pre-existing text.
+            (_, Value::Object(_) | Value::Array(_)) => {
+                Self::from_value(&Value::Null).validate_new(edited, path)
+            }
+            _ => Ok(()),
+        }
+    }
+
+    fn validate_new(&self, value: &Value, path: &str) -> Result<(), FromJsonError> {
+        match value {
+            Value::Object(_) => Self::Object(Vec::new()).validate_edits(value, path),
+            Value::Array(_) => Self::Array(Vec::new()).validate_edits(value, path),
+            _ => self.validate_edits(value, path),
+        }
+    }
+
     fn merge(&mut self, edited: &Value) {
         match (self, edited) {
             (Self::Object(entries), Value::Object(map)) => {
-                // The frontend sees the last occurrence of each name. Earlier
-                // occurrences remain untouched; deleting a name removes all.
-                let last: HashMap<String, usize> = entries
-                    .iter()
-                    .enumerate()
-                    .map(|(i, (k, _))| (k.clone(), i))
-                    .collect();
-                for (i, (key, value)) in entries.iter_mut().enumerate() {
-                    if last.get(key) == Some(&i) {
-                        if let Some(new_value) = map.get(key) {
-                            value.merge(new_value);
-                        }
+                // Apply edits to every copy; a duplicated scalar must never
+                // leave an earlier occurrence with a stale value.
+                let existing: HashSet<String> =
+                    entries.iter().map(|(key, _)| key.clone()).collect();
+                for (key, value) in entries.iter_mut() {
+                    if let Some(new_value) = map.get(key) {
+                        value.merge(new_value);
                     }
                 }
                 entries.retain(|(key, _)| map.contains_key(key));
                 for (key, value) in map {
-                    if !last.contains_key(key) {
+                    if !existing.contains(key) {
                         entries.push((key.clone(), Self::from_value(value)));
                     }
                 }
@@ -140,9 +188,12 @@ impl File {
         self.write_to_json(&mut bytes, true, &Unhasher::empty())?;
         let mut ordered: OrderedValue =
             serde_json::from_slice(&bytes).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
+        ordered.validate_edits(edited, "")?;
         ordered.merge(edited);
         let merged =
             serde_json::to_vec(&ordered).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
-        Self::try_from_json(merged.as_slice())
+        let original =
+            serde_json::from_slice(&bytes).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
+        Self::read_json(merged.as_slice(), Some(&original))
     }
 }

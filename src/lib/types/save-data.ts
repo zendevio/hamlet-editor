@@ -176,7 +176,7 @@ export interface GameData {
 
 export interface UpgradePurchase {
 	instance_number: number;
-	tree_id: string;
+	tree_id: string | number;
 	requirement_code: string;
 	is_purchased: boolean;
 }

@@ -15,25 +15,12 @@ export function changeCurseState(hero: HeroBaseRoot, id: string): boolean {
 	return true;
 }
 
-/** Only recognizable GUID references are inspected, not unrelated numeric counters. */
-function hasHeroReference(value: unknown, guid: number): boolean {
-	if (!value || typeof value !== 'object') return false;
-	for (const [key, child] of Object.entries(value)) {
-		if (/^(guid|hero|.*_guid)$/.test(key) && (child === guid || child === String(guid))) return true;
-		if (/guids$/.test(key) && Array.isArray(child) && child.some((v) => v === guid || v === String(guid))) return true;
-		if (hasHeroReference(child, guid)) return true;
-	}
-	return false;
-}
-
 export interface HeroReferences {
 	roster: RosterData | null;
 	town: TownData | null;
 	upgrades: UpgradesData | null;
 	game: GameData | null;
 	raid: RaidData | null;
-	campaignLog: Record<string, unknown> | null;
-	progression: Record<string, unknown> | null;
 }
 
 export function dismissBlockReason(guid: string, data: HeroReferences): string | null {
@@ -46,18 +33,14 @@ export function dismissBlockReason(guid: string, data: HeroReferences): string |
 		return 'This hero is in the raid party. Return to town before dismissing them.';
 	}
 	if (data.game?.base_root.inraid) return 'Dismissal is unavailable during a raid.';
-	if (!data.town || !data.upgrades || !data.game || !data.campaignLog || !data.progression) {
+	if (!data.town || !data.upgrades || !data.game) {
 		return 'Dismissal is blocked because reference data is missing. Reload the complete profile.';
 	}
-	if (data.roster?.base_root.last_party.last_party_guids.includes(Number(guid))) {
-		return 'This hero is referenced by the last party. Change the party in the game before dismissing them.';
-	}
-	if (Object.values(data.upgrades.base_root.purchases).some((purchase) => purchase.instance_number === Number(guid))) {
-		return 'This hero has upgrade purchase records. Dismiss them in the game to clean those references.';
-	}
-	const otherHeroes = Object.fromEntries(Object.entries(data.roster?.base_root.heroes ?? {}).filter(([id]) => id !== guid));
-	if ([otherHeroes, data.town, data.game, data.campaignLog, data.progression, data.raid].some((file) => hasHeroReference(file, Number(guid)))) {
-		return 'Other save records reference this hero. Dismiss them in the game to preserve those records.';
+	// The real fixture uses a variable-length IntVector, with -1 as an empty
+	// position. Removing a GUID is representable without inventing another hero.
+	const lastParty = data.roster?.base_root.last_party?.last_party_guids;
+	if (!Array.isArray(lastParty) || !lastParty.every((id) => Number.isInteger(id))) {
+		return 'Dismissal is blocked because the last party list has an unsupported shape.';
 	}
 	return null;
 }

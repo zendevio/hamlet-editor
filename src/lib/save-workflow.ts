@@ -8,6 +8,16 @@ export type UnsavedChoice = 'save' | 'discard' | 'cancel';
 export type RequestDataChange = (action: () => Promise<void>) => Promise<boolean>;
 export const DATA_CHANGE_CONTEXT = 'hamlet-request-data-change';
 
+/** Unknown polls retain the last confirmed running state until a confirmed stop. */
+export function createGameStoppedObserver(onStopped: () => void) {
+	let wasRunning = false;
+	return (status: { running: boolean; uncertain: boolean }) => {
+		if (status.uncertain) return;
+		if (wasRunning && !status.running) onStopped();
+		wasRunning = status.running;
+	};
+}
+
 export function createSaveWorkflow<T extends SaveIssue>(options: {
 	blocked: () => string | null;
 	validate: () => T[];
