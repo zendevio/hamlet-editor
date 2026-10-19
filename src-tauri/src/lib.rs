@@ -48,14 +48,15 @@ pub fn run() {
 
             // Optional startup window mode for test runs:
             // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.
-            if let Ok(mode) = std::env::var("HAMLET_WINDOW") {
-                if let Some(window) = app.get_webview_window("main") {
+            if let Some(window) = app.get_webview_window("main") {
+                if let Ok(mode) = std::env::var("HAMLET_WINDOW") {
                     match mode.as_str() {
                         "maximized" => window.maximize()?,
                         "fullscreen" => window.set_fullscreen(true)?,
                         other => log::warn!("Ignoring unknown HAMLET_WINDOW value: {other}"),
                     }
                 }
+                window.show()?;
             }
             Ok(())
         })
