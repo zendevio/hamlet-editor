@@ -20,7 +20,7 @@ function snappedSliderValue(value: number, { min, max, step }: SliderRange): num
 	const factor = 10 ** precision;
 	let count = Math.ceil((max - min) / step);
 	if (Math.round((max - min) * factor) % Math.round(step * factor) === 0) count++;
-	if (count === 0) return value;
+	if (count <= 0) return value;
 	let closest = Math.round(min * factor) / factor;
 	let distance = Math.abs(value - closest);
 	for (let i = 0; i < count; i++) {

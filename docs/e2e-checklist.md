@@ -34,8 +34,8 @@ expected; compare the editor's own writes before launching the game.
 | 3 | Rename a hero, change stress with the slider, add and remove quirks. | Only `persist.roster.json` changes; the hero sheet in the game matches. |
 | 4 | Change a level-1 hero's level up and back down. | Weapon and armour ranks never change. |
 | 5 | Click every hero, open every page and every town building, click HP and stress sliders without dragging. | Nothing is marked unsaved; closing needs no dialog; saved fractional HP (for example 67.1) is unchanged. |
-| 6 | Make an edit, start the game, load the campaign, quit the game. | The editor blocks saving while the game runs, then marks the profile stale; the close dialog offers no Save and Close; Discard reloads the game's data. |
-| 7 | Dismiss a hero who has a trinket equipped. | The game loads without the hero and the trinket is back in the trinket inventory. Heroes in treatment, in the last party or in an unfinished expedition cannot be dismissed. |
+| 6 | Make an edit, start the game, load the campaign, quit the game. | The editor blocks saving while the game runs, then marks the profile stale; the close dialog offers no Save and Close; clicking Reload and choosing Discard shows the game's data. |
+| 7 | Dismiss a hero who has a trinket equipped. | The game loads without the hero and the trinket is back in the trinket inventory. Heroes in treatment, in the raid party or referenced by an unfinished expedition cannot be dismissed. A hero in the last party can be dismissed: their slot becomes -1 and the game must still load that party. |
 | 8 | Make an edit, use Discard; make another, close and choose Discard and Close. | Discard leaves nothing unsaved; the window closes on the first click. |
 | 9 | Make an edit, close and choose Save and Close. | The save completes and the window closes. |
 | 10 | Town page. | Upgrade trees, treatment slots and built districts match the game. |
