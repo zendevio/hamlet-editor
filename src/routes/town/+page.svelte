@@ -105,16 +105,16 @@
 	/>
 {:else}
 	<ScrollArea class="h-[calc(100vh-4rem)]">
-		<div class="space-y-8 p-6">
+		<div class="min-w-0 space-y-8 p-6">
 			<!-- Treatment Buildings Section -->
 			<section>
-				<div class="mb-4 flex items-center gap-2">
+				<div class="mb-4 flex flex-wrap items-center gap-2">
 					<h2 class="text-lg font-semibold">Treatment Buildings</h2>
 					<Badge variant="secondary" class="text-xs">
 						{abbeyHeroes.length + tavernHeroes.length + sanitariumHeroes.length} heroes in treatment
 					</Badge>
 				</div>
-				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+				<div class="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{#each treatmentBuildings as buildingName (buildingName)}
 						<BuildingCard
 							{buildingName}
@@ -130,7 +130,7 @@
 			<!-- Building Upgrades Section -->
 			<section>
 				<h2 class="mb-4 text-lg font-semibold">Building Upgrades</h2>
-				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+				<div class="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{#each otherBuildings as buildingName (buildingName)}
 						<BuildingCard
 							{buildingName}
@@ -160,7 +160,7 @@
 
 			<!-- Districts Section (Crimson Court DLC) -->
 			<section>
-				<div class="mb-4 flex items-center gap-2">
+				<div class="mb-4 flex flex-wrap items-center gap-2">
 					<h2 class="text-lg font-semibold">Districts</h2>
 					<Badge variant="outline" class="text-xs">Crimson Court DLC</Badge>
 				</div>
