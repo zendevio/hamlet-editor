@@ -8,6 +8,34 @@ export type UnsavedChoice = 'save' | 'discard' | 'cancel';
 export type RequestDataChange = (action: () => Promise<void>) => Promise<boolean>;
 export const DATA_CHANGE_CONTEXT = 'hamlet-request-data-change';
 
+/** Shared by the layout's save pipeline and reload regression tests. */
+export function profileSaveBlockReason(data: {
+	isLoaded: boolean; isLoading: boolean; isStale: boolean; profilePath: string; gamePath: string;
+}, settings: { savePath: string; gamePath: string }, state: {
+	isProfileLoading: boolean; gameRunning: boolean; gameDetectionUncertain: boolean; hasChanges: boolean;
+}): string | null {
+	if (!data.isLoaded || data.isLoading || state.isProfileLoading) return 'Load a profile before saving.';
+	if (data.profilePath !== settings.savePath || data.gamePath !== settings.gamePath) return 'Paths changed. Reload the profile before saving.';
+	if (data.isStale) return 'Save files may have changed. Reload the profile before saving.';
+	if (state.gameRunning) return 'DD Running. Close the game before saving.';
+	if (state.gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
+	if (!state.hasChanges) return 'No unsaved changes';
+	return null;
+}
+
+/** Reload uses the same unsaved-change guard as profile and path switches. */
+export function createProfileReload(options: {
+	requestDataChange: RequestDataChange;
+	profilePath: () => string;
+	load: (path: string) => Promise<void>;
+	failed: (error: unknown) => void;
+}) {
+	return () => options.requestDataChange(async () => {
+		try { await options.load(options.profilePath()); }
+		catch (error) { options.failed(error); }
+	});
+}
+
 /** Unknown polls retain the last confirmed running state until a confirmed stop. */
 export function createGameStoppedObserver(onStopped: () => void) {
 	let wasRunning = false;
@@ -72,7 +100,8 @@ export function createSaveWorkflow<T extends SaveIssue>(options: {
 
 export function createUnsavedGuard(options: {
 	hasChanges: () => boolean;
-	choose: () => Promise<UnsavedChoice>;
+	choose: (canSave: boolean) => Promise<UnsavedChoice>;
+	canSave?: () => boolean;
 	save: () => Promise<boolean>;
 	discard: () => void;
 }): RequestDataChange {
@@ -82,8 +111,9 @@ export function createUnsavedGuard(options: {
 		active = true;
 		try {
 			if (options.hasChanges()) {
-				const choice = await options.choose();
+				const choice = await options.choose(options.canSave?.() ?? true);
 				if (choice === 'cancel') return false;
+				if (choice === 'save' && options.canSave?.() === false) return false;
 				if (choice === 'save' && !await options.save()) return false;
 				if (choice === 'discard') options.discard();
 			}

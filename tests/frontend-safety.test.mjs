@@ -183,9 +183,11 @@ test('districts enumerate saved keys and built state, preserve buffs and never i
 	assert.deepEqual(districts.readDistricts(null), []);
 });
 
+const estateTrinketsReference = JSON.parse(await readFile(new URL('./fixtures/estate-trinkets-reference.json', import.meta.url), 'utf8'));
 const dismissReference = JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'));
 function loadDismissReference() {
 	store.resetSaveData();
+	store.loadEstate({ base_root: { ...structuredClone(reference.estate.base_root), trinkets: { items: structuredClone(estateTrinketsReference) } } });
 	for (const [name, value] of Object.entries(structuredClone(dismissReference))) {
 		store[`load${name[0].toUpperCase()}${name.slice(1)}`](value);
 	}
@@ -208,6 +210,7 @@ test('dismiss uses real profile purchases and history, removes live references a
 	assert.equal(store.getHeroRawData('44'), null);
 	assert.equal(data.roster.base_root.dismissed_hero_count, count + 1);
 	assert.deepEqual(Object.values(data.upgrades.base_root.purchases), otherPurchases);
+	assert.deepEqual(Object.keys(data.upgrades.base_root.purchases), otherPurchases.map((_, index) => String(index)));
 	assert.equal(JSON.stringify([data.campaignLog, data.progression]), history);
 	assert.deepEqual(new Set(data.dirtyFiles), new Set(['persist.roster.json', 'persist.upgrades.json']));
 	store.discardAllChanges();
@@ -221,7 +224,7 @@ test('dismiss cleans a real last-party vector after treatment release and blocks
 	store.releaseHeroFromTreatment('34');
 	store.clearAllDirty();
 	assert.equal(store.dismissHero('34'), null);
-	assert.deepEqual(store.getSaveData().roster.base_root.last_party.last_party_guids, [1, 48, -1]);
+	assert.deepEqual(store.getSaveData().roster.base_root.last_party.last_party_guids, [1, 48, -1, -1]);
 	assert.deepEqual(store.getSaveData().campaignLog, dismissReference.campaignLog);
 	assert.deepEqual(store.getSaveData().progression, dismissReference.progression);
 	for (const mode of ['party', 'status', 'raid', 'shape']) {
@@ -485,24 +488,6 @@ test('numeric upgrade hashes are visible raw and cannot be toggled', () => {
 	assert.equal(store.hasDirtyFiles(), false);
 });
 
-test('stale profile reload uses Save Discard Cancel guard and Discard alone does not clear stale state', async () => {
-	store.loadMockData();
-	store.markProfileStale();
-	assert.equal(store.getSaveData().isStale, true);
-	store.discardAllChanges();
-	assert.equal(store.getSaveData().isStale, true);
-	for (const choice of ['save', 'discard', 'cancel']) {
-		const calls = [];
-		const guard = createUnsavedGuard({
-			hasChanges: () => true, choose: async () => choice,
-			save: async () => { calls.push('save-blocked-stale'); return false; },
-			discard: () => calls.push('discard')
-		});
-		await guard(async () => calls.push('reload'));
-		assert.deepEqual(calls, { save: ['save-blocked-stale'], discard: ['discard', 'reload'], cancel: [] }[choice]);
-	}
-});
-
 test('game polls mark a loaded profile stale on confirmed running-to-stopped transitions', () => {
 	store.loadMockData();
 	const observe = createGameStoppedObserver(store.markProfileStale);
@@ -513,4 +498,40 @@ test('game polls mark a loaded profile stale on confirmed running-to-stopped tra
 	assert.equal(store.getSaveData().isStale, false);
 	observe({ running: false, uncertain: false });
 	assert.equal(store.getSaveData().isStale, true);
+});
+
+
+test('dismiss returns every equipped trinket to verified estate entries and discard restores both files', () => {
+    loadDismissReference();
+    const data = store.getSaveData();
+    const items = data.estate.base_root.trinkets.items;
+    const before = structuredClone(items);
+    const equipped = [structuredClone(items['0']), structuredClone(items['1'])];
+    store.getHeroRawData('44').trinkets.items = { 0: equipped[0], 1: equipped[1] };
+    store.clearAllDirty();
+    const next = Math.max(...Object.keys(items).map(Number)) + 1;
+    assert.equal(store.dismissHero('44'), null);
+    assert.deepEqual(items[String(next)], equipped[0]);
+    assert.deepEqual(items[String(next + 1)], equipped[1]);
+    assert.deepEqual(Object.fromEntries(Object.entries(items).slice(0, Object.keys(before).length)), before);
+    assert.ok(data.dirtyFiles.has('persist.estate.json'));
+    store.discardAllChanges();
+    assert.deepEqual(data.estate.base_root.trinkets.items, before);
+    assert.deepEqual(Object.values(store.getHeroRawData('44').trinkets.items), equipped);
+});
+
+test('dismiss blocks unsupported equipment without mutations and retains the final roster hero', () => {
+    loadDismissReference();
+    store.getHeroRawData('44').trinkets.items = { 0: { id: 'unverified' } };
+    let before = JSON.stringify(store.getSaveData().roster);
+    assert.match(store.dismissHero('44'), /Unequip trinkets first/);
+    assert.equal(JSON.stringify(store.getSaveData().roster), before);
+    assert.equal(store.hasDirtyFiles(), false);
+    loadDismissReference();
+    const data = store.getSaveData();
+    data.roster.base_root.heroes = { 44: data.roster.base_root.heroes['44'] };
+    before = JSON.stringify(data.roster);
+    assert.match(store.dismissHero('44'), /at least 1 hero/);
+    assert.equal(JSON.stringify(data.roster), before);
+    assert.equal(store.hasDirtyFiles(), false);
 });

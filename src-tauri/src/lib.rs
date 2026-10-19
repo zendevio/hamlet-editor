@@ -4,7 +4,6 @@ pub use commands::{backup, save};
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::Manager;
 
 // ── Managed state ──
 
@@ -48,16 +47,26 @@ pub fn run() {
 
             // Optional startup window mode for test runs:
             // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.
-            if let Some(window) = app.get_webview_window("main") {
-                if let Ok(mode) = std::env::var("HAMLET_WINDOW") {
-                    match mode.as_str() {
-                        "maximized" => window.maximize()?,
-                        "fullscreen" => window.set_fullscreen(true)?,
-                        other => log::warn!("Ignoring unknown HAMLET_WINDOW value: {other}"),
+            // Set the initial native window state before the single visible build.
+            // macOS queues maximize/fullscreen requests on an existing window.
+            let config = app
+                .config()
+                .app
+                .windows
+                .first()
+                .ok_or("Missing main window config")?;
+            let mut window = tauri::WebviewWindowBuilder::from_config(app, config)?.visible(true);
+            if let Ok(mode) = std::env::var("HAMLET_WINDOW") {
+                window = match mode.as_str() {
+                    "maximized" => window.maximized(true),
+                    "fullscreen" => window.fullscreen(true),
+                    other => {
+                        log::warn!("Ignoring unknown HAMLET_WINDOW value: {other}");
+                        window
                     }
-                }
-                window.show()?;
+                };
             }
+            window.build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

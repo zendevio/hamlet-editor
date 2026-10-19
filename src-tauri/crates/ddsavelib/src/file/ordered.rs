@@ -4,7 +4,6 @@ use serde::de::{MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
-use std::collections::HashSet;
 
 /// Objects use a sequence so repeated names and original order survive edits.
 enum OrderedValue {
@@ -79,36 +78,54 @@ impl OrderedValue {
         }
     }
 
-    fn merge(&mut self, edited: &Value) {
-        match (self, edited) {
-            (Self::Object(entries), Value::Object(map)) => {
-                // Apply edits to every copy; a duplicated scalar must never
-                // leave an earlier occurrence with a stale value.
-                let existing: HashSet<String> =
-                    entries.iter().map(|(key, _)| key.clone()).collect();
-                for (key, value) in entries.iter_mut() {
-                    if let Some(new_value) = map.get(key) {
-                        value.merge(new_value);
+    /// Apply only the difference from the original last-copy view to every copy.
+    /// Earlier copies can contain distinct values and keys the user never saw.
+    fn merge(&mut self, original: &Value, edited: &Value) {
+        if original == edited {
+            return;
+        }
+        match (self, original, edited) {
+            (Self::Object(entries), Value::Object(before), Value::Object(after)) => {
+                entries.retain(|(key, _)| !before.contains_key(key) || after.contains_key(key));
+                for (key, value) in after {
+                    if before.get(key) == Some(value) {
+                        continue;
                     }
-                }
-                entries.retain(|(key, _)| map.contains_key(key));
-                for (key, value) in map {
-                    if !existing.contains(key) {
+                    let mut found = false;
+                    for (_, entry) in entries.iter_mut().filter(|(k, _)| k == key) {
+                        found = true;
+                        if let Some(previous) = before.get(key) {
+                            entry.merge(previous, value);
+                        } else {
+                            *entry = Self::from_value(value);
+                        }
+                    }
+                    if !found {
                         entries.push((key.clone(), Self::from_value(value)));
                     }
                 }
             }
-            (Self::Array(entries), Value::Array(values)) => {
-                entries.truncate(values.len());
-                for (i, value) in values.iter().enumerate() {
+            (Self::Array(entries), Value::Array(before), Value::Array(after)) => {
+                if after.len() < before.len() {
+                    entries.truncate(after.len());
+                }
+                for (i, value) in after.iter().enumerate() {
+                    if before.get(i) == Some(value) {
+                        continue;
+                    }
                     if let Some(entry) = entries.get_mut(i) {
-                        entry.merge(value);
+                        if let Some(previous) = before.get(i) {
+                            entry.merge(previous, value);
+                        } else {
+                            *entry = Self::from_value(value);
+                        }
                     } else {
-                        entries.push(Self::from_value(value));
+                        // Fill missing positions only when an edited index needs them.
+                        entries.extend(after[entries.len()..=i].iter().map(Self::from_value));
                     }
                 }
             }
-            (original, value) => *original = Self::from_value(value),
+            (target, _, value) => *target = Self::from_value(value),
         }
     }
 }
@@ -182,18 +199,18 @@ impl<'de> Deserialize<'de> for OrderedValue {
 
 impl File {
     /// Merge the frontend's complete edited value onto the decoded file. Keep
-    /// existing object order and duplicate entries, and append newly added keys.
+    /// existing order and untouched duplicate data; propagate edits to every copy.
     pub fn merge_json_value(&self, edited: &Value) -> Result<Self, FromJsonError> {
         let mut bytes = Vec::new();
         self.write_to_json(&mut bytes, true, &Unhasher::empty())?;
         let mut ordered: OrderedValue =
             serde_json::from_slice(&bytes).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
         ordered.validate_edits(edited, "")?;
-        ordered.merge(edited);
+        let original: Value =
+            serde_json::from_slice(&bytes).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
+        ordered.merge(&original, edited);
         let merged =
             serde_json::to_vec(&ordered).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
-        let original =
-            serde_json::from_slice(&bytes).map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
         Self::read_json(merged.as_slice(), Some(&original))
     }
 }

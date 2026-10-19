@@ -9,7 +9,8 @@
 		onDiscardAndClose,
 		onCancel,
 		saveLabel = 'Save and Close',
-		discardLabel = 'Discard and Close'
+		discardLabel = 'Discard and Close',
+		allowSave = true
 	}: {
 		open?: boolean;
 		onSaveAndClose: () => void;
@@ -17,6 +18,7 @@
 		onCancel: () => void;
 		saveLabel?: string;
 		discardLabel?: string;
+		allowSave?: boolean;
 	} = $props();
 </script>
 
@@ -37,9 +39,11 @@
 			<Button variant="destructive" onclick={onDiscardAndClose}>
 				{discardLabel}
 			</Button>
-			<Button onclick={onSaveAndClose}>
-				{saveLabel}
-			</Button>
+			{#if allowSave}
+				<Button onclick={onSaveAndClose}>
+					{saveLabel}
+				</Button>
+			{/if}
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

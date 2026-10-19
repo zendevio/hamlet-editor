@@ -1,0 +1,412 @@
+{
+  "0": {
+    "id": "boss_flesh",
+    "type": "trinket",
+    "amount": 1
+  },
+  "1": {
+    "id": "boss_cannon",
+    "type": "trinket",
+    "amount": 1
+  },
+  "2": {
+    "id": "boss_hag",
+    "type": "trinket",
+    "amount": 1
+  },
+  "3": {
+    "id": "boss_prophet",
+    "type": "trinket",
+    "amount": 1
+  },
+  "4": {
+    "id": "ancestors_candle",
+    "type": "trinket",
+    "amount": 1
+  },
+  "5": {
+    "id": "ancestors_map",
+    "type": "trinket",
+    "amount": 1
+  },
+  "6": {
+    "id": "ancestors_tentacle_idol",
+    "type": "trinket",
+    "amount": 1
+  },
+  "7": {
+    "id": "ancestors_coat",
+    "type": "trinket",
+    "amount": 1
+  },
+  "8": {
+    "id": "ancestors_lantern",
+    "type": "trinket",
+    "amount": 1
+  },
+  "9": {
+    "id": "ancestors_pistol",
+    "type": "trinket",
+    "amount": 1
+  },
+  "10": {
+    "id": "ancestors_signet_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "11": {
+    "id": "com_flag_acidic_husk_ichor",
+    "type": "trinket",
+    "amount": 1
+  },
+  "12": {
+    "id": "com_pd_ashen_distillation",
+    "type": "trinket",
+    "amount": 1
+  },
+  "13": {
+    "id": "com_comet_cluster_pendant",
+    "type": "trinket",
+    "amount": 1
+  },
+  "14": {
+    "id": "com_coat_many_colours",
+    "type": "trinket",
+    "amount": 1
+  },
+  "15": {
+    "id": "com_comet_seed_pendant",
+    "type": "trinket",
+    "amount": 1
+  },
+  "16": {
+    "id": "com_hwy_crystalline_gunpowder",
+    "type": "trinket",
+    "amount": 1
+  },
+  "17": {
+    "id": "com_jes_dirge_for_devoured",
+    "type": "trinket",
+    "amount": 1
+  },
+  "18": {
+    "id": "com_ves_heretical_passages",
+    "type": "trinket",
+    "amount": 1
+  },
+  "19": {
+    "id": "com_hnd_huskfang_whistle",
+    "type": "trinket",
+    "amount": 1
+  },
+  "20": {
+    "id": "com_msk_icosahedric_balls",
+    "type": "trinket",
+    "amount": 1
+  },
+  "21": {
+    "id": "com_arb_keening_bolts",
+    "type": "trinket",
+    "amount": 1
+  },
+  "22": {
+    "id": "com_lens_of_comet",
+    "type": "trinket",
+    "amount": 1
+  },
+  "23": {
+    "id": "com_bh_mask_of_timeless",
+    "type": "trinket",
+    "amount": 1
+  },
+  "24": {
+    "id": "com_millers_pipe",
+    "type": "trinket",
+    "amount": 1
+  },
+  "25": {
+    "id": "com_maa_mirror_shield",
+    "type": "trinket",
+    "amount": 1
+  },
+  "26": {
+    "id": "com_cru_non_euclidean_hilt",
+    "type": "trinket",
+    "amount": 1
+  },
+  "27": {
+    "id": "com_lep_crystalized_amulet",
+    "type": "trinket",
+    "amount": 1
+  },
+  "28": {
+    "id": "com_occ_elder_sign",
+    "type": "trinket",
+    "amount": 1
+  },
+  "29": {
+    "id": "com_ant_smoking_skull",
+    "type": "trinket",
+    "amount": 1
+  },
+  "30": {
+    "id": "com_sb_spectral_speartip",
+    "type": "trinket",
+    "amount": 1
+  },
+  "31": {
+    "id": "com_hel_thirsting_blade",
+    "type": "trinket",
+    "amount": 1
+  },
+  "32": {
+    "id": "com_grv_huskclaw_toxin",
+    "type": "trinket",
+    "amount": 1
+  },
+  "33": {
+    "id": "cc_set_arb_childhood_treasure",
+    "type": "trinket",
+    "amount": 1
+  },
+  "34": {
+    "id": "cc_set_bh_crime_lords_molars",
+    "type": "trinket",
+    "amount": 1
+  },
+  "35": {
+    "id": "cc_set_hel_lioness_warpaint",
+    "type": "trinket",
+    "amount": 1
+  },
+  "36": {
+    "id": "cc_set_anti_the_masters_essence",
+    "type": "trinket",
+    "amount": 1
+  },
+  "37": {
+    "id": "cc_set_bh_vow_of_revenge",
+    "type": "trinket",
+    "amount": 1
+  },
+  "38": {
+    "id": "collector_2",
+    "type": "trinket",
+    "amount": 1
+  },
+  "39": {
+    "id": "collector_1",
+    "type": "trinket",
+    "amount": 1
+  },
+  "40": {
+    "id": "collector_3",
+    "type": "trinket",
+    "amount": 1
+  },
+  "41": {
+    "id": "blasphemous_vial",
+    "type": "trinket",
+    "amount": 1
+  },
+  "42": {
+    "id": "blasphemous_vial",
+    "type": "trinket",
+    "amount": 1
+  },
+  "43": {
+    "id": "demons_cauldron",
+    "type": "trinket",
+    "amount": 1
+  },
+  "44": {
+    "id": "demons_cauldron",
+    "type": "trinket",
+    "amount": 1
+  },
+  "45": {
+    "id": "focus_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "46": {
+    "id": "focus_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "47": {
+    "id": "legendary_bracer",
+    "type": "trinket",
+    "amount": 1
+  },
+  "48": {
+    "id": "legendary_bracer",
+    "type": "trinket",
+    "amount": 1
+  },
+  "49": {
+    "id": "sacred_scroll",
+    "type": "trinket",
+    "amount": 1
+  },
+  "50": {
+    "id": "sacred_scroll",
+    "type": "trinket",
+    "amount": 1
+  },
+  "51": {
+    "id": "berserk_charm",
+    "type": "trinket",
+    "amount": 1
+  },
+  "52": {
+    "id": "berserk_charm",
+    "type": "trinket",
+    "amount": 1
+  },
+  "53": {
+    "id": "bright_tambourine",
+    "type": "trinket",
+    "amount": 1
+  },
+  "54": {
+    "id": "feather_crystal",
+    "type": "trinket",
+    "amount": 1
+  },
+  "55": {
+    "id": "heavens_hairpin",
+    "type": "trinket",
+    "amount": 1
+  },
+  "56": {
+    "id": "heavens_hairpin",
+    "type": "trinket",
+    "amount": 1
+  },
+  "57": {
+    "id": "hunters_talon",
+    "type": "trinket",
+    "amount": 1
+  },
+  "58": {
+    "id": "hunters_talon",
+    "type": "trinket",
+    "amount": 1
+  },
+  "59": {
+    "id": "snipers_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "60": {
+    "id": "snipers_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "61": {
+    "id": "sun_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "62": {
+    "id": "sun_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "63": {
+    "id": "sun_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "64": {
+    "id": "cudgel_weight",
+    "type": "trinket",
+    "amount": 1
+  },
+  "65": {
+    "id": "cudgel_weight",
+    "type": "trinket",
+    "amount": 1
+  },
+  "66": {
+    "id": "poisoned_herb",
+    "type": "trinket",
+    "amount": 1
+  },
+  "67": {
+    "id": "dazzling_charm",
+    "type": "trinket",
+    "amount": 1
+  },
+  "68": {
+    "id": "dazzling_charm",
+    "type": "trinket",
+    "amount": 1
+  },
+  "69": {
+    "id": "dazzling_charm",
+    "type": "trinket",
+    "amount": 1
+  },
+  "70": {
+    "id": "padlock_1",
+    "type": "trinket",
+    "amount": 1
+  },
+  "71": {
+    "id": "cc_set_high_shameful_locket",
+    "type": "trinket",
+    "amount": 1
+  },
+  "72": {
+    "id": "cc_boss_baron",
+    "type": "trinket",
+    "amount": 1
+  },
+  "73": {
+    "id": "cc_set_high_bloodied_neckerchief",
+    "type": "trinket",
+    "amount": 1
+  },
+  "74": {
+    "id": "cc_set_pd_codex_of_plagues",
+    "type": "trinket",
+    "amount": 1
+  },
+  "75": {
+    "id": "cc_set_vest_salacious_diary",
+    "type": "trinket",
+    "amount": 1
+  },
+  "76": {
+    "id": "ancestors_pen",
+    "type": "trinket",
+    "amount": 1
+  },
+  "77": {
+    "id": "focus_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "78": {
+    "id": "ancestors_scroll",
+    "type": "trinket",
+    "amount": 1
+  },
+  "79": {
+    "id": "focus_ring",
+    "type": "trinket",
+    "amount": 1
+  },
+  "80": {
+    "id": "com_abom_broken_key",
+    "type": "trinket",
+    "amount": 1
+  },
+  "81": {
+    "id": "legendary_bracer",
+    "type": "trinket",
+    "amount": 1
+  }
+}

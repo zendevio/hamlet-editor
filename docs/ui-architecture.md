@@ -170,7 +170,7 @@ Always visible above the hero list. Buttons become active when one or more heroe
 |--------|--------|-------|
 | Heal All | Set `current_hp` to class max for each selected hero's current `armour_rank` | HP-only. Uses the HP table from `game-data.md`. Does NOT touch stress. No confirmation dialog (non-destructive, reversible via Discard). |
 | Clear Stress | Set `m_Stress` to 0 for each selected hero | Stress only. Does NOT clear affliction or virtue (these are independent fields). |
-| Set Level | Dropdown (0-6). Adjusts `resolveXp` to the threshold value. Offers to match `weapon_rank`/`armour_rank` to the level's max gear rank (`maxGearRank = Math.min(level, 4)` for levels 4-6). Also creates/updates entries in `persist.upgrades.json`. | Sub-confirmation with gear rank details. |
+| Set Level | Dropdown (0-6). Adjusts `resolveXp` to the selected level threshold. Gear ranks and purchases are unchanged. | Applies to each selected hero. |
 | Revive | Enabled only when ALL selected heroes have status = 3 (DEAD). Runs the full revival procedure (section 4.5). | Multi-hero revival is a batch of individual revival operations. |
 | Selection count | "3 of 12 selected" | Informational. |
 
@@ -184,7 +184,7 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - Large portrait (~128 px, from game assets).
 - Hero name — editable `Input` field. Pencil icon visible on hover.
 - Class — read-only display with class icon. Raw ID as tooltip for modded.
-- Resolve level — `Select` dropdown (0-6) showing level title. Changing level auto-updates `resolveXp` and prompts to match gear ranks (`maxGearRank = Math.min(level, 4)` for levels 4-6). Creates/updates `persist.upgrades.json` entries for skill and gear unlocks.
+- Resolve level — `Select` dropdown (0-6) showing level title. Changing level sets `resolveXp` to the selected level threshold. Gear ranks and upgrade purchases are unchanged.
 - **"Reset this hero"** button — reverts all in-memory changes for this specific hero to the on-disk snapshot. Confirmation: "Revert all unsaved changes to [HeroName]?"
 
 **Vitals Section**
@@ -207,8 +207,8 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **Camping Skills** — same pattern. Icons from `raid/camping/skill_icons/camp_skill_<skillname>.png`.
 
 **Equipment Section** (collapsed by default)
-- **Weapon Rank** — `Select` dropdown (0-4), constrained by resolve level max gear rank (`maxGearRank = Math.min(level, 4)`).
-- **Armour Rank** — `Select` dropdown (0-4), constrained by resolve level. Changing armour rank updates the displayed max HP.
+- **Weapon Rank** — `Select` dropdown (0-4), independent of resolve level. Changes update the roster rank index.
+- **Armour Rank** — `Select` dropdown (0-4), independent of resolve level. Changes update the roster rank index and displayed max HP.
 - Gear icons: `heroes/<class>/icons_equip/eqp_weapon_<rank>.png` and `eqp_armour_<rank>.png` (note: British spelling `armour`).
 - **Trinkets** — two trinket slots. Each shows trinket icon (`panels/icons_equip/trinket/inv_trinket+<id>.png`) + localized name. Click to open `TrinketPicker` popover.
   - TrinketPicker shows all trinkets in estate storage (not equipped on other heroes). Search by name. Class-restricted trinkets marked with a class icon. Rarity color border (from `trinkets/*.rarities.trinkets.json`).
@@ -436,11 +436,11 @@ Sectioned form layout.
 1. User clicks a hero in the list. Detail panel populates.
 2. **Editing HP**: Click the HP number or use the slider. "Heal to Max" snaps to class max for current armour_rank (from HP table in `game-data.md`). Unsaved changes dot appears.
 3. **Editing stress**: Adjust the slider or click "Clear." Stress is set to 0. Affliction/virtue state is NOT affected (they are independent fields).
-4. **Editing level**: Open the resolve level dropdown, select "4 — Champion." Sub-dialog: "Set weapon rank to 4 and armour rank to 4 to match? (Current: 2/2). Note: gear rank caps at 4 for levels 4-6." Accepting also creates the appropriate entries in `persist.upgrades.json` for skill and gear unlocks at that level.
+4. **Editing level**: Open the resolve level dropdown and select a level. This sets resolve XP to the selected level threshold; gear ranks and upgrade purchases are unchanged.
 5. **Adding a quirk**: Click "Add Quirk" under the positive column. Combobox opens. Type "quick" — autocomplete shows "Quick Reflexes (quick_reflexes)." Select it. Chip appears. If the column already has 5 quirks, the button is disabled.
 6. **Locking a quirk**: Click the lock/unlock icon on a quirk chip. Toggles `is_locked`.
 7. **Equipping a trinket**: Click an empty trinket slot. TrinketPicker opens showing estate storage trinkets. Search, select. Trinket moves from estate to hero (both roster and estate updated in memory).
-8. **Save**: Click Save (or `Ctrl/Cmd+S`). Pre-save validation runs. If auto-backup is on, backup is created. Files written. Round-trip validation runs. Toast: "Saved successfully."
+8. **Save**: Click Save (or `Ctrl/Cmd+S`). Pre-save validation runs. If auto-backup is on, backup is created. The backend validates and encodes every dirty file in memory, then commits writes and deletions transactionally. Toast: "Saved successfully."
 
 ### 4.4 Batch Operations
 
@@ -1009,7 +1009,7 @@ When the editor encounters a corrupt file (source: `save-files.md` Save Corrupti
 
 **On-input:**
 - Numeric fields reject non-numeric input. Range constraints shown as min/max hints.
-- Dropdowns constrained to valid values (e.g., gear rank cannot exceed level's max: `maxGearRank = Math.min(level, 4)`).
+- Dropdowns constrained to valid values (e.g., weapon and armour ranks are whole indices from 0 to 4, independent of resolve level).
 - Quirk count enforced (max 5 per column; diseases count toward the negative cap).
 
 **Pre-save (when Save is clicked):**
@@ -1017,14 +1017,13 @@ When the editor encounters a corrupt file (source: `save-files.md` Save Corrupti
    - Trinkets equipped on heroes do not also appear in estate storage.
    - Hero GUIDs in raid party exist in roster.
    - Heroes with status STAFFED (2) have matching `roster.building_name` and are present in `persist.town.json` building slots.
-   - Gear ranks do not exceed resolve level's max (`maxGearRank = Math.min(level, 4)` for levels 4-6).
-   - `weapon_rank`/`armour_rank` match corresponding entries in `persist.upgrades.json`.
+   - Gear ranks are whole indices from 0 to 4, independent of resolve level.
 2. **DLC field guards:** Verify no DLC-specific fields (Crimson Curse quirks, shard wallet entry, districts) exist in saves where the corresponding DLC is not enabled.
 3. If inconsistencies found: warning dialog listing them, with "Fix Automatically" and "Save Anyway" options.
 
-**Post-save (round-trip validation):**
-- After writing binary DSON, immediately re-decode and compare at the JSON/semantic level (not byte-for-byte; bits 1 and 31 in fieldInfo are intentionally stripped).
-- Mismatch = abort and show error with a "Restore from Backup" button. Files are not left in a partial write state (write to temp file, then atomic rename).
+**Backend validation and commit:**
+- Before any disk mutation, check load provenance and disk freshness, merge edited deltas onto the ordered decoded snapshots, and validate and encode every dirty file in memory. Untouched earlier duplicate values and keys survive; an edited visible field is updated in every duplicate copy.
+- Encoding failures abort before files change. Writes and deletions use a transaction with rollback. Binary round-trip regression tests run in the test suite; there is no post-save round-trip validation step in the application.
 
 ### 9.4 Graceful Degradation for Mod Content
 
@@ -1185,12 +1184,12 @@ These operations modify multiple save files and require careful coordination. Th
 | Equip trinket on hero | roster + estate | Remove from estate storage, add to hero trinket slot |
 | Unequip trinket | roster + estate | Reverse of equip |
 | Revive hero | roster + campaign_log + progression (+ raid if mid-dungeon) | Full revival procedure; see section 4.5. Sets `m_Stress` to 0 in addition to `roster.status`, `current_hp`, etc. |
-| Set hero level | roster + upgrades | Update resolveXp, optionally gear ranks (`maxGearRank = Math.min(level, 4)`), create upgrade entries |
+| Set hero level | roster | Set resolve XP to the selected level threshold; leave gear ranks and purchases unchanged |
 | Release from treatment | roster + town | Clear `roster.building_name`, set `roster.status` to 0, clear `roster.before_on_start_town_visit_status` to 0, remove from town slot |
 | Assign to treatment | roster + town | Set status=2, building_name, add to town slot |
 | Abandon raid | raid (delete) + game | Delete persist.raid.json, set inraid=false |
 | Mid-raid HP edit | roster + raid | Both files store hero HP during raids |
-| Dismiss hero | roster (delete hero entry + increment `dismissed_hero_count`) + town (if in treatment) + raid (if in party) | Permanently removes hero from roster. Uses destructive AlertDialog with required checkbox. |
+| Dismiss hero | roster + upgrades (+ estate when equipped) | Keep four last-party slots using `-1`, compact remaining purchase keys, return equipped trinkets to numbered estate storage entries, and retain campaign/progression history. Block treatment, active party, inactive raid references and the final roster hero. Uses destructive AlertDialog with required checkbox. |
 | Rename estate | game | Single file but byte-length constraint: DSON encoder auto-updates string length field |
 
 ---

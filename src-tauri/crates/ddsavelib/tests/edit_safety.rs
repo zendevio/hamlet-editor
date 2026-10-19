@@ -40,13 +40,62 @@ fn merge_keeps_nested_duplicates_order_and_appends_new_keys() {
     let merged = file.merge_json_value(&value).unwrap();
     let output = text(&merged);
     assert_eq!(output.matches("\"x\"").count(), 2);
-    assert!(!output.contains("\"earlier\""), "{output}");
+    assert!(output.contains("\"earlier\" : 1"), "{output}");
     assert_eq!(output.matches("\"visible\" : 4").count(), 2);
     assert!(output.contains("\"visible\" : 4"), "{output}");
     assert!(output.find("\"9\"") < output.find("\"2\""));
     assert!(output.find("\"unrelated\"") < output.find("\"added\""));
     value["base_root"].as_object_mut().unwrap().remove("x");
     assert!(!text(&merged.merge_json_value(&value).unwrap()).contains("\"x\""));
+}
+
+#[test]
+fn merge_preserves_unedited_duplicate_values_and_only_applies_visible_delta() {
+    let file = File::try_from_json(br#"{"__revision_dont_touch":1,"base_root":{"x":{"earlier":1,"shared":10,"changed":1,"removed":7,"nested":{"private":3,"same":1,"edit":1},"goal_ids":["early","old"]},"x":{"visible":2,"shared":20,"changed":2,"removed":8,"nested":{"same":2,"edit":2},"goal_ids":["late","old"]},"scalar":1,"scalar":2,"other":0}}"#.as_slice()).unwrap();
+    let mut value = file.to_json_value(&Unhasher::empty());
+    value["base_root"]["other"] = json!(1);
+    let unrelated = text(&file.merge_json_value(&value).unwrap());
+    for fragment in [
+        "\"earlier\" : 1",
+        "\"shared\" : 10",
+        "\"shared\" : 20",
+        "\"scalar\" : 1",
+        "\"scalar\" : 2",
+        "\"changed\" : 1",
+        "\"changed\" : 2",
+    ] {
+        assert!(unrelated.contains(fragment), "{unrelated}");
+    }
+    // The visible last-copy edit reaches both copies, while untouched fields differ.
+    let x = &mut value["base_root"]["x"];
+    x["changed"] = json!(9);
+    x["nested"]["edit"] = json!(6);
+    x["goal_ids"][1] = json!("new");
+    x.as_object_mut().unwrap().remove("removed");
+    value["base_root"]["scalar"] = json!(4);
+    let output = text(&file.merge_json_value(&value).unwrap());
+    for fragment in [
+        "\"earlier\" : 1",
+        "\"shared\" : 10",
+        "\"shared\" : 20",
+        "\"private\" : 3",
+        "\"same\" : 1",
+        "\"same\" : 2",
+        "\"early\"",
+        "\"late\"",
+    ] {
+        assert!(output.contains(fragment), "{output}");
+    }
+    for fragment in [
+        "\"changed\" : 9",
+        "\"edit\" : 6",
+        "\"scalar\" : 4",
+        "\"new\"",
+    ] {
+        assert_eq!(output.matches(fragment).count(), 2, "{output}");
+    }
+    assert!(!output.contains("\"removed\""), "{output}");
+    assert_eq!(output.matches("\"visible\"").count(), 1, "{output}");
 }
 
 #[test]

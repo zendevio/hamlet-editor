@@ -639,14 +639,15 @@ fn progression_duplicate_scalar_edits_reach_both_copies_and_repeat_safely() {
 }
 
 #[test]
-fn last_party_guid_removal_round_trips_the_real_int_vector() {
+fn last_party_guid_replacement_preserves_four_slots_through_binary_round_trip() {
     let sandbox = Sandbox::new();
     let (mut table, mut data) = sandbox.load();
     assert_eq!(
         data["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"],
         json!([1, 48, 34, -1])
     );
-    data["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"] = json!([1, 48, -1]);
+    data["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"] =
+        json!([1, 48, -1, -1]);
     sandbox
         .save(
             &mut table,
@@ -656,8 +657,58 @@ fn last_party_guid_removal_round_trips_the_real_int_vector() {
     let (_, reloaded) = sandbox.load();
     assert_eq!(
         reloaded["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"],
-        json!([1, 48, -1])
+        json!([1, 48, -1, -1])
     );
+}
+
+#[test]
+fn inactive_raid_references_are_read_only_and_include_non_party_hero_fields() {
+    let sandbox = Sandbox::new();
+    let raid_path = sandbox
+        .profile()
+        .join("plot_crimson_court_1/persist.raid.json");
+    let bytes = fs::read(&raid_path).unwrap();
+    let file = File::try_from_bin(bytes.as_slice()).unwrap();
+    let mut raid = file.to_json_value(&Unhasher::empty());
+    raid["base_root"]["boss_last_blow_hero_guid"] = json!(44);
+    let mut bytes = Vec::new();
+    file.merge_json_value(&raid)
+        .unwrap()
+        .write_to_bin(&mut bytes)
+        .unwrap();
+    fs::write(&raid_path, &bytes).unwrap();
+    let mut table = NameTable {
+        names: serde_json::from_str(include_str!("fixtures/upgrade-names.json")).unwrap(),
+        version: 1,
+        ..NameTable::default()
+    };
+    let loaded =
+        save::load_profile_with_table(sandbox.profile().to_string_lossy().into_owned(), &mut table)
+            .unwrap();
+    assert_eq!(
+        loaded["data"]["persist.game.json"]["base_root"]["inraid"],
+        false
+    );
+    assert_eq!(
+        loaded["inactive_raid_hero_guids"],
+        json!([1, 34, 44, 48, 96])
+    );
+    assert!(loaded["data"].get("persist.raid.json").is_none());
+    assert!(!table.loaded_files.contains_key("persist.raid.json"));
+    let error = sandbox
+        .save(&mut table, json!({"persist.raid.json": raid}))
+        .unwrap_err();
+    assert_eq!(
+        error,
+        "persist.raid.json was not decoded at load. Reload the profile before saving."
+    );
+    assert_eq!(fs::read(raid_path).unwrap(), bytes);
+    sandbox.activate_raid();
+    let loaded =
+        save::load_profile_with_table(sandbox.profile().to_string_lossy().into_owned(), &mut table)
+            .unwrap();
+    assert_eq!(loaded["inactive_raid_hero_guids"], json!([]));
+    assert!(loaded["data"].get("persist.raid.json").is_some());
 }
 
 #[test]

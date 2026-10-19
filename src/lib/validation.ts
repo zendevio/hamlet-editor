@@ -10,7 +10,6 @@ import {
 	getSaveData,
 	getHeroes,
 	getHeroRawData,
-	markDirty,
 	getTreatmentSlots,
 	releaseHeroFromTreatment,
 	xpToLevel,

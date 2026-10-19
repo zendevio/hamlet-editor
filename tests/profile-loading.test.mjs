@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
@@ -23,6 +24,7 @@ after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const settings = await server.ssrLoadModule('/src/lib/stores/settings.svelte.ts');
 const { saveProfile } = await server.ssrLoadModule('/src/lib/api/save.ts');
+const { createSaveWorkflow, createUnsavedGuard, createProfileReload, profileSaveBlockReason } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function deferred() {
 	let resolve;
@@ -30,7 +32,7 @@ function deferred() {
 	return { promise, resolve };
 }
 function loaded(path) {
-	return { data: { 'persist.game.json': { base_root: { estatename: path, inraid: false, game_mode: 'radiant' } } }, name_table_version: 7 };
+	return { data: { 'persist.game.json': { base_root: { estatename: path, inraid: false, game_mode: 'radiant' } } }, name_table_version: 7, inactive_raid_hero_guids: [] };
 }
 
 test('startup waits for name generation AND publication; switches and restores use the same barrier', async () => {
@@ -116,4 +118,86 @@ test('save passes the version from the loaded profile to the backend guard', asy
 	assert.deepEqual(received, ['save_profile', {
 		profilePath: '/profiles/profile_1', data: { 'persist.game.json': { test: 1 } }, nameTableVersion: 7
 	}]);
+});
+
+
+test('inactive raid metadata blocks only referenced heroes and never becomes dirty save data', async () => {
+    const fixture = JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'));
+    settings.setGamePath('/fixtures/inactive-raid');
+    invokeHandler = (command) => {
+        if (command === 'generate_name_table') return ['abbey.meditation'];
+        if (command === 'set_name_table') return;
+        if (command === 'load_profile') return {
+            data: Object.fromEntries(Object.entries(structuredClone(fixture)).map(([key, value]) => [
+                `persist.${{ campaignLog: 'campaign_log' }[key] ?? key}.json`, value
+            ])), name_table_version: 7, inactive_raid_hero_guids: [1, 34, 48, 96]
+        };
+        throw new Error(`Unexpected command: ${command}`);
+    };
+    await store.loadProfileFromBackend('/profiles/profile_0');
+    const data = store.getSaveData();
+    assert.equal(data.game.base_root.inraid, false);
+    assert.ok(data.game.base_root.raid_save);
+    assert.equal(data.raid, null);
+    const before = JSON.stringify(data.roster);
+    assert.match(store.dismissHero('96'), /saved inactive raid/);
+    assert.equal(JSON.stringify(data.roster), before);
+    assert.equal(store.hasDirtyFiles(), false);
+    assert.equal(store.dismissHero('44'), null);
+    assert.deepEqual(data.inactiveRaidHeroGuids, [1, 34, 48, 96]);
+    assert.equal(Object.hasOwn(store.getDirtyData(), 'persist.raid.json'), false);
+    assert.equal(Object.hasOwn(store.getDirtyData(), 'inactive_raid_hero_guids'), false);
+    store.resetSaveData();
+    assert.deepEqual(data.inactiveRaidHeroGuids, []);
+});
+
+test('layout reload controller uses real stale Save block and Discard/Cancel choices before backend reload', async () => {
+    const path = '/profiles/profile_0';
+    settings.setGamePath('/fixtures/stale-reload');
+    settings.setSavePath(path);
+    let reloads = 0;
+    invokeHandler = (command, args) => {
+        if (command === 'generate_name_table') return ['abbey.meditation'];
+        if (command === 'set_name_table') return;
+        if (command === 'load_profile') { reloads++; return loaded(args.profilePath); }
+        throw new Error(`Unexpected command: ${command}`);
+    };
+    for (const choice of ['cancel', 'save', 'discard']) {
+        await store.loadProfileFromBackend(path);
+        store.setEstateName('Edited estate');
+        store.markProfileStale();
+        store.discardAllChanges();
+        assert.equal(store.getSaveData().isStale, true);
+        store.setEstateName('Edited estate');
+        const errors = [];
+        let writes = 0;
+        const save = createSaveWorkflow({
+            blocked: () => profileSaveBlockReason(store.getSaveData(), settings.getSettings(), {
+                isProfileLoading: false, gameRunning: false, gameDetectionUncertain: false,
+                hasChanges: store.hasDirtyFiles()
+            }),
+            validate: () => [], confirm: async () => 'save', backup: async () => {},
+            write: async () => { writes++; }, saved: store.clearAllDirty,
+            failed: (error) => errors.push(String(error)), busy: () => {}
+        });
+        assert.equal(await save(), false);
+        assert.match(errors[0], /Save files may have changed. Reload the profile before saving./);
+        assert.equal(writes, 0);
+        assert.equal(store.hasDirtyFiles(), true);
+        const guard = createUnsavedGuard({
+            hasChanges: store.hasDirtyFiles, canSave: () => !store.getSaveData().isStale,
+            choose: async (canSave) => { assert.equal(canSave, false); return choice; },
+            save, discard: store.discardAllChanges
+        });
+        const reload = createProfileReload({
+            requestDataChange: guard, profilePath: () => settings.getSettings().savePath,
+            load: store.loadProfileFromBackend, failed: (error) => assert.fail(String(error))
+        });
+        const before = reloads;
+        assert.equal(await reload(), choice === 'discard');
+        assert.equal(reloads, before + Number(choice === 'discard'));
+        assert.equal(store.getSaveData().isStale, choice !== 'discard');
+        assert.equal(store.hasDirtyFiles(), choice !== 'discard');
+        assert.equal(writes, 0);
+    }
 });

@@ -10,7 +10,7 @@ import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 import { updateWallet, updateEstateItem } from '#lib/estate.js';
 import { updateTorchlight, updateHungerBuffer, updateRaidAmount, abandonRaidData, abandonRaidBlockReason } from '#lib/raid.js';
 import { updateDistrict } from '#lib/districts.js';
-import { canPickQuirk, changeCurseState, dismissBlockReason, revivalBlockReason } from '#lib/hero-safety.js';
+import { canPickQuirk, changeCurseState, dismissBlockReason, equippedTrinkets, revivalBlockReason } from '#lib/hero-safety.js';
 import { ensureNameTable } from '#lib/api/names.js';
 import { loadProfile } from '#lib/api/save.js';
 import { readTreatmentSlots, clearTreatmentSlot } from '#lib/treatment.js';
@@ -106,6 +106,8 @@ let town = $state<TownData | null>(null);
 let upgrades = $state<UpgradesData | null>(null);
 let raid = $state<RaidData | null>(null);
 let game = $state<GameData | null>(null);
+// Read-only references from an inactive raid, never included in dirty data.
+let inactiveRaidHeroGuids = $state<readonly number[]>([]);
 let campaignLog = $state<Record<string, unknown> | null>(null);
 let progression = $state<Record<string, unknown> | null>(null);
 let gameInRaid = $state(false);
@@ -283,6 +285,9 @@ export function getSaveData() {
 		},
 		get game() {
 			return game;
+		},
+		get inactiveRaidHeroGuids() {
+			return inactiveRaidHeroGuids;
 		},
 		get campaignLog() {
 			return campaignLog;
@@ -541,7 +546,7 @@ export function setEstateName(name: string) {
 }
 
 export function getDismissBlockReason(guid: string): string | null {
-	return dismissBlockReason(guid, { roster, town, upgrades, game, raid });
+	return dismissBlockReason(guid, { roster, estate, town, upgrades, game, raid, inactiveRaidHeroGuids });
 }
 
 /** Remove live roster/purchase references, preserving campaign and progression history. */
@@ -552,13 +557,20 @@ export function dismissHero(guid: string): string | null {
 	const count = parseInteger(roster.base_root.dismissed_hero_count, 0, 2147483646);
 	if (count.error !== undefined) return count.error;
 	if (!upgrades) return 'No upgrade data loaded.';
-	for (const [key, purchase] of Object.entries(upgrades.base_root.purchases)) {
-		if (purchase.instance_number === Number(guid)) {
-			delete upgrades.base_root.purchases[key];
-			markDirty('persist.upgrades.json');
-		}
+	const trinkets = equippedTrinkets(roster.base_root.heroes[guid].hero_file_data.raw_data.base_root)!;
+	if (trinkets.length > 0 && estate) {
+		const items = estate.base_root.trinkets.items;
+		let nextKey = Math.max(-1, ...Object.keys(items).map(Number)) + 1;
+		for (const trinket of trinkets) items[String(nextKey++)] = { ...trinket };
+		markDirty('persist.estate.json');
 	}
-	roster.base_root.last_party.last_party_guids = roster.base_root.last_party.last_party_guids.filter((id) => id !== Number(guid));
+	const purchases = Object.values(upgrades.base_root.purchases);
+	const remaining = purchases.filter((purchase) => purchase.instance_number !== Number(guid));
+	if (remaining.length !== purchases.length) {
+		upgrades.base_root.purchases = Object.fromEntries(remaining.map((purchase, index) => [String(index), purchase]));
+		markDirty('persist.upgrades.json');
+	}
+	roster.base_root.last_party.last_party_guids = roster.base_root.last_party.last_party_guids.map((id) => id === Number(guid) ? -1 : id);
 	delete roster.base_root.heroes[guid];
 	roster.base_root.dismissed_hero_count = count.value + 1;
 	markDirty('persist.roster.json');
@@ -812,6 +824,7 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 		if (sequence !== profileLoadSequence) return;
 		const data = loaded.data;
 		nameTableVersion = loaded.name_table_version;
+		inactiveRaidHeroGuids = Object.freeze([...loaded.inactive_raid_hero_guids]);
 
 		if (data['persist.roster.json']) {
 			loadRoster(data['persist.roster.json'] as RosterData);
@@ -945,6 +958,7 @@ export function resetSaveData() {
 	upgrades = null;
 	raid = null;
 	game = null;
+	inactiveRaidHeroGuids = [];
 	campaignLog = null;
 	progression = null;
 	gameInRaid = false;

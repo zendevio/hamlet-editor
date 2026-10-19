@@ -27,6 +27,8 @@ export async function saveProfile(
 export interface LoadedProfile {
 	data: Record<string, unknown>;
 	name_table_version: number;
+	/** Read-only hero references; the inactive raid is not an editable file. */
+	inactive_raid_hero_guids: number[];
 }
 
 export async function loadProfile(profilePath: string): Promise<LoadedProfile> {

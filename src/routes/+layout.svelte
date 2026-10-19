@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount, setContext } from 'svelte';
-	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
+	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
 		Sidebar,
@@ -375,13 +375,9 @@
 	// ── Save Flow ──
 
 	function saveBlockReason(): string | null {
-		if (!saveData.isLoaded || saveData.isLoading || isProfileLoading) return 'Load a profile before saving.';
-		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) return 'Paths changed. Reload the profile before saving.';
-		if (saveData.isStale) return 'Save files may have changed. Reload the profile before saving.';
-		if (gameRunning) return 'DD Running. Close the game before saving.';
-		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
-		if (!hasDirtyFiles()) return 'No unsaved changes';
-		return null;
+		return profileSaveBlockReason(saveData, settings, {
+			isProfileLoading, gameRunning, gameDetectionUncertain, hasChanges: hasDirtyFiles()
+		});
 	}
 
 	let resolveValidation: ((choice: ValidationChoice) => void) | null = null;
@@ -427,10 +423,13 @@
 	});
 
 	let showChangeDialog = $state(false);
+	let changeCanSave = $state(true);
 	let resolveUnsaved: ((choice: UnsavedChoice) => void) | null = null;
 	const guardChanges = createUnsavedGuard({
 		hasChanges: hasDirtyFiles,
-		choose: () => new Promise<UnsavedChoice>((resolve) => {
+		canSave: () => !saveData.isStale,
+		choose: (canSave) => new Promise<UnsavedChoice>((resolve) => {
+			changeCanSave = canSave;
 			resolveUnsaved = resolve;
 			showChangeDialog = true;
 		}),
@@ -443,12 +442,11 @@
 	};
 	setContext(DATA_CHANGE_CONTEXT, requestDataChange);
 
-	async function reloadProfile() {
-		await requestDataChange(async () => {
-			try { await loadProfileFromBackend(settings.savePath); }
-			catch (error) { toast.error(`Reload failed: ${String(error)}`); }
-		});
-	}
+	const reloadProfile = createProfileReload({
+		requestDataChange, profilePath: () => settings.savePath,
+		load: loadProfileFromBackend,
+		failed: (error) => toast.error(`Reload failed: ${String(error)}`)
+	});
 
 	function finishUnsaved(choice: UnsavedChoice) {
 		const resolve = resolveUnsaved;
@@ -561,6 +559,7 @@
 />
 <UnsavedChangesDialog
 	bind:open={showChangeDialog}
+	allowSave={changeCanSave && !saveData.isStale}
 	saveLabel="Save"
 	discardLabel="Discard"
 	onSaveAndClose={() => finishUnsaved('save')}

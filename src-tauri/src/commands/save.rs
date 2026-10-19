@@ -114,6 +114,12 @@ fn profile_fingerprint(root: &Path) -> Result<BTreeMap<PathBuf, [u8; 32]>, Strin
             if kind.is_dir() && !name.starts_with(".hamlet-transaction-") {
                 visit(root, &path, hashes)?;
             } else if super::is_save_file(&name) {
+                if kind.is_symlink() {
+                    return Err(format!(
+                        "Symlinked save file {} is not supported.",
+                        path.display()
+                    ));
+                }
                 if !kind.is_file() {
                     return Err(format!("Cannot fingerprint save {}", path.display()));
                 }
@@ -141,6 +147,45 @@ pub(crate) fn raid_relative_path(game: &serde_json::Value) -> Result<PathBuf, St
     let folder = Path::new(folder.trim_end_matches('/'));
     super::transaction::validate_relative(folder)?;
     Ok(folder.join("persist.raid.json"))
+}
+
+/// Inactive raids remain on disk after a town visit. Return only hero references,
+/// without granting the frontend write access to the inactive raid file.
+fn inactive_raid_hero_guids(value: &serde_json::Value) -> BTreeSet<i64> {
+    fn visit(value: &serde_json::Value, guids: &mut BTreeSet<i64>) {
+        match value {
+            serde_json::Value::Object(map) => {
+                for (key, value) in map {
+                    if key == "hero_guid" || key.ends_with("_hero_guid") {
+                        if let Some(guid) = value.as_i64().filter(|guid| *guid > 0) {
+                            guids.insert(guid);
+                        }
+                    }
+                    visit(value, guids);
+                }
+            }
+            serde_json::Value::Array(values) => {
+                for value in values {
+                    visit(value, guids);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut guids = BTreeSet::new();
+    if let Some(party) = value
+        .pointer("/base_root/party/heroes")
+        .and_then(|v| v.as_array())
+    {
+        guids.extend(
+            party
+                .iter()
+                .filter_map(|v| v.as_i64())
+                .filter(|guid| *guid > 0),
+        );
+    }
+    visit(value, &mut guids);
+    guids
 }
 
 #[tauri::command]
@@ -196,15 +241,24 @@ pub fn load_profile_with_table(
         .pointer("/base_root/inraid")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    if (active || raid_path == Path::new("persist.raid.json")) && dir.join(&raid_path).is_file() {
-        load_one(
-            dir,
-            "persist.raid.json",
-            raid_path,
-            &table.names,
-            &mut result,
-            &mut snapshots,
-        )?;
+    let mut inactive_guids = BTreeSet::new();
+    if dir.join(&raid_path).is_file() {
+        if active {
+            load_one(
+                dir,
+                "persist.raid.json",
+                raid_path,
+                &table.names,
+                &mut result,
+                &mut snapshots,
+            )?;
+        } else {
+            let raid = decode_save_file(dir.join(&raid_path).to_string_lossy().into_owned())
+                .map_err(|e| {
+                    format!("Failed to read inactive raid {}: {e}", raid_path.display())
+                })?;
+            inactive_guids = inactive_raid_hero_guids(&raid);
+        }
     }
     if profile_fingerprint(dir)? != fingerprint {
         return Err("Save files changed on disk during load; reload the profile.".into());
@@ -215,7 +269,10 @@ pub fn load_profile_with_table(
             .map_err(|e| format!("Invalid profile path: {e}"))?,
     );
     table.loaded_files = snapshots;
-    Ok(serde_json::json!({ "data": result, "name_table_version": table.version }))
+    Ok(
+        serde_json::json!({ "data": result, "name_table_version": table.version,
+        "inactive_raid_hero_guids": inactive_guids }),
+    )
 }
 
 fn load_one(
@@ -242,16 +299,6 @@ fn load_one(
                     | "persist.campaign_log.json"
                     | "persist.progression.json"
                     | "persist.raid.json"
-                    | "persist.narration.json"
-                    | "persist.tutorial.json"
-                    | "persist.campaign_mash.json"
-                    | "persist.journal.json"
-                    | "persist.quest.json"
-                    | "persist.curio_tracker.json"
-                    | "persist.game_knowledge.json"
-                    | "persist.town_event.json"
-                    | "persist.loading_screen.json"
-                    | "novelty_tracker.json"
             ) {
                 return Err(format!("Failed to decode core save {name}: {e}"));
             }
@@ -496,14 +543,92 @@ mod tests {
             loaded["data"]["persist.upgrades.json"]["base_root"]["purchases"]["0"]["tree_id"]
                 .is_i64()
         );
-        assert!(save_profile_with_table(
-            profile.path(),
-            json!({ "_deleted": ["persist.upgrades.json"] }),
-            1,
-            &mut names
-        )
-        .is_err());
+        let mut edited = loaded["data"].clone();
+        edited["persist.upgrades.json"]["base_root"]["purchases"]["0"]["is_purchased"] =
+            json!(false);
+        names.names.clear();
+        let error =
+            save_profile_with_table(profile.path(), edited.clone(), 1, &mut names).unwrap_err();
+        assert_eq!(
+            error,
+            "Name table is missing or changed. Reload game data and the profile before saving."
+        );
         assert_eq!(std::fs::read(profile.upgrades()).unwrap(), original);
+        // Incomplete names alone do not block an ordinary numeric-hash edit.
+        names.names = vec!["abbey".into(), "meditation".into()];
+        save_profile_with_table(profile.path(), edited, 1, &mut names).unwrap();
+        assert_eq!(
+            decode_save_file(profile.upgrades()).unwrap()["base_root"]["purchases"]["0"]
+                ["is_purchased"],
+            false
+        );
+    }
+
+    #[test]
+    fn unreadable_optional_saves_are_skipped_and_cannot_be_overwritten() {
+        for name in [
+            "persist.narration.json",
+            "persist.tutorial.json",
+            "persist.journal.json",
+            "persist.quest.json",
+            "persist.curio_tracker.json",
+            "persist.game_knowledge.json",
+            "persist.town_event.json",
+            "persist.loading_screen.json",
+            "persist.campaign_mash.json",
+            "novelty_tracker.json",
+        ] {
+            let profile = Profile::new();
+            profile.write();
+            let path = profile.0.join(name);
+            std::fs::write(&path, b"invalid DSON").unwrap();
+            let mut names = table();
+            let loaded = load_profile_with_table(profile.path(), &mut names).unwrap();
+            assert!(loaded["data"].get(name).is_none(), "{name}");
+            let error = save_profile_with_table(profile.path(), json!({name: {}}), 1, &mut names)
+                .unwrap_err();
+            assert_eq!(
+                error,
+                format!("{name} was not decoded at load. Reload the profile before saving.")
+            );
+            assert_eq!(std::fs::read(path).unwrap(), b"invalid DSON");
+        }
+    }
+
+    #[test]
+    fn unreadable_editor_core_saves_fail_the_load() {
+        for name in [
+            "persist.game.json",
+            "persist.roster.json",
+            "persist.estate.json",
+            "persist.town.json",
+            "persist.upgrades.json",
+            "persist.campaign_log.json",
+            "persist.progression.json",
+        ] {
+            let profile = Profile::new();
+            std::fs::write(profile.0.join(name), b"invalid DSON").unwrap();
+            let error = load_profile_with_table(profile.path(), &mut table()).unwrap_err();
+            assert!(
+                error.starts_with(&format!("Failed to decode core save {name}:")),
+                "{error}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinked_save_files_fail_load_with_a_clear_error() {
+        let profile = Profile::new();
+        let other = Profile::new();
+        other.write();
+        std::os::unix::fs::symlink(other.upgrades(), profile.0.join("persist.upgrades.json"))
+            .unwrap();
+        let error = load_profile_with_table(profile.path(), &mut table()).unwrap_err();
+        assert_eq!(
+            error,
+            "Symlinked save file persist.upgrades.json is not supported."
+        );
     }
 
     #[test]
