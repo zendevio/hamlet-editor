@@ -363,16 +363,71 @@ test('dismiss refuses missing live data and treatment slots despite available st
 	assert.equal(store.hasDirtyFiles(), false);
 });
 
-test('validation gear repairs mark roster dirty so a pending Save includes them', async () => {
-	store.getHeroRawData('34').resolveXp = 0;
-	store.getHeroRawData('34').weapon_rank = 4;
-	store.getHeroRawData('34').armour_rank = 4;
-	const issues = runPreSaveValidation().filter((issue) => issue.category === 'Gear Rank');
-	assert.ok(issues.length >= 2);
-	for (const issue of issues) issue.fix();
-	assert.equal(store.getSaveData().dirtyFiles.has('persist.roster.json'), true);
-	assert.equal(store.getHeroRawData('34').weapon_rank, 0);
-	assert.equal(store.getHeroRawData('34').armour_rank, 0);
+test('reference level-one heroes keep their higher gear through all automatic fixes', () => {
+	loadDismissReference();
+	const expected = { Pevrel: 3, Poussin: 3, Gueron: 2, Jubert: 2 };
+	for (const [name, rank] of Object.entries(expected)) {
+		const hero = store.getHeroes().find((hero) => hero.name === name);
+		assert.ok(hero, name);
+		assert.equal(hero.resolveLevel, 1, name);
+		assert.equal(hero.weaponRank, rank, name);
+		assert.equal(hero.armourRank, rank, name);
+	}
+	const issues = runPreSaveValidation();
+	assert.equal(issues.some((issue) => issue.category === 'Gear Rank'), false);
+	for (const issue of issues) issue.fix?.();
+	for (const [name, rank] of Object.entries(expected)) {
+		const hero = store.getHeroes().find((hero) => hero.name === name);
+		assert.equal(hero.weaponRank, rank, name);
+		assert.equal(hero.armourRank, rank, name);
+	}
+});
+
+test('all valid gear ranks survive validation and automatic fixes at every hero level', () => {
+	const raw = store.getHeroRawData('34');
+	for (let level = 0; level <= 6; level++) {
+		for (let rank = 0; rank <= 4; rank++) {
+			raw.weapon_rank = rank;
+			raw.armour_rank = 4 - rank;
+			store.setHeroLevel('34', level);
+			assert.equal(raw.weapon_rank, rank);
+			assert.equal(raw.armour_rank, 4 - rank);
+			const issues = runPreSaveValidation();
+			assert.equal(issues.some((issue) => issue.category === 'Gear Rank'), false);
+			for (const issue of issues) issue.fix?.();
+			assert.equal(raw.weapon_rank, rank);
+			assert.equal(raw.armour_rank, 4 - rank);
+		}
+	}
+});
+
+test('gear validation rejects invalid indices without destructive automatic fixes', () => {
+	const raw = store.getHeroRawData('34');
+	for (const rank of [-1, 5, 1.5, NaN, Infinity]) {
+		raw.weapon_rank = rank;
+		raw.armour_rank = rank;
+		const issues = runPreSaveValidation().filter((issue) => issue.category === 'Gear Rank');
+		assert.equal(issues.length, 2);
+		assert.ok(issues.every((issue) => issue.severity === 'error' && !issue.fix));
+		assert.equal(raw.weapon_rank, rank);
+		assert.equal(raw.armour_rank, rank);
+	}
+});
+
+test('gear setters accept the complete range at level zero and reject indices outside it', () => {
+	store.setHeroLevel('34', 0);
+	for (let rank = 0; rank <= 4; rank++) {
+		store.setHeroWeaponRank('34', rank);
+		store.setHeroArmourRank('34', rank);
+		assert.equal(store.getHeroRawData('34').weapon_rank, rank);
+		assert.equal(store.getHeroRawData('34').armour_rank, rank);
+	}
+	for (const rank of [-1, 5, 1.5, NaN, Infinity]) {
+		store.setHeroWeaponRank('34', rank);
+		store.setHeroArmourRank('34', rank);
+		assert.equal(store.getHeroRawData('34').weapon_rank, 4);
+		assert.equal(store.getHeroRawData('34').armour_rank, 4);
+	}
 });
 
 test('a pending profile decision cannot be replaced by a second path change', async () => {

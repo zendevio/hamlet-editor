@@ -43,7 +43,6 @@
 	import type { HeroSummary, HeroQuirk } from '#lib/stores/save-data.svelte.js';
 	import {
 		getMaxHp,
-		maxGearRank,
 		getHeroRawData,
 		setHeroHp,
 		setHeroStress,
@@ -103,15 +102,10 @@
 	let dismissDialogOpen = $state(false);
 	let dismissConfirmChecked = $state(false);
 
-	// ── Level change gear confirmation ──
-	let pendingLevel = $state<number | null>(null);
-	let pendingMaxGear = $state(0);
-
 	// ── Derived ──
 	let isDead = $derived(hero.status === 3);
 	let dismissReason = $derived(getDismissBlockReason(hero.guid));
 	let resolveLevel = $derived(hero.resolveLevel);
-	let maxGear = $derived(maxGearRank(resolveLevel));
 	let maxHp = $derived(getMaxHp(hero.heroClass, hero.armourRank));
 
 	let positiveQuirks = $derived(
@@ -225,35 +219,10 @@
 		}
 	}
 
-	// D7: Level change with inline gear confirmation
 	function handleLevelChange(value: string) {
 		const parsed = parseInteger(value, 0, 6);
 		if (parsed.error !== undefined) return;
-		const level = parsed.value;
-
-		setHeroLevel(hero.guid, level);
-
-		const newMaxGear = maxGearRank(level);
-		// Constrain if current ranks exceed the new max
-		if (hero.weaponRank > newMaxGear) setHeroWeaponRank(hero.guid, newMaxGear);
-		if (hero.armourRank > newMaxGear) setHeroArmourRank(hero.guid, newMaxGear);
-
-		// Show inline gear-match prompt if both ranks are below the new max
-		if (hero.weaponRank < newMaxGear || hero.armourRank < newMaxGear) {
-			pendingLevel = level;
-			pendingMaxGear = newMaxGear;
-		}
-	}
-
-	function confirmGearMatch() {
-		if (pendingLevel === null) return;
-		setHeroWeaponRank(hero.guid, pendingMaxGear);
-		setHeroArmourRank(hero.guid, pendingMaxGear);
-		pendingLevel = null;
-	}
-
-	function declineGearMatch() {
-		pendingLevel = null;
+		setHeroLevel(hero.guid, parsed.value);
 	}
 
 	function handleHpSlider(value: number) {
@@ -428,32 +397,6 @@
 				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Vitals</span>
 				<Separator class="flex-1" />
 			</div>
-			<!-- D7: Inline gear match confirmation -->
-			{#if pendingLevel !== null}
-				<div class="rounded-none border border-amber-500/30 bg-amber-500/5 p-2 text-[11px]">
-					<p class="mb-1.5 font-medium text-amber-700 dark:text-amber-400">
-						Update weapon &amp; armour rank to {pendingMaxGear}?
-					</p>
-					<div class="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							class="h-6 flex-1 text-[11px]"
-							onclick={confirmGearMatch}
-						>
-							Yes
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							class="h-6 flex-1 text-[11px]"
-							onclick={declineGearMatch}
-						>
-							No
-						</Button>
-					</div>
-				</div>
-			{/if}
 			<div class="mt-2 space-y-4">
 					<div class="flex gap-4">
 						<!-- HP -->
@@ -895,7 +838,7 @@
 						<!-- Weapon Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
-								Weapon (max: {maxGear})
+								Weapon (max: 4)
 							</span>
 							<Select
 								type="single"
@@ -906,7 +849,7 @@
 									<span>Rank {hero.weaponRank}</span>
 								</SelectTrigger>
 								<SelectContent>
-									{#each Array(maxGear + 1) as _, i}
+									{#each Array(5) as _, i}
 										<SelectItem value={String(i)}>Rank {i}</SelectItem>
 									{/each}
 								</SelectContent>
@@ -916,7 +859,7 @@
 						<!-- Armour Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
-								Armour (max: {maxGear})
+								Armour (max: 4)
 							</span>
 							<Select
 								type="single"
@@ -927,7 +870,7 @@
 									<span>Rank {hero.armourRank}</span>
 								</SelectTrigger>
 								<SelectContent>
-									{#each Array(maxGear + 1) as _, i}
+									{#each Array(5) as _, i}
 										<SelectItem value={String(i)}>Rank {i}</SelectItem>
 									{/each}
 								</SelectContent>

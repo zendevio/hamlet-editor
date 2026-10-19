@@ -17,9 +17,6 @@
 		healHeroToMax,
 		setHeroStress,
 		setHeroLevel,
-		setHeroWeaponRank,
-		setHeroArmourRank,
-		maxGearRank,
 		getRevivalBlockReason,
 		RESOLVE_LEVEL_NAMES
 	} from '#lib/stores/save-data.svelte.js';
@@ -56,10 +53,6 @@
 		const level = parsed.value;
 		for (const hero of selectedHeroes) {
 			setHeroLevel(hero.guid, level);
-			// Also adjust gear to match
-			const gear = maxGearRank(level);
-			if (hero.weaponRank > gear) setHeroWeaponRank(hero.guid, gear);
-			if (hero.armourRank > gear) setHeroArmourRank(hero.guid, gear);
 		}
 	}
 

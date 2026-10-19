@@ -13,7 +13,6 @@ import {
 	markDirty,
 	getTreatmentSlots,
 	releaseHeroFromTreatment,
-	maxGearRank,
 	xpToLevel,
 	type HeroSummary
 } from '#lib/stores/save-data.svelte.js';
@@ -59,53 +58,19 @@ export function runPreSaveValidation(): ValidationIssue[] {
 	return issues;
 }
 
-/**
- * Check that no hero's gear rank exceeds their level's maximum.
- * Max gear rank = Math.min(resolveLevel, 4).
- */
+/** Gear ranks are indices into the five weapon/armour definitions, independent of level. */
 function checkGearRanks(): ValidationIssue[] {
 	const issues: ValidationIssue[] = [];
-	const heroes = getHeroes();
-
-	for (const hero of heroes) {
-		// Skip dead heroes
-		if (hero.status === 3) continue;
-
-		const maxRank = maxGearRank(hero.resolveLevel);
-
-		if (hero.weaponRank > maxRank) {
-			const guid = hero.guid;
+	for (const hero of getHeroes()) {
+		for (const [kind, rank] of [['weapon', hero.weaponRank], ['armour', hero.armourRank]] as const) {
+			if (Number.isInteger(rank) && rank >= 0 && rank <= 4) continue;
 			issues.push({
-				severity: 'warning',
+				severity: 'error',
 				category: 'Gear Rank',
-				message: `${hero.name} (${hero.classDisplayName}): weapon rank ${hero.weaponRank} exceeds max ${maxRank} for level ${hero.resolveLevel}.`,
-				fix: () => {
-					const raw = getHeroRawData(guid);
-					if (raw) {
-						raw.weapon_rank = maxRank;
-						markDirty('persist.roster.json');
-					}
-				}
-			});
-		}
-
-		if (hero.armourRank > maxRank) {
-			const guid = hero.guid;
-			issues.push({
-				severity: 'warning',
-				category: 'Gear Rank',
-				message: `${hero.name} (${hero.classDisplayName}): armour rank ${hero.armourRank} exceeds max ${maxRank} for level ${hero.resolveLevel}.`,
-				fix: () => {
-					const raw = getHeroRawData(guid);
-					if (raw) {
-						raw.armour_rank = maxRank;
-						markDirty('persist.roster.json');
-					}
-				}
+				message: `${hero.name} (${hero.classDisplayName}): ${kind} rank ${rank} must be a whole number from 0 to 4.`
 			});
 		}
 	}
-
 	return issues;
 }
 

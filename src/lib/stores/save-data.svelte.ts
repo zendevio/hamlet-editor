@@ -225,11 +225,6 @@ export function getMaxHp(heroClass: string, armourRank: number): number {
 	return table[rank];
 }
 
-/** Max gear rank for a given resolve level. */
-export function maxGearRank(level: number): number {
-	return Math.min(level, 4);
-}
-
 /** Extract a HeroSummary from the raw roster entry. */
 function heroEntryToSummary(guid: string, entry: HeroEntry): HeroSummary {
 	const root = entry.hero_file_data.raw_data.base_root;
