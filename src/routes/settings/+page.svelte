@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
 	import {
 		Card,
 		CardContent,
@@ -232,6 +233,7 @@
 	}
 
 	async function handleProfileChange(value: string) {
+		if (value === settings.savePath) return;
 		const loc = availableSaveLocations.find((l) => l.path === value);
 		if (!loc) return;
 		try {
@@ -566,7 +568,7 @@
 					</div>
 					<Switch
 						checked={settings.autoBackup}
-						onCheckedChange={(checked) => setAutoBackup(checked)}
+						onCheckedChange={(checked) => commitChangedValue(settings.autoBackup, checked, setAutoBackup)}
 					/>
 				</div>
 
@@ -693,7 +695,7 @@
 					</div>
 					<Switch
 						checked={mode.current === 'dark'}
-						onCheckedChange={() => toggleMode()}
+						onCheckedChange={(checked) => commitChangedValue(mode.current === 'dark', checked, () => toggleMode())}
 					/>
 				</div>
 			</CardContent>

@@ -8,6 +8,25 @@ export type UnsavedChoice = 'save' | 'discard' | 'cancel';
 export type RequestDataChange = (action: () => Promise<void>) => Promise<boolean>;
 export const DATA_CHANGE_CONTEXT = 'hamlet-request-data-change';
 
+/** A confirmed close must not re-open the prompt when the UI re-renders. */
+export function createWindowCloseGuard(hasChanges: () => boolean) {
+	let confirmed = false;
+	return {
+		shouldConfirm: () => !confirmed && hasChanges(),
+		async closeAfter(prepare: () => boolean | Promise<boolean>, close: () => Promise<void>) {
+			if (!await prepare()) return false;
+			confirmed = true;
+			try {
+				await close();
+				return true;
+			} catch (error) {
+				confirmed = false;
+				throw error;
+			}
+		}
+	};
+}
+
 /** Shared by the layout's save pipeline and reload regression tests. */
 export function profileSaveBlockReason(data: {
 	isLoaded: boolean; isLoading: boolean; isStale: boolean; profilePath: string; gamePath: string;

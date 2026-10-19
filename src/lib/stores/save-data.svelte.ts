@@ -393,8 +393,8 @@ export function setHeroLevel(guid: string, level: number) {
 	if (!raw) return;
 	const parsed = parseInteger(level, 0, 6);
 	if (parsed.error !== undefined) return;
+	if (xpToLevel(raw.resolveXp) === parsed.value) return;
 	const xp = RESOLVE_XP_THRESHOLDS[parsed.value];
-	if (raw.resolveXp === xp) return;
 	raw.resolveXp = xp;
 	markDirty('persist.roster.json');
 }
@@ -425,6 +425,7 @@ const VIRTUE_IDS = new Set(['courageous', 'focused', 'powerful', 'vigorous', 'st
 export function setHeroAffliction(guid: string, valueId: string) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
+	if ((raw.virtue_type_id || raw.affliction_type_id || '') === valueId) return;
 	if (!valueId) {
 		// Clear both
 		raw.affliction_type_id = '';
@@ -445,7 +446,7 @@ export function setHeroAffliction(guid: string, valueId: string) {
 /** Update a hero's visited_deaths_door flag. */
 export function setHeroDeathsDoor(guid: string, visited: boolean) {
 	const raw = getHeroRawData(guid);
-	if (!raw) return;
+	if (!raw || raw.visited_deaths_door === visited) return;
 	raw.visited_deaths_door = visited;
 	markDirty('persist.roster.json');
 }
@@ -512,13 +513,13 @@ export function toggleCampingSkill(guid: string, skillId: string) {
 	markDirty('persist.roster.json');
 }
 
-/** Heal a hero to max HP. */
+/** Heal to the class base max. Buffs are not evaluated, so never lower saved HP. */
 export function healHeroToMax(guid: string) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
 	const maxHp = getMaxHp(raw.heroClass, raw.armour_rank);
 	const parsed = parseInteger(Math.floor(maxHp), 1);
-	if (parsed.error !== undefined || raw.actor.current_hp === parsed.value) return;
+	if (parsed.error !== undefined || raw.actor.current_hp >= parsed.value) return;
 	raw.actor.current_hp = parsed.value;
 	markDirty('persist.roster.json');
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { commitChangedValue, sliderControl, hpSliderMax } from '#lib/control-events.js';
 	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 	import { canPickQuirk, CURSE_STATES } from '#lib/hero-safety.js';
 	import { toast } from 'svelte-sonner';
@@ -94,6 +95,8 @@
 	let editingName = $state(false);
 	let nameValue = $state('');
 	let nameError = $state('');
+	let nameAtStart = '';
+	let nameHeroGuid = '';
 
 	// ── Revival wizard ──
 	let revivalWizardOpen = $state(false);
@@ -107,6 +110,7 @@
 	let dismissReason = $derived(getDismissBlockReason(hero.guid));
 	let resolveLevel = $derived(hero.resolveLevel);
 	let maxHp = $derived(getMaxHp(hero.heroClass, hero.armourRank));
+	let hpMax = $derived(hpSliderMax(maxHp, hero.currentHp));
 
 	let positiveQuirks = $derived(
 		Object.entries(hero.quirks).filter(([id]) => isPositiveQuirk(id))
@@ -201,14 +205,27 @@
 	function startEditName() {
 		nameError = '';
 		nameValue = hero.name;
+		nameAtStart = hero.name;
+		nameHeroGuid = hero.guid;
 		editingName = true;
 	}
 
 	function saveName() {
+		if (!editingName) return;
+		if (hero.guid !== nameHeroGuid || hero.name !== nameAtStart) {
+			editingName = false;
+			return;
+		}
+		if (nameValue === nameAtStart) {
+			editingName = false;
+			return;
+		}
 		const parsed = validateHeroName(nameValue);
 		nameError = parsed.error ?? '';
 		if (parsed.error !== undefined) return;
-		nameError = setHeroName(hero.guid, parsed.value) ?? '';
+		commitChangedValue(hero.name, parsed.value, (name) => {
+			nameError = setHeroName(hero.guid, name) ?? '';
+		});
 		if (!nameError) editingName = false;
 	}
 
@@ -220,17 +237,10 @@
 	}
 
 	function handleLevelChange(value: string) {
+		if (value === String(resolveLevel)) return;
 		const parsed = parseInteger(value, 0, 6);
 		if (parsed.error !== undefined) return;
 		setHeroLevel(hero.guid, parsed.value);
-	}
-
-	function handleHpSlider(value: number) {
-		setHeroHp(hero.guid, value);
-	}
-
-	function handleStressSlider(value: number) {
-		setHeroStress(hero.guid, value);
 	}
 
 	function openQuirkPicker(category: 'positive' | 'negative') {
@@ -254,7 +264,7 @@
 
 	// D2: Blood Curse state change
 	function handleBloodCurseChange(newStateId: string) {
-		setHeroCurseState(hero.guid, newStateId);
+		commitChangedValue(vampireQuirkId ?? '', newStateId, (id) => setHeroCurseState(hero.guid, id));
 	}
 
 	// D3: Trinket slot equip via TrinketPicker
@@ -418,21 +428,21 @@
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{hero.currentHp} / {maxHp}
+									{Math.round(hero.currentHp)} / {Math.round(hpMax)}
 								</span>
 							</div>
 							<Slider
-								value={hero.currentHp}
-								max={maxHp}
+								{...sliderControl(hero.currentHp, (value) => setHeroHp(hero.guid, value))}
+								max={hpMax}
 								min={isDead ? 0 : 1}
 								step={1}
 								type="single"
-								onValueChange={(v) => handleHpSlider(v)}
 							/>
 							<Button
 								variant="outline"
 								size="sm"
 								class="mt-1.5 h-6 w-full text-[11px]"
+								title="Heal to the class base maximum; buffs are not included. Existing higher HP is kept."
 								onclick={() => healHeroToMax(hero.guid)}
 								disabled={hero.currentHp >= maxHp}
 							>
@@ -463,12 +473,11 @@
 								</span>
 							</div>
 							<Slider
-								value={hero.stress}
+								{...sliderControl(hero.stress, (value) => setHeroStress(hero.guid, value))}
 								max={200}
 								min={0}
 								step={1}
 								type="single"
-								onValueChange={(v) => handleStressSlider(v)}
 							/>
 							<Button
 								variant="outline"
@@ -512,7 +521,7 @@
 							<Select
 								type="single"
 								value={hero.virtueTypeId || hero.afflictionTypeId || '_none'}
-								onValueChange={(v: string) => setHeroAffliction(hero.guid, v === '_none' ? '' : v)}
+								onValueChange={(v: string) => commitChangedValue(hero.virtueTypeId || hero.afflictionTypeId || '_none', v, (id) => setHeroAffliction(hero.guid, id === '_none' ? '' : id))}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>{hero.virtueTypeId ? snakeToTitle(hero.virtueTypeId) : hero.afflictionTypeId ? snakeToTitle(hero.afflictionTypeId) : 'None'}</span>
@@ -557,7 +566,7 @@
 								<span class="text-xs text-muted-foreground">{hero.visitedDeathsDoor ? 'Visited' : 'Never'}</span>
 								<Switch
 									checked={hero.visitedDeathsDoor}
-									onCheckedChange={(checked) => setHeroDeathsDoor(hero.guid, checked)}
+									onCheckedChange={(checked) => commitChangedValue(hero.visitedDeathsDoor, checked, (value) => setHeroDeathsDoor(hero.guid, value))}
 								/>
 							</div>
 						</div>
@@ -843,7 +852,7 @@
 							<Select
 								type="single"
 								value={String(hero.weaponRank)}
-								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) setHeroWeaponRank(hero.guid, parsed.value); }}
+								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) commitChangedValue(hero.weaponRank, parsed.value, (rank) => setHeroWeaponRank(hero.guid, rank)); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>Rank {hero.weaponRank}</span>
@@ -864,7 +873,7 @@
 							<Select
 								type="single"
 								value={String(hero.armourRank)}
-								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) setHeroArmourRank(hero.guid, parsed.value); }}
+								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) commitChangedValue(hero.armourRank, parsed.value, (rank) => setHeroArmourRank(hero.guid, rank)); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>Rank {hero.armourRank}</span>
@@ -876,7 +885,7 @@
 								</SelectContent>
 							</Select>
 							<p class="text-muted-foreground mt-1 text-[10px]">
-								Max HP at current armour rank: {maxHp}
+								Base max HP at current armour rank: {maxHp} (buffs not included)
 							</p>
 						</div>
 					</div>

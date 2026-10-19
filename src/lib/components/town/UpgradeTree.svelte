@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
 	import { Switch } from '#lib/components/ui/switch/index.js';
 	import {
 		Tooltip,
@@ -65,7 +66,7 @@
 						<Switch
 							checked={purchase.is_purchased}
 							size="sm"
-							onCheckedChange={() => handleToggle(purchase)}
+							onCheckedChange={(checked) => commitChangedValue(purchase.is_purchased, checked, () => handleToggle(purchase))}
 						/>
 						<span class="text-xs text-muted-foreground">
 							Tier {purchase.requirement_code}

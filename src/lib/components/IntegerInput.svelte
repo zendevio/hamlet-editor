@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import { I32_MAX, parseInteger } from '#lib/input-validation.js';
 
@@ -16,7 +17,7 @@
 	function commit(event: Event) {
 		const parsed = parseInteger((event.target as HTMLInputElement).value, min, max);
 		error = parsed.error ?? '';
-		if (parsed.error === undefined) onchange(parsed.value);
+		if (parsed.error === undefined) commitChangedValue(value, parsed.value, onchange);
 	}
 </script>
 

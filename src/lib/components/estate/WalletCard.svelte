@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
 	import { parseInteger } from '#lib/input-validation.js';
 	import { WALLET_MAX } from '#lib/estate.js';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -25,12 +26,14 @@
 	let error = $state('');
 	let editing = $state(false);
 	let editValue = $state('');
+	let valueAtStart = 0;
 	let inputRef = $state<HTMLInputElement | null>(null);
 
 	function startEdit() {
 		error = '';
 		editing = true;
 		editValue = String(value);
+		valueAtStart = value;
 		// Focus input on next tick after it renders
 		queueMicrotask(() => {
 			inputRef?.focus();
@@ -39,11 +42,16 @@
 	}
 
 	function confirmEdit() {
+		if (!editing) return;
+		if (value !== valueAtStart) {
+			editing = false;
+			return;
+		}
 		const parsed = parseInteger(editValue, 0, WALLET_MAX);
 		error = parsed.error ?? '';
 		if (parsed.error !== undefined) return;
-		onchange?.(parsed.value);
 		editing = false;
+		commitChangedValue(value, parsed.value, (next) => onchange?.(next));
 	}
 
 	function cancelEdit() {

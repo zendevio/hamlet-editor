@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount, setContext } from 'svelte';
-	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
+	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, createWindowCloseGuard, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
 		Sidebar,
@@ -281,6 +281,7 @@
 	// ── Unsaved Changes on Close Dialog ──
 
 	let showCloseDialog = $state(false);
+	const windowClose = createWindowCloseGuard(hasDirtyFiles);
 
 	// ── Window Close Handler ──
 
@@ -297,7 +298,7 @@
 				const { getCurrentWindow } = await import('@tauri-apps/api/window');
 				const currentWindow = getCurrentWindow();
 				unlisten = await currentWindow.onCloseRequested(async (event) => {
-					if (hasDirtyFiles()) {
+					if (windowClose.shouldConfirm()) {
 						event.preventDefault();
 						showCloseDialog = true;
 						// Wait for user decision via the dialog callbacks
@@ -472,10 +473,8 @@
 
 	async function handleSaveAndClose() {
 		showCloseDialog = false;
-		if (!await saveChanges()) return;
 		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window');
-			await getCurrentWindow().close();
+			await windowClose.closeAfter(saveChanges, closeWindow);
 		} catch {
 			// Not in Tauri environment
 		}
@@ -484,13 +483,19 @@
 	async function handleDiscardAndClose() {
 		if (isSaving) return;
 		showCloseDialog = false;
-		discardAllChanges();
 		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window');
-			await getCurrentWindow().close();
+			await windowClose.closeAfter(() => {
+				discardAllChanges();
+				return true;
+			}, closeWindow);
 		} catch {
 			// Not in Tauri environment
 		}
+	}
+
+	async function closeWindow() {
+		const { getCurrentWindow } = await import('@tauri-apps/api/window');
+		await getCurrentWindow().close();
 	}
 
 	function handleCancelClose() {

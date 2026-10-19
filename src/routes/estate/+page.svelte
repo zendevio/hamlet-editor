@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
+	import { validateHeroName } from '#lib/input-validation.js';
 	import { WALLET_MAX } from '#lib/estate.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import IntegerInput from '#lib/components/IntegerInput.svelte';
@@ -50,6 +52,7 @@
 	let estateNameValue = $state('');
 	let estateNameEditing = $state(false);
 	let estateNameError = $state('');
+	let estateNameAtStart = '';
 
 	$effect(() => {
 		if (!estateNameEditing) {
@@ -58,7 +61,23 @@
 	});
 
 	function handleEstateNameBlur() {
-		estateNameError = setEstateName(estateNameValue) ?? '';
+		if (!estateNameEditing) return;
+		const current = saveData.game?.base_root?.estatename ?? '';
+		if (current !== estateNameAtStart) {
+			estateNameEditing = false;
+			return;
+		}
+		if (estateNameValue === estateNameAtStart) {
+			estateNameError = '';
+			estateNameEditing = false;
+			return;
+		}
+		const parsed = validateHeroName(estateNameValue);
+		estateNameError = parsed.error ?? '';
+		if (parsed.error !== undefined) return;
+		commitChangedValue(current, parsed.value, (name) => {
+			estateNameError = setEstateName(name) ?? '';
+		});
 		if (!estateNameError) estateNameEditing = false;
 	}
 
@@ -213,7 +232,7 @@
 					<div class="max-w-sm">
 						<Input
 							bind:value={estateNameValue}
-							onfocus={() => (estateNameEditing = true)}
+							onfocus={() => { estateNameAtStart = saveData.game?.base_root?.estatename ?? ''; estateNameEditing = true; }}
 							onblur={handleEstateNameBlur}
 							onkeydown={handleEstateNameKeydown}
 							placeholder="Enter estate name..."

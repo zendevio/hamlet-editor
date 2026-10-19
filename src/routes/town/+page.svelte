@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
 	import { readDistricts } from '#lib/districts.js';
 	import { snakeToTitle } from '#lib/utils.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
@@ -181,7 +182,7 @@
 									<Switch
 										size="sm"
 										checked={district.built}
-										onCheckedChange={(checked) => handleDistrictToggle(district.id, checked)}
+										onCheckedChange={(checked) => commitChangedValue(district.built, checked, (value) => handleDistrictToggle(district.id, value))}
 									/>
 								</div>
 							</CardContent>

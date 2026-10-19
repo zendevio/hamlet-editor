@@ -74,7 +74,7 @@
 					Heal All
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Set HP to class max for each selected hero (skips dead heroes)</TooltipContent>
+			<TooltipContent>Raise HP to the class base max, keeping higher HP (skips dead heroes)</TooltipContent>
 		</Tooltip>
 
 		<!-- Clear Stress -->

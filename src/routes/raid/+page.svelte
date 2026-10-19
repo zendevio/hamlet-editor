@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { sliderControl } from '#lib/control-events.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import PartySlot from '#lib/components/raid/PartySlot.svelte';
 	import RaidInfoCard from '#lib/components/raid/RaidInfoCard.svelte';
@@ -326,11 +327,10 @@
 							</div>
 							<Slider
 								type="single"
-								value={torchlightValue}
+								{...sliderControl(torchlightValue, setRaidTorchlight)}
 								min={0}
 								max={100}
 								step={0.5}
-								onValueChange={setRaidTorchlight}
 							/>
 							<p class="text-[10px] text-muted-foreground/70">
 								Light level from 0 to 100.
