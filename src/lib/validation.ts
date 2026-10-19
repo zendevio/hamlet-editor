@@ -10,6 +10,7 @@ import {
 	getSaveData,
 	getHeroes,
 	getHeroRawData,
+	markDirty,
 	getTreatmentSlots,
 	releaseHeroFromTreatment,
 	maxGearRank,
@@ -83,6 +84,7 @@ function checkGearRanks(): ValidationIssue[] {
 					const raw = getHeroRawData(guid);
 					if (raw) {
 						raw.weapon_rank = maxRank;
+						markDirty('persist.roster.json');
 					}
 				}
 			});
@@ -98,6 +100,7 @@ function checkGearRanks(): ValidationIssue[] {
 					const raw = getHeroRawData(guid);
 					if (raw) {
 						raw.armour_rank = maxRank;
+						markDirty('persist.roster.json');
 					}
 				}
 			});

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { canPickQuirk } from '#lib/hero-safety.js';
 	import { Popover, PopoverContent, PopoverTrigger } from '#lib/components/ui/popover/index.js';
 	import {
 		Command,
@@ -39,16 +40,17 @@
 	});
 
 	let positiveQuirks = $derived(
-		allQuirks.filter((q) => q.category === 'positive' && !exclude.has(q.id))
+		allQuirks.filter((q) => canPickQuirk(q.id) && q.category === 'positive' && !exclude.has(q.id))
 	);
 	let negativeQuirks = $derived(
-		allQuirks.filter((q) => q.category === 'negative' && !exclude.has(q.id))
+		allQuirks.filter((q) => canPickQuirk(q.id) && q.category === 'negative' && !exclude.has(q.id))
 	);
 	let diseaseQuirks = $derived(
-		allQuirks.filter((q) => q.category === 'disease' && !exclude.has(q.id))
+		allQuirks.filter((q) => canPickQuirk(q.id) && q.category === 'disease' && !exclude.has(q.id))
 	);
 
 	function handleSelect(id: string) {
+		if (!canPickQuirk(id)) return;
 		open = false;
 		onselect?.(id);
 	}

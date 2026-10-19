@@ -6,6 +6,11 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
+import { parseInteger, validateHeroName } from '#lib/input-validation.js';
+import { updateWallet, updateEstateItem } from '#lib/estate.js';
+import { updateTorchlight, updateHungerBuffer, updateRaidAmount, abandonRaidData } from '#lib/raid.js';
+import { updateDistrict } from '#lib/districts.js';
+import { canPickQuirk, changeCurseState, dismissBlockReason, revivalBlockReason } from '#lib/hero-safety.js';
 import { ensureNameTable } from '#lib/api/names.js';
 import { loadProfile } from '#lib/api/save.js';
 import { readTreatmentSlots, clearTreatmentSlot } from '#lib/treatment.js';
@@ -17,7 +22,6 @@ import {
 	BUILDING_ACTIVITIES,
 	BUILDING_DISPLAY_NAMES,
 	ACTIVITY_DISPLAY_NAMES,
-	DISTRICT_IDS,
 	DISTRICT_DISPLAY_NAMES,
 	BUILDING_UPGRADE_PREFIXES,
 	RESOLVE_XP_THRESHOLDS,
@@ -63,7 +67,6 @@ export {
 	BUILDING_ACTIVITIES,
 	BUILDING_DISPLAY_NAMES,
 	ACTIVITY_DISPLAY_NAMES,
-	DISTRICT_IDS,
 	DISTRICT_DISPLAY_NAMES,
 	BUILDING_UPGRADE_PREFIXES,
 	RESOLVE_XP_THRESHOLDS,
@@ -337,7 +340,7 @@ export function markDirty(filename: SaveFileName) {
 
 /** Check if any files are dirty. */
 export function hasDirtyFiles(): boolean {
-	return dirtyFiles.size > 0;
+	return dirtyFiles.size > 0 || deletedFiles.size > 0;
 }
 
 // ── Mutation Functions ──
@@ -346,7 +349,9 @@ export function hasDirtyFiles(): boolean {
 export function setHeroHp(guid: string, hp: number) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw.actor.current_hp = Math.max(0, hp);
+	const parsed = parseInteger(hp, raw['roster.status'] === 3 ? 0 : 1);
+	if (parsed.error !== undefined || raw.actor.current_hp === parsed.value) return;
+	raw.actor.current_hp = parsed.value;
 	markDirty('persist.roster.json');
 }
 
@@ -354,24 +359,34 @@ export function setHeroHp(guid: string, hp: number) {
 export function setHeroStress(guid: string, stress: number) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw.m_Stress = Math.max(0, Math.min(200, stress));
+	const parsed = parseInteger(stress, 0, 200);
+	if (parsed.error !== undefined || raw.m_Stress === parsed.value) return;
+	raw.m_Stress = parsed.value;
 	markDirty('persist.roster.json');
 }
 
 /** Update a hero's name. */
 export function setHeroName(guid: string, name: string) {
 	const raw = getHeroRawData(guid);
-	if (!raw) return;
-	raw.actor.name = name;
-	markDirty('persist.roster.json');
+	if (!raw) return 'This hero is no longer in the roster.';
+	const parsed = validateHeroName(name);
+	if (parsed.error !== undefined) return parsed.error;
+	if (raw.actor.name !== parsed.value) {
+		raw.actor.name = parsed.value;
+		markDirty('persist.roster.json');
+	}
+	return null;
 }
 
 /** Update a hero's resolve level (sets resolveXp to the threshold). */
 export function setHeroLevel(guid: string, level: number) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	const clamped = Math.max(0, Math.min(6, level));
-	raw.resolveXp = RESOLVE_XP_THRESHOLDS[clamped];
+	const parsed = parseInteger(level, 0, 6);
+	if (parsed.error !== undefined) return;
+	const xp = RESOLVE_XP_THRESHOLDS[parsed.value];
+	if (raw.resolveXp === xp) return;
+	raw.resolveXp = xp;
 	markDirty('persist.roster.json');
 }
 
@@ -379,7 +394,9 @@ export function setHeroLevel(guid: string, level: number) {
 export function setHeroWeaponRank(guid: string, rank: number) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw.weapon_rank = Math.max(0, Math.min(4, rank));
+	const parsed = parseInteger(rank, 0, 4);
+	if (parsed.error !== undefined || raw.weapon_rank === parsed.value) return;
+	raw.weapon_rank = parsed.value;
 	markDirty('persist.roster.json');
 }
 
@@ -387,7 +404,9 @@ export function setHeroWeaponRank(guid: string, rank: number) {
 export function setHeroArmourRank(guid: string, rank: number) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw.armour_rank = Math.max(0, Math.min(4, rank));
+	const parsed = parseInteger(rank, 0, 4);
+	if (parsed.error !== undefined || raw.armour_rank === parsed.value) return;
+	raw.armour_rank = parsed.value;
 	markDirty('persist.roster.json');
 }
 
@@ -426,14 +445,18 @@ export function setHeroDeathsDoor(guid: string, visited: boolean) {
 export function setHeroStatus(guid: string, status: number) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw['roster.status'] = status;
+	const parsed = parseInteger(status, 0, 4);
+	if (parsed.error !== undefined || raw['roster.status'] === parsed.value) return;
+	// Status transitions for dead heroes require a verified multi-file revival.
+	if (raw['roster.status'] === 3 || parsed.value === 3) return;
+	raw['roster.status'] = parsed.value;
 	markDirty('persist.roster.json');
 }
 
 /** Add a quirk to a hero. */
 export function addHeroQuirk(guid: string, quirkId: string, quirk: HeroQuirk) {
 	const raw = getHeroRawData(guid);
-	if (!raw) return;
+	if (!raw || !canPickQuirk(quirkId)) return;
 	raw.quirks[quirkId] = quirk;
 	markDirty('persist.roster.json');
 }
@@ -485,104 +508,24 @@ export function healHeroToMax(guid: string) {
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
 	const maxHp = getMaxHp(raw.heroClass, raw.armour_rank);
-	raw.actor.current_hp = maxHp;
+	const parsed = parseInteger(Math.floor(maxHp), 1);
+	if (parsed.error !== undefined || raw.actor.current_hp === parsed.value) return;
+	raw.actor.current_hp = parsed.value;
 	markDirty('persist.roster.json');
 }
 
-/**
- * Clear the `died` flag for a hero in all MissionEvent entries in the campaign log.
- *
- * Iterates through `campaignLog.base_root.chapters` (numeric-string keys),
- * then through each chapter's entries (also numeric-string keys). Any entry
- * with `rtti === 2006063882` (MissionEvent) has a `heroes` map whose entries
- * each have a `guid` (number) and `died` (boolean). Entries matching the hero
- * GUID have their `died` flag set to false.
- *
- * Marks `persist.campaign_log.json` dirty if any change was made.
- */
-export function clearDiedFlags(heroGuid: string) {
-	if (!campaignLog) return;
-	const guidNum = parseInt(heroGuid, 10);
-	const baseRoot = campaignLog['base_root'] as Record<string, unknown> | undefined;
-	if (!baseRoot) return;
-	const chapters = baseRoot['chapters'] as Record<string, unknown> | undefined;
-	if (!chapters) return;
-
-	let changed = false;
-
-	for (const chapter of Object.values(chapters)) {
-		if (typeof chapter !== 'object' || chapter === null) continue;
-		const chapterObj = chapter as Record<string, unknown>;
-		for (const [key, entry] of Object.entries(chapterObj)) {
-			// Skip the chapterIndex metadata key
-			if (key === 'chapterIndex') continue;
-			if (typeof entry !== 'object' || entry === null) continue;
-			const event = entry as Record<string, unknown>;
-			// MissionEvent RTTI
-			if (event['rtti'] !== 2006063882) continue;
-			const heroes = event['heroes'] as Record<string, unknown> | undefined;
-			if (!heroes) continue;
-			for (const heroEntry of Object.values(heroes)) {
-				if (typeof heroEntry !== 'object' || heroEntry === null) continue;
-				const h = heroEntry as Record<string, unknown>;
-				if (h['guid'] === guidNum && h['died'] === true) {
-					h['died'] = false;
-					changed = true;
-				}
-			}
-		}
-	}
-
-	if (changed) {
-		markDirty('persist.campaign_log.json');
-	}
+/** Revival stays blocked until a complete dead-hero transition is verified. */
+export function getRevivalBlockReason(): string {
+	return revivalBlockReason(gameInRaid || !!game?.base_root.inraid || raid !== null);
 }
 
-/**
- * Mark the progression file dirty after a hero revival.
- *
- * The `visit_graveyard` achievement in `persist.progression.json`
- * (`base_root.real_achievements.visit_graveyard.completed`) is a campaign-level
- * flag that tracks whether the player has ever visited the graveyard — it does
- * NOT need to be cleared per revival. No per-hero death state has been found
- * in progression data in the reference sample.
- *
- * TODO: If future investigation reveals a per-hero death record in progression
- * (e.g. a hero GUID reference under a different field), clear it here.
- * For now this function is a no-op but is wired into reviveHero so the call
- * site is already in place.
- */
-export function clearGraveyardFlag(_heroGuid: string) {
-	// No known per-hero field to clear in persist.progression.json.
-	// The visit_graveyard achievement tracks whether the graveyard has ever been
-	// visited (campaign-wide) and should NOT be reset per revival.
-	// This function is intentionally left as a no-op pending further research.
+export function reviveHero(_guid: string): string {
+	return getRevivalBlockReason();
 }
 
-/** Revive a dead hero (basic: sets status to 0, HP to 1, stress to 0). */
-export function reviveHero(guid: string) {
+export function setHeroCurseState(guid: string, id: string) {
 	const raw = getHeroRawData(guid);
-	if (!raw) return;
-	raw['roster.status'] = 0;
-	raw['roster.before_on_start_town_visit_status'] = 0;
-	raw.actor.current_hp = 1;
-	raw.m_Stress = 0;
-	markDirty('persist.roster.json');
-
-	// Clear died flags in MissionEvent history in the campaign log.
-	clearDiedFlags(guid);
-
-	// Progression graveyard flag (no-op pending further research — see clearGraveyardFlag).
-	clearGraveyardFlag(guid);
-
-	// If a raid is active and this hero was in the raid party, mark raid dirty too
-	if (raid) {
-		const heroGuid = parseInt(guid, 10);
-		if (raid.base_root.party.heroes.includes(heroGuid)) {
-			// TODO: restore hero to raid party once raid party mutation is implemented
-			markDirty('persist.raid.json');
-		}
-	}
+	if (raw && changeCurseState(raw, id)) markDirty('persist.roster.json');
 }
 
 /** Update the estate name in persist.game.json. */
@@ -592,12 +535,41 @@ export function setEstateName(name: string) {
 	markDirty('persist.game.json');
 }
 
-/** Dismiss a hero (remove from roster). */
-export function dismissHero(guid: string) {
-	if (!roster) return;
+export function getDismissBlockReason(guid: string): string | null {
+	return dismissBlockReason(guid, { roster, town, upgrades, game, raid, campaignLog, progression });
+}
+
+/** Leave all files untouched when any reference cannot be safely cleaned. */
+export function dismissHero(guid: string): string | null {
+	const reason = getDismissBlockReason(guid);
+	if (reason) return reason;
+	if (!roster) return 'No roster loaded.';
+	const count = parseInteger(roster.base_root.dismissed_hero_count, 0, 2147483646);
+	if (count.error !== undefined) return count.error;
 	delete roster.base_root.heroes[guid];
-	roster.base_root.dismissed_hero_count += 1;
+	roster.base_root.dismissed_hero_count = count.value + 1;
 	markDirty('persist.roster.json');
+	return null;
+}
+
+export function setWalletAmount(type: string, value: unknown) {
+	if (estate && updateWallet(estate, type, value)) markDirty('persist.estate.json');
+}
+
+export function setEstateItemAmount(id: string, value: unknown) {
+	if (estate && updateEstateItem(estate, id, value)) markDirty('persist.estate.json');
+}
+
+export function setRaidTorchlight(value: unknown) {
+	if (raid && updateTorchlight(raid, value)) markDirty('persist.raid.json');
+}
+
+export function setRaidHungerBuffer(value: unknown) {
+	if (raid && updateHungerBuffer(raid, value)) markDirty('persist.raid.json');
+}
+
+export function setRaidItemAmount(key: string, value: unknown) {
+	if (raid && updateRaidAmount(raid, key, value)) markDirty('persist.raid.json');
 }
 
 // ── Town & Upgrade Helpers ──
@@ -708,47 +680,25 @@ export function toggleUpgrade(purchase: UpgradePurchase) {
 	markDirty('persist.upgrades.json');
 }
 
-/**
- * Set the `built` flag for a Color of Madness district.
- *
- * Districts live in `persist.town.json → base_root.districts.buildings.<id>.built`.
- * If the `districts` key is absent (e.g. DLC not installed), this is a no-op.
- */
+/** Edit only existing Crimson Court district entries, preserving their buffs. */
 export function setDistrictBuilt(districtId: string, built: boolean) {
-	if (!town) return;
-	const districts = town.base_root.districts;
-	if (!districts) return;
-	if (!districts.buildings[districtId]) {
-		districts.buildings[districtId] = { built };
-	} else {
-		districts.buildings[districtId].built = built;
-	}
-	markDirty('persist.town.json');
+	if (town && updateDistrict(town, districtId, built)) markDirty('persist.town.json');
 }
 
-// stripDsonPrefix is imported at the top of this file and re-exported for
-// consumers that still import it from the store module.
-
-/**
- * Abandon the active raid.
- *
- * Sets inraid = false in persist.game.json and nulls the raid data in memory.
- * Marks both persist.game.json and persist.raid.json as dirty so they get saved.
- */
-export function abandonRaid() {
-	if (game) {
-		game.base_root.inraid = false;
-		markDirty('persist.game.json');
+/** Clear the active raid pointer, return its party to town, and delete its file on Save. */
+export function abandonRaid(): string | null {
+	if (!game || !raid || !roster || !town) return 'Game, raid, roster and town data must be loaded before abandoning a raid.';
+	for (const filename of abandonRaidData(game, raid, roster, town)) {
+		markDirty(filename as SaveFileName);
 	}
 	raid = null;
-	raidSnapshot = null;
 	gameInRaid = false;
-	// The raid file should be deleted from disk, not overwritten with null.
+	// Preserve the snapshot until Save so Discard can restore the expedition.
 	deletedFiles = new Set([...deletedFiles, 'persist.raid.json']);
-	// Ensure the raid file is no longer in the dirty set.
 	const remaining = new Set(dirtyFiles);
 	remaining.delete('persist.raid.json');
 	dirtyFiles = remaining;
+	return null;
 }
 
 /**
@@ -759,26 +709,10 @@ export function abandonRaid() {
 export function swapPartyPositions(indexA: number, indexB: number) {
 	if (!raid) return;
 	const heroes = raid.base_root.party.heroes;
-	if (indexA < 0 || indexB < 0 || indexA >= heroes.length || indexB >= heroes.length) return;
+	if (parseInteger(indexA, 0, heroes.length - 1).error || parseInteger(indexB, 0, heroes.length - 1).error || indexA === indexB) return;
 	const temp = heroes[indexA];
 	heroes[indexA] = heroes[indexB];
 	heroes[indexB] = temp;
-	markDirty('persist.raid.json');
-}
-
-/**
- * Add a hero to the active raid party by GUID.
- *
- * The GUID string is converted to a number (as stored in party.heroes).
- * Only adds if a raid is active and the party has fewer than 4 members.
- * Marks persist.raid.json dirty.
- */
-export function addHeroToRaidParty(heroGuid: string) {
-	if (!raid) return;
-	const heroes = raid.base_root.party.heroes;
-	if (heroes.length >= 4) return;
-	const guidNum = parseInt(heroGuid, 10);
-	heroes.push(guidNum);
 	markDirty('persist.raid.json');
 }
 

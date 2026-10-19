@@ -38,31 +38,24 @@ export const ACTIVITY_DISPLAY_NAMES: Record<string, string> = {
 	treatment: 'Quirk Treatment'
 };
 
-/** Known district IDs (Color of Madness DLC). */
-export const DISTRICT_IDS = [
-	'district_bank',
-	'district_granary',
-	'district_inn',
-	'district_puppet_theatre',
-	'district_training_ring',
-	'district_cartographers_camp',
-	'district_sanguine_vintners',
-	'district_abbey_addition',
-	'district_tavern_addition',
-	'district_sanitarium_addition'
-] as const;
-
+/** District keys verified against the Crimson Court districts definitions. */
 export const DISTRICT_DISPLAY_NAMES: Record<string, string> = {
-	district_bank: 'Bank',
-	district_granary: 'Granary',
-	district_inn: 'Inn',
-	district_puppet_theatre: 'Puppet Theatre',
-	district_training_ring: 'Training Ring',
-	district_cartographers_camp: "Cartographer's Camp",
-	district_sanguine_vintners: 'Sanguine Vintners',
-	district_abbey_addition: 'Abbey Addition',
-	district_tavern_addition: 'Tavern Addition',
-	district_sanitarium_addition: 'Sanitarium Addition'
+	the_mill: 'The Mill',
+	geologic_studyhall: 'Geologic Study Hall',
+	tainted_well: 'Tainted Well',
+	miasmal_orchard: 'Miasmal Orchard',
+	spire_of_hope: 'Spire of Hope',
+	bank: 'Bank',
+	illuminators_guild: "Illuminator's Guild",
+	granary: 'Granary',
+	buskers_corner: "Busker's Corner",
+	house_of_the_yellow_hand: 'House of the Yellow Hand',
+	altar_of_light: 'Altar of Light',
+	training_ring: 'Training Ring',
+	library: 'Athenaeum',
+	theater: 'Puppet Theatre',
+	outsiders_bonfire: "Outsider's Bonfire",
+	blood_bank: 'Sanguine Vintners'
 };
 
 /** Known building name prefixes for upgrade tree_ids. */

@@ -43,7 +43,6 @@ export interface RaidInstance {
 	completion_reward: {
 		resolve_xp: number;
 		items_definition: {
-			system_config_type: string;
 			items: Record<string, unknown>;
 		};
 	};
@@ -52,26 +51,23 @@ export interface RaidInstance {
 export interface RaidParty {
 	heroes: number[];
 	start_heroes_size: number;
-	/** IMPORTANT: torchlight is a Float in DSON. Always write as float (75.0, not 75). */
-	torchlight: number;
 	'IsMovingLeft()': boolean;
-	retreat_room: string;
-	scoutChance_all: number;
-	scoutModifier_all: number;
+	retreat_room: number;
+	hunger_room_buffer: number;
 	inventory: {
-		system_config_type: string;
 		items: Record<string, InventoryItem>;
-		hunger_room_buffer: number;
 	};
 }
 
 export interface RaidData {
 	base_root: {
 		raid_instance: RaidInstance;
-		in_area: string;
-		areatile: string;
-		last_room_id: string;
-		in_doorway: boolean;
+		/** Encoded as an IEEE 754 float by ddsavelib. */
+		torchlight: number;
+		in_area: number;
+		areatile: number;
+		last_room_id: number;
+		in_doorway: { area_to: number; tile_to: number; implied: boolean };
 		start_elapsed_time: number;
 		inbattle: boolean;
 		stat_database: Record<string, unknown>;
@@ -217,6 +213,7 @@ export interface TownBuilding {
 
 export interface TownDistrict {
 	built: boolean;
+	[key: string]: unknown;
 }
 
 export interface TownDistricts {
@@ -226,7 +223,7 @@ export interface TownDistricts {
 export interface TownData {
 	base_root: {
 		buildings: Record<string, TownBuilding>;
-		/** Color of Madness districts (only present when DLC is active). */
+		/** Crimson Court districts, including saved buffs and counters. */
 		districts?: TownDistricts;
 	};
 }

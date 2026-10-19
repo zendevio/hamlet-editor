@@ -53,7 +53,8 @@
 	} from '#lib/api/backup.js';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
-	import { onMount } from 'svelte';
+	import { onMount, getContext } from 'svelte';
+	import { DATA_CHANGE_CONTEXT, type RequestDataChange } from '#lib/save-workflow.js';
 
 	// Phosphor icons
 	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -72,6 +73,7 @@
 
 	// ── State ──
 
+	const requestDataChange = getContext<RequestDataChange>(DATA_CHANGE_CONTEXT);
 	const settings = getSettings();
 	const saveData = getSaveData();
 
@@ -141,8 +143,7 @@
 		try {
 			gameInstalls = await detectGameInstallations();
 			if (gameInstalls.length > 0) {
-				setGamePath(gameInstalls[0].path);
-				if (settings.savePath) await loadProfileFromBackend(settings.savePath);
+				if (!await changeGamePath(gameInstalls[0].path)) return;
 				gamePathValid = true;
 				toast.success('Game installation detected', {
 					description: gameInstalls[0].path
@@ -192,8 +193,7 @@
 			const { open } = await import('@tauri-apps/plugin-dialog');
 			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
 			if (selected && typeof selected === 'string') {
-				setGamePath(selected);
-				if (settings.savePath) await loadProfileFromBackend(settings.savePath);
+				if (!await changeGamePath(selected)) return;
 				gamePathValid = null;
 			}
 		} catch (err) {
@@ -206,9 +206,7 @@
 			const { open } = await import('@tauri-apps/plugin-dialog');
 			const selected = await open({ directory: true, title: 'Select save file folder' });
 			if (selected && typeof selected === 'string') {
-				setSavePath(selected);
-				setProfileId(selected.split(/[\\/]/).filter(Boolean).at(-1) ?? '');
-				await loadProfileFromBackend(selected);
+				if (!await changeProfilePath(selected, selected.split(/[\\/]/).filter(Boolean).at(-1) ?? '')) return;
 				savePathValid = null;
 			}
 		} catch (err) {
@@ -216,18 +214,32 @@
 		}
 	}
 
+	async function changeGamePath(path: string): Promise<boolean> {
+		if (path === settings.gamePath) return true;
+		return requestDataChange(async () => {
+			setGamePath(path);
+			if (settings.savePath) await loadProfileFromBackend(settings.savePath);
+		});
+	}
+
+	async function changeProfilePath(path: string, profileId: string): Promise<boolean> {
+		if (path === settings.savePath && profileId === settings.profileId) return true;
+		return requestDataChange(async () => {
+			setSavePath(path);
+			setProfileId(profileId);
+			await loadProfileFromBackend(path);
+		});
+	}
+
 	async function handleProfileChange(value: string) {
-		setProfileId(value);
 		const loc = availableSaveLocations.find((l) => l.profile_id === value);
-		if (loc) {
-			setSavePath(loc.path);
-			// Reload profile data from disk whenever the active profile changes
-			try {
-				await loadProfileFromBackend(loc.path);
+		if (!loc) return;
+		try {
+			if (await changeProfilePath(loc.path, value)) {
 				toast.success('Profile loaded', { description: `Switched to profile ${value}` });
-			} catch (err) {
-				toast.error('Failed to load profile', { description: String(err) });
 			}
+		} catch (err) {
+			toast.error('Failed to load profile', { description: String(err) });
 		}
 	}
 
