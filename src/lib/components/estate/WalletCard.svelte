@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseInteger, I32_MAX } from '#lib/input-validation.js';
 	import * as Card from '#lib/components/ui/card/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
 	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
@@ -20,11 +21,13 @@
 		onchange?: (value: number) => void;
 	} = $props();
 
+	let error = $state('');
 	let editing = $state(false);
 	let editValue = $state('');
 	let inputRef = $state<HTMLInputElement | null>(null);
 
 	function startEdit() {
+		error = '';
 		editing = true;
 		editValue = String(value);
 		// Focus input on next tick after it renders
@@ -35,11 +38,10 @@
 	}
 
 	function confirmEdit() {
-		const parsed = parseInt(editValue, 10);
-		if (!isNaN(parsed) && parsed >= 0) {
-			value = parsed;
-			onchange?.(parsed);
-		}
+		const parsed = parseInteger(editValue);
+		error = parsed.error ?? '';
+		if (parsed.error !== undefined) return;
+		onchange?.(parsed.value);
 		editing = false;
 	}
 
@@ -94,6 +96,10 @@
 				bind:ref={inputRef}
 				type="number"
 				min="0"
+				max={I32_MAX}
+				step="1"
+				aria-label={name}
+				aria-invalid={!!error}
 				value={editValue}
 				oninput={(e) => {
 					editValue = (e.target as HTMLInputElement).value;
@@ -102,6 +108,7 @@
 				onkeydown={handleKeydown}
 				class="h-8 text-lg font-bold tabular-nums"
 			/>
+			{#if error}<p role="alert" class="text-xs text-destructive">{error}</p>{/if}
 		{:else}
 			<button
 				type="button"

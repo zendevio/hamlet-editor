@@ -1,0 +1,1515 @@
+{
+  "source": "Read-only audit/work/names decoded profile_0 extracts. Torchlight normalized from raw float bits 1120403456 to 100. No dead roster hero exists in this sample.",
+  "raid": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "raid_instance": {
+        "id": "plot_crimson_court_1",
+        "map_name": "cc_map_baron",
+        "torch_setting": "bloodlight",
+        "raid_rules_override": "cc",
+        "is_plot_quest": true,
+        "type": "kill_boss",
+        "dungeon": "courtyard",
+        "difficulty": 3,
+        "length": 5,
+        "counted_in_generation": true,
+        "goal_ids": [
+          "kill_baron_B"
+        ],
+        "progression_goal_ids": 0,
+        "use_default_progression_goals": true,
+        "completion_reward": {
+          "resolve_xp": 8,
+          "resolve_xp_per_wave_kill": 0,
+          "items_definition": {
+            "items": {
+              "0": {
+                "id": "",
+                "type": "gold",
+                "amount": 15000
+              },
+              "1": {
+                "id": "cc_boss_baron",
+                "type": "trinket",
+                "amount": 1
+              },
+              "2": {
+                "id": "crimson_court_invitation_B",
+                "type": "estate_currency",
+                "amount": 1
+              },
+              "3": {
+                "id": "cc_set_high_bloodied_neckerchief",
+                "type": "trinket",
+                "amount": 1
+              }
+            }
+          },
+          "additional_threshold_trinket_rewards": {},
+          "trinket_retention_ids": [],
+          "max_times_dungeon_xp_awarded": 0
+        },
+        "threshold_rewards": {},
+        "completion_threshold": 0,
+        "is_from_town_event": false,
+        "kill_baron_B": {
+          "monster_kill_count": 1
+        },
+        "town_progression_goals": {
+          "town_progression_explore": {
+            "explored_room_count": 17,
+            "target_room_count": 3
+          },
+          "town_progression_battle": {
+            "current_battle_count": 1,
+            "target_battle_count": 2
+          },
+          "town_progression_trait": {
+            "current_trait_count": 3,
+            "target_trait_count": 1
+          },
+          "town_progression_deaths_door": {
+            "current_deaths_door_count": 3,
+            "target_deaths_door_count": 1
+          },
+          "town_progression_survival": {}
+        }
+      },
+      "in_area": -2039517326,
+      "start_elapsed_time": 1199825006,
+      "torchlight": 100.0,
+      "areatile": 1,
+      "last_room_id": -1955434653,
+      "in_doorway": {
+        "area_to": 1701736302,
+        "tile_to": 0,
+        "implied": true
+      },
+      "party": {
+        "IsMovingLeft()": false,
+        "retreat_room": -2039517326,
+        "heroes": [
+          96,
+          34,
+          1,
+          48
+        ],
+        "start_heroes_size": 4,
+        "inventory": {
+          "items": {
+            "0": {
+              "id": "medicinal_herbs",
+              "type": "supply",
+              "amount": 6
+            },
+            "1": {
+              "id": "shovel",
+              "type": "supply",
+              "amount": 4
+            },
+            "2": {
+              "id": "blueprint",
+              "type": "heirloom",
+              "amount": 1
+            },
+            "3": {
+              "id": "the_blood",
+              "type": "estate",
+              "amount": 3
+            },
+            "4": {
+              "id": "",
+              "type": "provision",
+              "amount": 4
+            },
+            "5": {
+              "id": "antivenom",
+              "type": "supply",
+              "amount": 6
+            },
+            "6": {
+              "id": "cc_set_pd_codex_of_plagues",
+              "type": "trinket",
+              "amount": 1
+            },
+            "7": {
+              "id": "antivenom",
+              "type": "supply",
+              "amount": 6
+            },
+            "8": {
+              "id": "bandage",
+              "type": "supply",
+              "amount": 5
+            },
+            "9": {
+              "id": "medicinal_herbs",
+              "type": "supply",
+              "amount": 6
+            },
+            "10": {
+              "id": "laudanum",
+              "type": "supply",
+              "amount": 5
+            },
+            "11": {
+              "id": "torch",
+              "type": "supply",
+              "amount": 8
+            },
+            "12": {
+              "id": "cc_set_vest_salacious_diary",
+              "type": "trinket",
+              "amount": 1
+            },
+            "13": {
+              "id": "crest",
+              "type": "heirloom",
+              "amount": 12
+            },
+            "14": {
+              "id": "crest",
+              "type": "heirloom",
+              "amount": 12
+            },
+            "15": {
+              "id": "",
+              "type": "gold",
+              "amount": 1250
+            }
+          }
+        },
+        "hunger_room_buffer": -12
+      },
+      "inbattle": false
+    }
+  },
+  "roster": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "version": 513,
+      "nextGuid": 234,
+      "dismissed_hero_count": 0,
+      "heroes": {
+        "96": {
+          "hero_file_data": {
+            "raw_data": {
+              "__revision_dont_touch": 0,
+              "base_root": {
+                "roster.status": 0,
+                "roster.before_on_start_town_visit_status": 1,
+                "roster.missing_duration": 0,
+                "roster.story_variation": 0,
+                "roster.missing_from": 0,
+                "roster.building_name": "",
+                "roster.timestamp": 1200273093,
+                "actor": {
+                  "name": "Brereton",
+                  "current_hp": 63.0
+                },
+                "heroClass": "leper",
+                "resolveXp": 32,
+                "m_Stress": 7.0,
+                "weapon_rank": 4,
+                "armour_rank": 4,
+                "quirks": {
+                  "luminous": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "natural_swing": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "precision_striker": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "enlightened": {
+                    "is_new": false,
+                    "is_locked": false,
+                    "mission_count": 2,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "phengophobia": {
+                    "is_new": false,
+                    "is_locked": false,
+                    "mission_count": 32763,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "stress_eater": {
+                    "is_new": false,
+                    "is_locked": false,
+                    "mission_count": 32761,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "1": {
+          "hero_file_data": {
+            "raw_data": {
+              "__revision_dont_touch": 0,
+              "base_root": {
+                "roster.status": 2,
+                "roster.before_on_start_town_visit_status": 1,
+                "roster.missing_duration": 0,
+                "roster.story_variation": 0,
+                "roster.missing_from": 0,
+                "roster.building_name": "",
+                "roster.timestamp": 1200254382,
+                "actor": {
+                  "name": "Reynauld",
+                  "current_hp": 67.0999984741211
+                },
+                "heroClass": "crusader",
+                "resolveXp": 32,
+                "m_Stress": 9.0,
+                "weapon_rank": 4,
+                "armour_rank": 4,
+                "quirks": {
+                  "luminous": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "natural_swing": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "tough": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "weald_phobe": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 32763,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "hot_to_trot": {
+                    "is_new": false,
+                    "is_locked": false,
+                    "mission_count": 32761,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "natural_eye": {
+                    "is_new": true,
+                    "is_locked": false,
+                    "mission_count": 32760,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "48": {
+          "hero_file_data": {
+            "raw_data": {
+              "__revision_dont_touch": 0,
+              "base_root": {
+                "roster.status": 2,
+                "roster.before_on_start_town_visit_status": 1,
+                "roster.missing_duration": 0,
+                "roster.story_variation": 0,
+                "roster.missing_from": 0,
+                "roster.building_name": "",
+                "roster.timestamp": 1200260038,
+                "actor": {
+                  "name": "Grentemesnil",
+                  "current_hp": 46.0
+                },
+                "heroClass": "abomination",
+                "resolveXp": 32,
+                "m_Stress": 0.0,
+                "weapon_rank": 4,
+                "armour_rank": 4,
+                "quirks": {
+                  "luminous": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "natural_swing": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "quick_reflexes": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "dipsomania": {
+                    "is_new": false,
+                    "is_locked": false,
+                    "mission_count": 2,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "witness": {
+                    "is_new": false,
+                    "is_locked": false,
+                    "mission_count": 1343759342,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "34": {
+          "hero_file_data": {
+            "raw_data": {
+              "__revision_dont_touch": 0,
+              "base_root": {
+                "roster.status": 2,
+                "roster.before_on_start_town_visit_status": 1,
+                "roster.missing_duration": 0,
+                "roster.story_variation": 0,
+                "roster.missing_from": 0,
+                "roster.building_name": "",
+                "roster.timestamp": 1200258331,
+                "actor": {
+                  "name": "Blosbeville",
+                  "current_hp": 39.599998474121094
+                },
+                "heroClass": "grave_robber",
+                "resolveXp": 32,
+                "m_Stress": 6.0,
+                "weapon_rank": 4,
+                "armour_rank": 4,
+                "quirks": {
+                  "dark_temptation": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 32763,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "luminous": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "precision_striker": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "quick_reflexes": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 4,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "stress_eater": {
+                    "is_new": true,
+                    "is_locked": true,
+                    "mission_count": 32762,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "fear_of_eldritch": {
+                    "is_new": false,
+                    "is_locked": true,
+                    "mission_count": 32762,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "weald_scrounger": {
+                    "is_new": true,
+                    "is_locked": false,
+                    "mission_count": 32761,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  },
+                  "tough": {
+                    "is_new": true,
+                    "is_locked": false,
+                    "mission_count": 32760,
+                    "replaces_quirk": 0,
+                    "replaces_quirk_viewed": false,
+                    "evolution_duration_remaining": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "last_party": {
+        "last_party_guids": [
+          1,
+          48,
+          34,
+          -1
+        ]
+      },
+      "highest_resolve_xp": 32
+    }
+  },
+  "game": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "inraid": false,
+      "raiddungeon": "none",
+      "raid_save": "plot_crimson_court_1/",
+      "estatename": "Darkest",
+      "game_mode": "base"
+    }
+  },
+  "town": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "version": 513,
+      "buildings": {
+        "sanitarium": {
+          "activities": {
+            "treatment": {
+              "0": {
+                "hero": 1,
+                "visitsRemaining": 1,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 48,
+                "visitsRemaining": 1,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 34,
+                "visitsRemaining": 1,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "quirk_treatment": {
+                "0": {
+                  "positive_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "negative_quirk": {
+                    "quirk_treatment": "weald_phobe",
+                    "quirk_treatment_action": 2
+                  },
+                  "disease_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  }
+                },
+                "1": {
+                  "positive_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "negative_quirk": {
+                    "quirk_treatment": "witness",
+                    "quirk_treatment_action": 2
+                  },
+                  "disease_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  }
+                },
+                "2": {
+                  "positive_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "negative_quirk": {
+                    "quirk_treatment": "fear_of_eldritch",
+                    "quirk_treatment_action": 2
+                  },
+                  "disease_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  }
+                }
+              }
+            },
+            "disease_treatment": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "quirk_treatment": {
+                "0": {
+                  "positive_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "negative_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "disease_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  }
+                },
+                "1": {
+                  "positive_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "negative_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "disease_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  }
+                },
+                "2": {
+                  "positive_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "negative_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  },
+                  "disease_quirk": {
+                    "quirk_treatment": "",
+                    "quirk_treatment_action": 0
+                  }
+                }
+              }
+            }
+          },
+          "store": {}
+        },
+        "abbey": {
+          "activities": {
+            "meditation": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              }
+            },
+            "prayer": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": 1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              }
+            },
+            "flagellation": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": 0,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              }
+            }
+          },
+          "store": {}
+        },
+        "tavern": {
+          "activities": {
+            "bar": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              }
+            },
+            "gambling": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              }
+            },
+            "brothel": {
+              "0": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "1": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              },
+              "2": {
+                "hero": 0,
+                "visitsRemaining": 0,
+                "resident_occupied": -1,
+                "is_side_effect_result": false
+              }
+            }
+          },
+          "store": {}
+        }
+      },
+      "districts": {
+        "buildings": {
+          "the_mill": {
+            "built": false,
+            "buffs": {
+              "": {}
+            }
+          },
+          "geologic_studyhall": {
+            "built": true,
+            "buffs": {
+              "stacking": {}
+            }
+          },
+          "tainted_well": {
+            "built": true,
+            "buffs": {
+              "holy_water": {},
+              "laudanum": {}
+            }
+          },
+          "miasmal_orchard": {
+            "built": true,
+            "buffs": {
+              "medicinal_herbs": {},
+              "antivenom": {}
+            }
+          },
+          "spire_of_hope": {
+            "built": false,
+            "buffs": {
+              "prestige": {}
+            }
+          },
+          "bank": {
+            "built": false,
+            "buffs": {
+              "estate": {}
+            }
+          },
+          "illuminators_guild": {
+            "built": false,
+            "buffs": {
+              "darkness": {}
+            }
+          },
+          "granary": {
+            "built": false,
+            "buffs": {
+              "hero_buff0": {},
+              "provision": {
+                "count": 0
+              }
+            }
+          },
+          "buskers_corner": {
+            "built": true,
+            "buffs": {
+              "town_visit_stress_relief": {}
+            }
+          },
+          "house_of_the_yellow_hand": {
+            "built": false,
+            "buffs": {
+              "hero_buff0": {}
+            }
+          },
+          "altar_of_light": {
+            "built": false,
+            "buffs": {
+              "hero_buff0": {}
+            }
+          },
+          "training_ring": {
+            "built": false,
+            "buffs": {
+              "hero_buff0": {}
+            }
+          },
+          "library": {
+            "built": false,
+            "buffs": {
+              "hero_buff0": {},
+              "curio_buff0": {}
+            }
+          },
+          "theater": {
+            "built": false,
+            "buffs": {
+              "hero_buff0": {}
+            }
+          },
+          "outsiders_bonfire": {
+            "built": false,
+            "buffs": {
+              "camp_buff0": {}
+            }
+          },
+          "blood_bank": {
+            "built": false,
+            "buffs": {
+              "blood_provision": {
+                "count": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "estate": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "wallet": {
+        "0": {
+          "amount": 434780,
+          "type": "gold"
+        },
+        "1": {
+          "amount": 559,
+          "type": "bust"
+        },
+        "2": {
+          "amount": 781,
+          "type": "portrait"
+        },
+        "3": {
+          "amount": 642,
+          "type": "deed"
+        },
+        "4": {
+          "amount": 412,
+          "type": "crest"
+        },
+        "5": {
+          "amount": 683,
+          "type": "shard"
+        },
+        "6": {
+          "amount": 0,
+          "type": "memory"
+        },
+        "7": {
+          "amount": 1,
+          "type": "blueprint"
+        }
+      },
+      "estate_items": {
+        "items": {
+          "0": {
+            "id": "crimson_court_invitation_B",
+            "type": "estate_currency",
+            "amount": 1
+          },
+          "1": {
+            "id": "the_blood",
+            "type": "estate",
+            "amount": 3
+          }
+        }
+      },
+      "trinkets": {
+        "items": {}
+      }
+    }
+  },
+  "upgrades": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "version": 1,
+      "purchases": {
+        "12": {
+          "instance_number": 34,
+          "tree_id": 60820144,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "13": {
+          "instance_number": 34,
+          "tree_id": 60820144,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "14": {
+          "instance_number": 34,
+          "tree_id": 60820144,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "15": {
+          "instance_number": 34,
+          "tree_id": 60820144,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "83": {
+          "instance_number": 34,
+          "tree_id": 300482552,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "84": {
+          "instance_number": 34,
+          "tree_id": 300482552,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "85": {
+          "instance_number": 34,
+          "tree_id": 300482552,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "86": {
+          "instance_number": 34,
+          "tree_id": 300482552,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "87": {
+          "instance_number": 34,
+          "tree_id": 300482552,
+          "requirement_code": "4",
+          "is_purchased": true
+        },
+        "145": {
+          "instance_number": 34,
+          "tree_id": 566826108,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "146": {
+          "instance_number": 34,
+          "tree_id": 566826108,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "147": {
+          "instance_number": 34,
+          "tree_id": 566826108,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "148": {
+          "instance_number": 34,
+          "tree_id": 566826108,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "231": {
+          "instance_number": 34,
+          "tree_id": 818623838,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "232": {
+          "instance_number": 34,
+          "tree_id": 818623838,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "233": {
+          "instance_number": 34,
+          "tree_id": 818623838,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "234": {
+          "instance_number": 34,
+          "tree_id": 818623838,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "235": {
+          "instance_number": 34,
+          "tree_id": 818623838,
+          "requirement_code": "4",
+          "is_purchased": true
+        },
+        "303": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.gallows_humor",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "346": {
+          "instance_number": 34,
+          "tree_id": 1223421693,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "347": {
+          "instance_number": 34,
+          "tree_id": 1223421693,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "348": {
+          "instance_number": 34,
+          "tree_id": 1223421693,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "349": {
+          "instance_number": 34,
+          "tree_id": 1223421693,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "350": {
+          "instance_number": 34,
+          "tree_id": 1223421693,
+          "requirement_code": "4",
+          "is_purchased": true
+        },
+        "360": {
+          "instance_number": 34,
+          "tree_id": 1282017140,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "361": {
+          "instance_number": 34,
+          "tree_id": 1282017140,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "362": {
+          "instance_number": 34,
+          "tree_id": 1282017140,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "363": {
+          "instance_number": 34,
+          "tree_id": 1282017140,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "364": {
+          "instance_number": 34,
+          "tree_id": 1282017140,
+          "requirement_code": "4",
+          "is_purchased": true
+        },
+        "480": {
+          "instance_number": 34,
+          "tree_id": 1547059977,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "481": {
+          "instance_number": 34,
+          "tree_id": 1547059977,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "482": {
+          "instance_number": 34,
+          "tree_id": 1547059977,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "483": {
+          "instance_number": 34,
+          "tree_id": 1547059977,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "484": {
+          "instance_number": 34,
+          "tree_id": 1547059977,
+          "requirement_code": "4",
+          "is_purchased": true
+        },
+        "598": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.encourage",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "638": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.pilfer",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "650": {
+          "instance_number": 34,
+          "tree_id": 1974641881,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "651": {
+          "instance_number": 34,
+          "tree_id": 1974641881,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "652": {
+          "instance_number": 34,
+          "tree_id": 1974641881,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "653": {
+          "instance_number": 34,
+          "tree_id": 1974641881,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "654": {
+          "instance_number": 34,
+          "tree_id": 1974641881,
+          "requirement_code": "4",
+          "is_purchased": true
+        },
+        "714": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.forage",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "810": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.pep_talk",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "892": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.first_aid",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "1153": {
+          "instance_number": 34,
+          "tree_id": "###grave_robber.night_steps",
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "1228": {
+          "instance_number": 34,
+          "tree_id": -367417081,
+          "requirement_code": "0",
+          "is_purchased": true
+        },
+        "1229": {
+          "instance_number": 34,
+          "tree_id": -367417081,
+          "requirement_code": "1",
+          "is_purchased": true
+        },
+        "1230": {
+          "instance_number": 34,
+          "tree_id": -367417081,
+          "requirement_code": "2",
+          "is_purchased": true
+        },
+        "1231": {
+          "instance_number": 34,
+          "tree_id": -367417081,
+          "requirement_code": "3",
+          "is_purchased": true
+        },
+        "1232": {
+          "instance_number": 34,
+          "tree_id": -367417081,
+          "requirement_code": "4",
+          "is_purchased": true
+        }
+      }
+    }
+  },
+  "campaignLog": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "version": 2,
+      "chapters": {
+        "8": {
+          "chapterIndex": 8,
+          "0": {
+            "rtti": 2006063882,
+            "heroes": {
+              "0": {
+                "name": "Brereton",
+                "class": "###leper",
+                "died": false,
+                "guid": 96
+              },
+              "1": {
+                "name": "Grentemesnil",
+                "class": "###abomination",
+                "died": false,
+                "guid": 48
+              },
+              "2": {
+                "name": "Blosbeville",
+                "class": "###grave_robber",
+                "died": false,
+                "guid": 34
+              },
+              "3": {
+                "name": "Reynauld",
+                "class": "###crusader",
+                "died": false,
+                "guid": 1
+              }
+            },
+            "quest_id": 1807142641,
+            "quest": "###kill_boss",
+            "dungeon_type": "###courtyard",
+            "difficulty": 3,
+            "length": 5,
+            "start": false,
+            "success": false,
+            "is_wave": false,
+            "endless_wave": false,
+            "score": 0,
+            "is_highscore": false
+          },
+          "1": {
+            "rtti": 2006063882,
+            "heroes": {
+              "0": {
+                "name": "Reynauld",
+                "class": "###crusader",
+                "died": false,
+                "guid": 1
+              },
+              "1": {
+                "name": "Brereton",
+                "class": "###leper",
+                "died": false,
+                "guid": 96
+              },
+              "2": {
+                "name": "Grentemesnil",
+                "class": "###abomination",
+                "died": false,
+                "guid": 48
+              },
+              "3": {
+                "name": "Blosbeville",
+                "class": "###grave_robber",
+                "died": false,
+                "guid": 34
+              }
+            },
+            "quest_id": 1807142640,
+            "quest": "###inventory_activate",
+            "dungeon_type": "###courtyard",
+            "difficulty": 1,
+            "length": 1,
+            "start": false,
+            "success": true,
+            "is_wave": false,
+            "endless_wave": false,
+            "score": 0,
+            "is_highscore": false
+          },
+          "6": {
+            "rtti": 2006063882,
+            "heroes": {
+              "0": {
+                "name": "Brereton",
+                "class": "###leper",
+                "died": false,
+                "guid": 96
+              },
+              "1": {
+                "name": "Blosbeville",
+                "class": "###grave_robber",
+                "died": false,
+                "guid": 34
+              },
+              "2": {
+                "name": "Grentemesnil",
+                "class": "###abomination",
+                "died": false,
+                "guid": 48
+              },
+              "3": {
+                "name": "Reynauld",
+                "class": "###crusader",
+                "died": false,
+                "guid": 1
+              }
+            },
+            "quest_id": 1807142641,
+            "quest": "###kill_boss",
+            "dungeon_type": "###courtyard",
+            "difficulty": 3,
+            "length": 5,
+            "start": true,
+            "success": false,
+            "is_wave": false,
+            "endless_wave": false,
+            "score": 0,
+            "is_highscore": false
+          }
+        }
+      },
+      "total_weeks": 11
+    }
+  },
+  "progression": {
+    "__revision_dont_touch": 1716125696,
+    "base_root": {
+      "completed_plot_quests_data": {
+        "0": {
+          "plot_quest_id": "###plot_tutorial_crypts",
+          "heroes": {
+            "0": {
+              "guid": 1,
+              "survived": true,
+              "last_blow": false
+            },
+            "1": {
+              "guid": 2,
+              "survived": true,
+              "last_blow": false
+            },
+            "2": {
+              "guid": 8,
+              "survived": true,
+              "last_blow": false
+            },
+            "3": {
+              "guid": 7,
+              "survived": true,
+              "last_blow": false
+            }
+          }
+        },
+        "1": {
+          "plot_quest_id": 954568746,
+          "heroes": {
+            "0": {
+              "guid": 1,
+              "survived": true,
+              "last_blow": false
+            },
+            "1": {
+              "guid": 19,
+              "survived": true,
+              "last_blow": false
+            },
+            "2": {
+              "guid": 18,
+              "survived": true,
+              "last_blow": false
+            },
+            "3": {
+              "guid": 17,
+              "survived": true,
+              "last_blow": false
+            }
+          }
+        },
+        "2": {
+          "plot_quest_id": 1807142640,
+          "heroes": {
+            "0": {
+              "guid": 1,
+              "survived": true,
+              "last_blow": false
+            },
+            "1": {
+              "guid": 96,
+              "survived": true,
+              "last_blow": true
+            },
+            "2": {
+              "guid": 48,
+              "survived": true,
+              "last_blow": false
+            },
+            "3": {
+              "guid": 34,
+              "survived": false,
+              "last_blow": false
+            }
+          }
+        },
+        "3": {
+          "plot_quest_id": 1807142641,
+          "heroes": {
+            "0": {
+              "guid": 96,
+              "survived": true,
+              "last_blow": false
+            },
+            "1": {
+              "guid": 48,
+              "survived": true,
+              "last_blow": false
+            },
+            "2": {
+              "guid": 1,
+              "survived": true,
+              "last_blow": false
+            },
+            "3": {
+              "guid": 34,
+              "survived": true,
+              "last_blow": true
+            }
+          }
+        }
+      },
+      "real_achievements": {
+        "visit_graveyard": {
+          "rtti": 162787250,
+          "id": "visit_graveyard",
+          "completed": true,
+          "awarded": false
+        }
+      }
+    }
+  }
+}

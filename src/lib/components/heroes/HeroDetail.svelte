@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
+	import { canPickQuirk, CURSE_STATES } from '#lib/hero-safety.js';
+	import { toast } from 'svelte-sonner';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -51,7 +54,6 @@
 		setHeroAffliction,
 		setHeroDeathsDoor,
 		healHeroToMax,
-		reviveHero,
 		dismissHero,
 		removeHeroQuirk,
 		toggleQuirkLock,
@@ -60,7 +62,10 @@
 		markDirty,
 		RESOLVE_LEVEL_NAMES,
 		RESOLVE_XP_THRESHOLDS,
-		getDlcFlags
+		getDlcFlags,
+		getSaveData,
+		getDismissBlockReason,
+		setHeroCurseState
 	} from '#lib/stores/save-data.svelte.js';
 	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '#lib/data/quirks.js';
 	import { snakeToTitle } from '#lib/utils.js';
@@ -77,6 +82,7 @@
 		onDismiss?: () => void;
 	} = $props();
 
+	const saveData = getSaveData();
 	const settings = getSettings();
 	const dlcFlags = getDlcFlags();
 
@@ -88,6 +94,7 @@
 	// ── Name editing ──
 	let editingName = $state(false);
 	let nameValue = $state('');
+	let nameError = $state('');
 
 	// ── Revival wizard ──
 	let revivalWizardOpen = $state(false);
@@ -102,6 +109,7 @@
 
 	// ── Derived ──
 	let isDead = $derived(hero.status === 3);
+	let dismissReason = $derived(getDismissBlockReason(hero.guid));
 	let resolveLevel = $derived(hero.resolveLevel);
 	let maxGear = $derived(maxGearRank(resolveLevel));
 	let maxHp = $derived(getMaxHp(hero.heroClass, hero.armourRank));
@@ -121,12 +129,7 @@
 	let canAddNegative = $derived(negativeCount < 5);
 
 	// ── Blood Curse derived ──
-	const VAMPIRE_QUIRK_IDS = [
-		'disease_vampire_passive',
-		'disease_vampire_crave',
-		'disease_vampire_wasting',
-		'disease_vampire_blood_lust'
-	] as const;
+	const VAMPIRE_QUIRK_IDS = CURSE_STATES;
 	const VAMPIRE_STATE_LABELS: Record<string, string> = {
 		disease_vampire_passive: 'Sated',
 		disease_vampire_crave: 'Craving',
@@ -192,7 +195,7 @@
 		const existingIds = new Set(Object.keys(hero.quirks));
 		const q = quirkSearch.trim().toLowerCase();
 		return allQuirks.filter((quirk) => {
-			if (existingIds.has(quirk.id)) return false;
+			if (existingIds.has(quirk.id) || !canPickQuirk(quirk.id)) return false;
 			if (quirkPickerCategory === 'positive' && quirk.category !== 'positive') return false;
 			if (quirkPickerCategory === 'negative' && quirk.category === 'positive') return false;
 			if (q && !quirk.displayName.toLowerCase().includes(q) && !quirk.id.includes(q))
@@ -202,15 +205,17 @@
 	});
 
 	function startEditName() {
+		nameError = '';
 		nameValue = hero.name;
 		editingName = true;
 	}
 
 	function saveName() {
-		if (nameValue.trim()) {
-			setHeroName(hero.guid, nameValue.trim());
-		}
-		editingName = false;
+		const parsed = validateHeroName(nameValue);
+		nameError = parsed.error ?? '';
+		if (parsed.error !== undefined) return;
+		nameError = setHeroName(hero.guid, parsed.value) ?? '';
+		if (!nameError) editingName = false;
 	}
 
 	function handleNameKeydown(e: KeyboardEvent) {
@@ -222,8 +227,9 @@
 
 	// D7: Level change with inline gear confirmation
 	function handleLevelChange(value: string) {
-		const level = parseInt(value);
-		if (isNaN(level)) return;
+		const parsed = parseInteger(value, 0, 6);
+		if (parsed.error !== undefined) return;
+		const level = parsed.value;
 
 		setHeroLevel(hero.guid, level);
 
@@ -279,19 +285,7 @@
 
 	// D2: Blood Curse state change
 	function handleBloodCurseChange(newStateId: string) {
-		if (!vampireQuirkId) return;
-		// Remove old vampire quirk
-		removeHeroQuirk(hero.guid, vampireQuirkId);
-		// Add new vampire quirk
-		const newQuirk: HeroQuirk = {
-			is_locked: false,
-			is_new: false,
-			mission_count: 0,
-			replaces_quirk: 0,
-			replaces_quirk_viewed: false,
-			evolution_duration_remaining: 0
-		};
-		addHeroQuirk(hero.guid, newStateId, newQuirk);
+		setHeroCurseState(hero.guid, newStateId);
 	}
 
 	// D3: Trinket slot equip via TrinketPicker
@@ -308,7 +302,8 @@
 
 	// D8: Dismiss confirmation dialog
 	function handleDismissConfirm() {
-		dismissHero(hero.guid);
+		const reason = dismissHero(hero.guid);
+		if (reason) { toast.error(reason); return; }
 		dismissConfirmChecked = false;
 		dismissDialogOpen = false;
 		onDismiss?.();
@@ -374,11 +369,14 @@
 					{#if editingName}
 						<Input
 							bind:value={nameValue}
+							aria-label="Hero name"
+							aria-invalid={!!nameError}
 							onblur={saveName}
 							onkeydown={handleNameKeydown}
 							class="h-7 text-sm font-medium"
 							autofocus
 						/>
+						{#if nameError}<p role="alert" class="text-xs text-destructive">{nameError}</p>{/if}
 					{:else}
 						<button
 							type="button"
@@ -483,7 +481,7 @@
 							<Slider
 								value={hero.currentHp}
 								max={maxHp}
-								min={0}
+								min={isDead ? 0 : 1}
 								step={1}
 								type="single"
 								onValueChange={(v) => handleHpSlider(v)}
@@ -902,7 +900,7 @@
 							<Select
 								type="single"
 								value={String(hero.weaponRank)}
-								onValueChange={(v: string) => setHeroWeaponRank(hero.guid, parseInt(v))}
+								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) setHeroWeaponRank(hero.guid, parsed.value); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>Rank {hero.weaponRank}</span>
@@ -923,7 +921,7 @@
 							<Select
 								type="single"
 								value={String(hero.armourRank)}
-								onValueChange={(v: string) => setHeroArmourRank(hero.guid, parseInt(v))}
+								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) setHeroArmourRank(hero.guid, parsed.value); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>Rank {hero.armourRank}</span>
@@ -1035,7 +1033,7 @@
 							Revive Hero
 						</Button>
 						<p class="text-muted-foreground text-[10px]">
-							Opens the Revival Wizard to restore this hero across all required save files.
+							Shows revival availability and the current restrictions for this hero.
 						</p>
 					{/if}
 
@@ -1049,11 +1047,13 @@
 							variant="destructive"
 							size="sm"
 							class="w-full gap-2 text-xs"
+							disabled={!!dismissReason}
 							onclick={() => (dismissDialogOpen = true)}
 						>
 							<TrashIcon size={14} />
 							Dismiss {hero.name}
 						</Button>
+						{#if dismissReason}<p class="mt-2 text-xs text-destructive">{dismissReason}</p>{/if}
 					</div>
 			</div>
 		</div>
@@ -1091,7 +1091,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!dismissConfirmChecked}
+				disabled={!dismissConfirmChecked || !!dismissReason}
 				onclick={handleDismissConfirm}
 				class="gap-1"
 			>
@@ -1104,5 +1104,8 @@
 
 <!-- Revival Wizard (rendered outside ScrollArea to avoid z-index issues) -->
 {#if isDead}
-	<RevivalWizard {hero} bind:open={revivalWizardOpen} />
+	<RevivalWizard {hero} bind:open={revivalWizardOpen}
+		isRaidActive={saveData.gameInRaid || saveData.raid !== null}
+		raidPartySize={saveData.raid?.base_root.party.heroes.length ?? 0}
+		heroWasInParty={saveData.raid?.base_root.party.heroes.includes(Number(hero.guid)) ?? false} />
 {/if}

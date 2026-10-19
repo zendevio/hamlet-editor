@@ -1,5 +1,6 @@
 <script lang="ts">
 	import EmptyState from '#lib/components/EmptyState.svelte';
+	import IntegerInput from '#lib/components/IntegerInput.svelte';
 	import WalletCard from '#lib/components/estate/WalletCard.svelte';
 	import TrinketCard from '#lib/components/estate/TrinketCard.svelte';
 	import * as Card from '#lib/components/ui/card/index.js';
@@ -17,7 +18,7 @@
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
 	import TrinketPicker from '#lib/components/heroes/TrinketPicker.svelte';
-	import { getSaveData, markDirty, setEstateName, getDlcFlags, loadMockData, getHeroes } from '#lib/stores/save-data.svelte.js';
+	import { getSaveData, markDirty, setWalletAmount, setEstateItemAmount, setEstateName, getDlcFlags, loadMockData, getHeroes } from '#lib/stores/save-data.svelte.js';
 	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { snakeToTitle } from '#lib/utils.js';
 	import { getSettings } from '#lib/stores/settings.svelte.js';
@@ -126,7 +127,7 @@
 			)
 	);
 
-	/** Estate items (invitations, blood, blueprints). */
+	/** Estate items (invitations and blood). */
 	let estateItems = $derived.by(() => {
 		if (!estateData) return [];
 		return Object.values(estateData.estate_items.items);
@@ -153,21 +154,10 @@
 
 	/** Blueprint count (CC DLC). */
 	let blueprintCount = $derived(
-		estateItems.filter((i) => i.type === 'blueprint').reduce((sum, i) => sum + i.amount, 0)
+		walletAmounts?.['blueprint'] ?? 0
 	);
 
 	// ----- Handlers -----
-
-	function handleWalletChange(type: string, newValue: number) {
-		if (!estateData || !saveData.estate) return;
-		for (const [key, entry] of Object.entries(estateData.wallet)) {
-			if (entry.type === type) {
-				saveData.estate.base_root.wallet[key].amount = newValue;
-				markDirty('persist.estate.json');
-				break;
-			}
-		}
-	}
 
 	function handleRemoveTrinket(trinketId: string) {
 		if (!estateData || !saveData.estate) return;
@@ -191,31 +181,6 @@
 		markDirty('persist.estate.json');
 	}
 
-	/** Update an estate_item amount by its ID key. */
-	function handleEstateItemChange(itemId: string, newValue: number) {
-		if (!estateData || !saveData.estate) return;
-		for (const [key, item] of Object.entries(estateData.estate_items.items) as [string, EstateItem][]) {
-			if (item.id === itemId) {
-				(saveData.estate.base_root.estate_items.items[key] as EstateItem).amount = newValue;
-				markDirty('persist.estate.json');
-				return;
-			}
-		}
-	}
-
-	/** Update total blueprint count by distributing the delta across blueprint entries. */
-	function handleBlueprintChange(newValue: number) {
-		if (!estateData || !saveData.estate) return;
-		const bpEntries = (Object.entries(estateData.estate_items.items) as [string, EstateItem][])
-			.filter(([, item]) => item.type === 'blueprint');
-		if (bpEntries.length === 0) return;
-		// Distribute evenly: put all into the first entry for simplicity
-		for (const [key] of bpEntries) {
-			(saveData.estate.base_root.estate_items.items[key] as EstateItem).amount = 0;
-		}
-		(saveData.estate.base_root.estate_items.items[bpEntries[0][0]] as EstateItem).amount = newValue;
-		markDirty('persist.estate.json');
-	}
 </script>
 
 {#if !saveData.isLoaded}
@@ -284,7 +249,7 @@
 						icon={currency.icon}
 						gamePath={settings.gamePath}
 						gameAssetPath={currency.asset}
-						onchange={(v) => handleWalletChange(currency.type, v)}
+						onchange={(v) => setWalletAmount(currency.type, v)}
 					/>
 				{/each}
 				{#if hasColorOfMadness}
@@ -294,7 +259,7 @@
 						icon={DiamondIcon}
 						gamePath={settings.gamePath}
 						gameAssetPath="shared/estate/currency.shard.icon.png"
-						onchange={(v) => handleWalletChange('shard', v)}
+						onchange={(v) => setWalletAmount('shard', v)}
 					/>
 				{/if}
 			</div>
@@ -320,18 +285,18 @@
 								<div class="grid grid-cols-3 gap-2">
 									<div class="space-y-1">
 										<label for="inv-a" class="text-xs text-muted-foreground">Baron</label>
-										<Input id="inv-a" type="number" min="0" value={String(invitationA)} class="h-8 tabular-nums"
-											onchange={(e) => handleEstateItemChange('crimson_court_invitation_A', Number((e.target as HTMLInputElement).value))} />
+										<IntegerInput id="inv-a" label="crimson_court_invitation_A" value={invitationA} class="h-8 tabular-nums"
+										onchange={(value) => setEstateItemAmount('crimson_court_invitation_A', value)} />
 									</div>
 									<div class="space-y-1">
 										<label for="inv-b" class="text-xs text-muted-foreground">Viscount</label>
-										<Input id="inv-b" type="number" min="0" value={String(invitationB)} class="h-8 tabular-nums"
-											onchange={(e) => handleEstateItemChange('crimson_court_invitation_B', Number((e.target as HTMLInputElement).value))} />
+										<IntegerInput id="inv-b" label="crimson_court_invitation_B" value={invitationB} class="h-8 tabular-nums"
+										onchange={(value) => setEstateItemAmount('crimson_court_invitation_B', value)} />
 									</div>
 									<div class="space-y-1">
 										<label for="inv-c" class="text-xs text-muted-foreground">Countess</label>
-										<Input id="inv-c" type="number" min="0" value={String(invitationC)} class="h-8 tabular-nums"
-											onchange={(e) => handleEstateItemChange('crimson_court_invitation_C', Number((e.target as HTMLInputElement).value))} />
+										<IntegerInput id="inv-c" label="crimson_court_invitation_C" value={invitationC} class="h-8 tabular-nums"
+										onchange={(value) => setEstateItemAmount('crimson_court_invitation_C', value)} />
 									</div>
 								</div>
 							</div>
@@ -346,8 +311,8 @@
 								</div>
 								<div class="space-y-1">
 									<label for="blood-amount" class="text-xs text-muted-foreground">Amount</label>
-									<Input id="blood-amount" type="number" min="0" value={String(bloodAmount)} class="h-8 tabular-nums"
-										onchange={(e) => handleEstateItemChange('the_blood', Number((e.target as HTMLInputElement).value))} />
+									<IntegerInput id="blood-amount" label="Blood amount" value={bloodAmount} class="h-8 tabular-nums"
+										onchange={(value) => setEstateItemAmount('the_blood', value)} />
 								</div>
 							</div>
 
@@ -361,8 +326,8 @@
 								</div>
 								<div class="space-y-1">
 									<label for="blueprint-amount" class="text-xs text-muted-foreground">Amount</label>
-									<Input id="blueprint-amount" type="number" min="0" value={String(blueprintCount)} class="h-8 tabular-nums"
-										onchange={(e) => handleBlueprintChange(Number((e.target as HTMLInputElement).value))} />
+									<IntegerInput id="blueprint-amount" label="Blueprint amount" value={blueprintCount} class="h-8 tabular-nums"
+										onchange={(value) => setWalletAmount('blueprint', value)} />
 								</div>
 							</div>
 						</div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { readDistricts } from '#lib/districts.js';
+	import { snakeToTitle } from '#lib/utils.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import BuildingCard from '#lib/components/town/BuildingCard.svelte';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -15,17 +17,13 @@
 		loadMockData,
 		getHeroesInBuilding,
 		getBuildingUpgrades,
-		getDlcFlags,
 		setDistrictBuilt,
 		TREATMENT_BUILDINGS,
-		DISTRICT_IDS,
 		DISTRICT_DISPLAY_NAMES,
 		type BuildingUpgradeGroup
 	} from '#lib/stores/save-data.svelte.js';
 
 	const saveData = getSaveData();
-	const dlcFlags = getDlcFlags();
-	let hasColorOfMadness = $derived(dlcFlags.hasColorOfMadness);
 
 	// Derive building upgrade groups
 	let upgradeGroups = $derived(getBuildingUpgrades());
@@ -79,15 +77,7 @@
 		}
 	}
 
-	// Districts (Color of Madness DLC) — read from persist.town.json.
-	// `base_root.districts.buildings.<id>.built` is the canonical field.
-	// Falls back to false for any district not yet present in the save data.
-	let districtStates = $derived.by(() => {
-		const districts = saveData.town?.base_root.districts?.buildings ?? {};
-		return Object.fromEntries(
-			DISTRICT_IDS.map((id) => [id, districts[id]?.built ?? false])
-		);
-	});
+	let districts = $derived(readDistricts(saveData.town));
 
 	function handleDistrictToggle(districtId: string, checked: boolean) {
 		setDistrictBuilt(districtId, checked);
@@ -153,33 +143,33 @@
 				{/if}
 			</section>
 
-			{#if hasColorOfMadness}
+			{#if districts.length > 0}
 			<Separator />
 
-			<!-- Districts Section (Color of Madness DLC) -->
+			<!-- Districts Section (Crimson Court DLC) -->
 			<section>
 				<div class="mb-4 flex items-center gap-2">
 					<h2 class="text-lg font-semibold">Districts</h2>
-					<Badge variant="outline" class="text-xs">Color of Madness DLC</Badge>
+					<Badge variant="outline" class="text-xs">Crimson Court DLC</Badge>
 				</div>
 				<p class="mb-4 text-xs text-muted-foreground">
-					Districts are only available with the Color of Madness DLC. Toggle to mark districts as built or not built.
+					Existing districts from this save. Toggle to mark a district as built or not built.
 				</p>
 				<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-					{#each DISTRICT_IDS as districtId (districtId)}
+					{#each districts as district (district.id)}
 						<Card class="p-0">
 							<CardContent class="flex items-center justify-between px-4 py-3">
 								<span class="text-sm font-medium">
-									{DISTRICT_DISPLAY_NAMES[districtId] ?? districtId}
+									{DISTRICT_DISPLAY_NAMES[district.id] ?? snakeToTitle(district.id)}
 								</span>
 								<div class="flex items-center gap-2">
 									<span class="text-xs text-muted-foreground">
-										{districtStates[districtId] ? 'Built' : 'Not Built'}
+										{district.built ? 'Built' : 'Not Built'}
 									</span>
 									<Switch
 										size="sm"
-										checked={districtStates[districtId]}
-										onCheckedChange={(checked) => handleDistrictToggle(districtId, checked)}
+										checked={district.built}
+										onCheckedChange={(checked) => handleDistrictToggle(district.id, checked)}
 									/>
 								</div>
 							</CardContent>

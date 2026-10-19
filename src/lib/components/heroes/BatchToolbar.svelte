@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { parseInteger } from '#lib/input-validation.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
@@ -19,7 +20,7 @@
 		setHeroWeaponRank,
 		setHeroArmourRank,
 		maxGearRank,
-		reviveHero,
+		getRevivalBlockReason,
 		RESOLVE_LEVEL_NAMES
 	} from '#lib/stores/save-data.svelte.js';
 
@@ -50,8 +51,9 @@
 	}
 
 	function handleSetLevel(value: string) {
-		const level = parseInt(value);
-		if (isNaN(level)) return;
+		const parsed = parseInteger(value, 0, 6);
+		if (parsed.error !== undefined) return;
+		const level = parsed.value;
 		for (const hero of selectedHeroes) {
 			setHeroLevel(hero.guid, level);
 			// Also adjust gear to match
@@ -61,13 +63,6 @@
 		}
 	}
 
-	function handleReviveAll() {
-		for (const hero of selectedHeroes) {
-			if (hero.status === 3) {
-				reviveHero(hero.guid);
-			}
-		}
-	}
 </script>
 
 <div class="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
@@ -130,13 +125,13 @@
 						variant="outline"
 						size="sm"
 						class="h-7 gap-1.5 text-[11px]"
-						onclick={handleReviveAll}
+						disabled
 					>
 						<HeartIcon size={12} class="text-green-500" />
 						Revive
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent>Revive all selected dead heroes</TooltipContent>
+				<TooltipContent>{getRevivalBlockReason()}</TooltipContent>
 			</Tooltip>
 		{/if}
 	{/if}

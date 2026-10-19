@@ -6,7 +6,8 @@
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
+	import { createSaveWorkflow, createUnsavedGuard, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
 		Sidebar,
@@ -106,22 +107,24 @@
 		const loc = sidebarSaveLocations.find((l) => l.profile_id === newProfileId);
 		if (!loc) return;
 
-		setSavePath(loc.path);
-		setProfileId(newProfileId);
+		await requestDataChange(async () => {
+			setSavePath(loc.path);
+			setProfileId(newProfileId);
 
-		isProfileLoading = true;
-		try {
-			await loadProfileFromBackend(loc.path);
-			if (settings.gamePath) {
-				await initGameData(settings.gamePath);
+			isProfileLoading = true;
+			try {
+				await loadProfileFromBackend(loc.path);
+				if (settings.gamePath) {
+					await initGameData(settings.gamePath);
+				}
+				toast.success('Profile loaded', { description: `Switched to ${newProfileId}` });
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				toast.error(`Failed to switch profile: ${message}`);
+			} finally {
+				isProfileLoading = false;
 			}
-			toast.success('Profile loaded', { description: `Switched to ${newProfileId}` });
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Failed to switch profile: ${message}`);
-		} finally {
-			isProfileLoading = false;
-		}
+		});
 	}
 
 	// ── Profile Loading ──
@@ -366,91 +369,90 @@
 
 	// ── Save Flow ──
 
-	async function handleSave() {
-		if (saveDisabled) return;
+	function saveBlockReason(): string | null {
+		if (!saveData.isLoaded || saveData.isLoading || isProfileLoading) return 'Load a profile before saving.';
+		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) return 'Paths changed. Reload the profile before saving.';
+		if (gameRunning) return 'DD Running. Close the game before saving.';
+		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
+		if (!hasDirtyFiles()) return 'No unsaved changes';
+		return null;
+	}
 
-		// Run pre-save validation
-		const issues = runPreSaveValidation();
-		if (issues.length > 0) {
+	let resolveValidation: ((choice: ValidationChoice) => void) | null = null;
+	const saveChanges = createSaveWorkflow({
+		blocked: saveBlockReason,
+		validate: runPreSaveValidation,
+		confirm: (issues: ValidationIssue[]) => new Promise<ValidationChoice>((resolve) => {
 			validationIssues = issues;
+			resolveValidation = resolve;
 			showValidation = true;
-			return;
-		}
-
-		await executeSave();
-	}
-
-	async function executeSave() {
-		if (saveDisabled) return;
-		isSaving = true;
-		try {
-			// C6: Auto-backup before saving if enabled
-			if (settings.autoBackup && settings.savePath) {
-				try {
-					await createBackup(settings.savePath);
-					lastBackupTime = new Date();
-				} catch (err) {
-					const message = err instanceof Error ? err.message : String(err);
-					toast.error(`Auto-backup failed: ${message}`);
-					// Don't abort the save — backup failure is non-fatal
-				}
+		}),
+		backup: async () => {
+			if (settings.autoBackup) {
+				await createBackup(settings.savePath);
+				lastBackupTime = new Date();
 			}
-			const dirtyData = getDirtyData();
-			await saveProfile(settings.savePath, dirtyData, saveData.nameTableVersion);
-
-			// Round-trip validation: re-read the roster file and check key count.
-			// Non-blocking — a mismatch only surfaces a warning toast.
-			const rosterInMemory = saveData.roster;
-			if (rosterInMemory) {
-				const ok = await validateRoundTrip(
-					settings.savePath,
-					'persist.roster.json',
-					rosterInMemory as unknown as Record<string, unknown>
-				);
-				if (!ok) {
-					toast.warning(
-						'Round-trip validation warning: saved file may differ from expected. Check your save.'
-					);
-				}
+		},
+		write: async () => {
+			await saveProfile(settings.savePath, getDirtyData(), saveData.nameTableVersion);
+			if (saveData.roster) {
+				const ok = await validateRoundTrip(settings.savePath, 'persist.roster.json', saveData.roster as unknown as Record<string, unknown>);
+				if (!ok) toast.warning('Round-trip validation warning: saved file may differ from expected. Check your save.');
 			}
+		},
+		saved: () => { clearAllDirty(); toast.success('Saved successfully'); },
+		failed: (error) => toast.error(`Save failed: ${String(error)}`),
+		busy: (value) => { isSaving = value; }
+	});
 
-			clearAllDirty();
-			toast.success('Saved successfully');
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Save failed: ${message}`);
-		} finally {
-			isSaving = false;
-		}
+	async function handleSave() {
+		if (!saveDisabled) await saveChanges();
 	}
 
-	function handleValidationFixAll() {
-		for (const issue of validationIssues) {
-			if (issue.fix) issue.fix();
-		}
+	function finishValidation(choice: ValidationChoice) {
+		const resolve = resolveValidation;
+		resolveValidation = null;
 		showValidation = false;
-		// Re-run validation after fixes
-		const remaining = runPreSaveValidation();
-		if (remaining.length > 0) {
-			validationIssues = remaining;
-			showValidation = true;
-		} else {
-			executeSave();
-		}
+		resolve?.(choice);
 	}
 
-	function handleValidationSaveAnyway() {
-		showValidation = false;
-		executeSave();
+	// Dismissal via Escape or the dialog close button is also Cancel.
+	$effect(() => {
+		if (!showValidation && resolveValidation) finishValidation('cancel');
+	});
+
+	let showChangeDialog = $state(false);
+	let resolveUnsaved: ((choice: UnsavedChoice) => void) | null = null;
+	const guardChanges = createUnsavedGuard({
+		hasChanges: hasDirtyFiles,
+		choose: () => new Promise<UnsavedChoice>((resolve) => {
+			resolveUnsaved = resolve;
+			showChangeDialog = true;
+		}),
+		save: saveChanges,
+		discard: discardAllChanges
+	});
+	const requestDataChange: RequestDataChange = async (action) => {
+		if (isSaving || saveData.isLoading || isProfileLoading) return false;
+		return guardChanges(action);
+	};
+	setContext(DATA_CHANGE_CONTEXT, requestDataChange);
+
+	function finishUnsaved(choice: UnsavedChoice) {
+		const resolve = resolveUnsaved;
+		resolveUnsaved = null;
+		showChangeDialog = false;
+		resolve?.(choice);
 	}
 
-	function handleValidationCancel() {
-		showValidation = false;
-	}
+	$effect(() => {
+		if (!showChangeDialog && resolveUnsaved) finishUnsaved('cancel');
+	});
 
 	// ── Discard Flow ──
 
 	function handleDiscard() {
+		if (isSaving) return;
 		discardAllChanges();
 		showDiscardDialog = false;
 		toast.info('All changes discarded');
@@ -459,32 +461,8 @@
 	// ── Close Flow ──
 
 	async function handleSaveAndClose() {
-		if (saveDisabled) {
-			toast.error(saveTooltip);
-			return;
-		}
 		showCloseDialog = false;
-		// Run validation on close — log warnings but don't block the close
-		const closeIssues = runPreSaveValidation();
-		if (closeIssues.length > 0) {
-			console.warn(
-				'[hamlet] Pre-save validation issues on close:',
-				closeIssues.map((i) => `[${i.severity}] ${i.category}: ${i.message}`)
-			);
-		}
-		isSaving = true;
-		try {
-			const dirtyData = getDirtyData();
-			await saveProfile(settings.savePath, dirtyData, saveData.nameTableVersion);
-			clearAllDirty();
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Save failed: ${message}`);
-			isSaving = false;
-			return;
-		}
-		isSaving = false;
-		// Now close the window
+		if (!await saveChanges()) return;
 		try {
 			const { getCurrentWindow } = await import('@tauri-apps/api/window');
 			await getCurrentWindow().close();
@@ -494,6 +472,7 @@
 	}
 
 	async function handleDiscardAndClose() {
+		if (isSaving) return;
 		showCloseDialog = false;
 		discardAllChanges();
 		try {
@@ -558,15 +537,23 @@
 <ValidationDialog
 	bind:open={showValidation}
 	issues={validationIssues}
-	onFixAll={handleValidationFixAll}
-	onSaveAnyway={handleValidationSaveAnyway}
-	onCancel={handleValidationCancel}
+	onFixAll={() => finishValidation('fix')}
+	onSaveAnyway={() => finishValidation('save')}
+	onCancel={() => finishValidation('cancel')}
 />
 <UnsavedChangesDialog
 	bind:open={showCloseDialog}
 	onSaveAndClose={handleSaveAndClose}
 	onDiscardAndClose={handleDiscardAndClose}
 	onCancel={handleCancelClose}
+/>
+<UnsavedChangesDialog
+	bind:open={showChangeDialog}
+	saveLabel="Save"
+	discardLabel="Discard"
+	onSaveAndClose={() => finishUnsaved('save')}
+	onDiscardAndClose={() => finishUnsaved('discard')}
+	onCancel={() => finishUnsaved('cancel')}
 />
 <DiscardConfirmDialog
 	bind:open={showDiscardDialog}
@@ -769,6 +756,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
+								disabled={isSaving}
 								onclick={() => (showDiscardDialog = true)}
 							>
 								<ArrowCounterClockwiseIcon size={16} class="mr-1" />
@@ -827,7 +815,7 @@
 			</div>
 		</header>
 
-		<main class="min-h-0 flex-1 overflow-hidden p-4">
+		<main inert={isSaving} class="min-h-0 flex-1 overflow-hidden p-4">
 			{@render children()}
 		</main>
 	</SidebarInset>
