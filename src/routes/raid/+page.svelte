@@ -327,10 +327,7 @@
 							</div>
 							<Slider
 								type="single"
-								{...sliderControl(torchlightValue, setRaidTorchlight)}
-								min={0}
-								max={100}
-								step={0.5}
+								{...sliderControl(torchlightValue, { min: 0, max: 100, step: 0.5 }, setRaidTorchlight)}
 							/>
 							<p class="text-[10px] text-muted-foreground/70">
 								Light level from 0 to 100.

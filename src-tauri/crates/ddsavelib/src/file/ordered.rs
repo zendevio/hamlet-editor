@@ -5,6 +5,22 @@ use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
+/// JavaScript serializes integral floats as integers without changing their value.
+fn json_values_equal(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::Number(a), Value::Number(b)) => a.as_f64() == b.as_f64(),
+        (Value::Array(a), Value::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| json_values_equal(a, b))
+        }
+        (Value::Object(a), Value::Object(b)) => {
+            a.len() == b.len()
+                && a.iter()
+                    .all(|(key, value)| b.get(key).is_some_and(|b| json_values_equal(value, b)))
+        }
+        _ => left == right,
+    }
+}
+
 /// Objects use a sequence so repeated names and original order survive edits.
 enum OrderedValue {
     Object(Vec<(String, Self)>),
@@ -81,14 +97,14 @@ impl OrderedValue {
     /// Apply only the difference from the original last-copy view to every copy.
     /// Earlier copies can contain distinct values and keys the user never saw.
     fn merge(&mut self, original: &Value, edited: &Value) {
-        if original == edited {
+        if json_values_equal(original, edited) {
             return;
         }
         match (self, original, edited) {
             (Self::Object(entries), Value::Object(before), Value::Object(after)) => {
                 entries.retain(|(key, _)| !before.contains_key(key) || after.contains_key(key));
                 for (key, value) in after {
-                    if before.get(key) == Some(value) {
+                    if before.get(key).is_some_and(|v| json_values_equal(v, value)) {
                         continue;
                     }
                     let mut found = false;
@@ -110,7 +126,7 @@ impl OrderedValue {
                     entries.truncate(after.len());
                 }
                 for (i, value) in after.iter().enumerate() {
-                    if before.get(i) == Some(value) {
+                    if before.get(i).is_some_and(|v| json_values_equal(v, value)) {
                         continue;
                     }
                     if let Some(entry) = entries.get_mut(i) {

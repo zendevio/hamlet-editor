@@ -32,7 +32,7 @@ function deferred() {
 	return { promise, resolve };
 }
 function loaded(path) {
-	return { data: { 'persist.game.json': { base_root: { estatename: path, inraid: false, game_mode: 'radiant' } } }, name_table_version: 7, inactive_raid_hero_guids: [] };
+	return { data: { 'persist.game.json': { base_root: { estatename: path, inraid: false, game_mode: 'radiant' } } }, name_table_version: 7, inactive_raid_hero_guids: [], inactive_raid_error: null };
 }
 
 test('startup waits for name generation AND publication; switches and restores use the same barrier', async () => {
@@ -130,7 +130,7 @@ test('inactive raid metadata blocks only referenced heroes and never becomes dir
         if (command === 'load_profile') return {
             data: Object.fromEntries(Object.entries(structuredClone(fixture)).map(([key, value]) => [
                 `persist.${{ campaignLog: 'campaign_log' }[key] ?? key}.json`, value
-            ])), name_table_version: 7, inactive_raid_hero_guids: [1, 34, 48, 96]
+            ])), name_table_version: 7, inactive_raid_hero_guids: [1, 34, 48, 96], inactive_raid_error: null
         };
         throw new Error(`Unexpected command: ${command}`);
     };
@@ -149,6 +149,35 @@ test('inactive raid metadata blocks only referenced heroes and never becomes dir
     assert.equal(Object.hasOwn(store.getDirtyData(), 'inactive_raid_hero_guids'), false);
     store.resetSaveData();
     assert.deepEqual(data.inactiveRaidHeroGuids, []);
+});
+
+test('unreadable inactive raid metadata blocks dismissal while unrelated edits remain available', async () => {
+	const fixture = JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'));
+	const error = 'Failed to read inactive raid persist.raid.json: Failed to decode DSON';
+	settings.setGamePath('/fixtures/unreadable-inactive-raid');
+	invokeHandler = (command) => {
+		if (command === 'generate_name_table') return ['abbey.meditation'];
+		if (command === 'set_name_table') return;
+		if (command === 'load_profile') return {
+			data: Object.fromEntries(Object.entries(structuredClone(fixture)).map(([key, value]) => [
+				`persist.${{ campaignLog: 'campaign_log' }[key] ?? key}.json`, value
+			])), name_table_version: 7, inactive_raid_hero_guids: [], inactive_raid_error: error
+		};
+		throw new Error(`Unexpected command: ${command}`);
+	};
+	await store.loadProfileFromBackend('/profiles/profile_0');
+	const data = store.getSaveData();
+	assert.equal(data.isLoaded, true);
+	assert.equal(data.inactiveRaidError, error);
+	assert.match(store.dismissHero('44'), /inactive raid references could not be read/);
+	assert.match(store.dismissHero('96'), /inactive raid references could not be read/);
+	assert.equal(store.hasDirtyFiles(), false);
+	assert.equal(store.setEstateName('Still editable'), null);
+	assert.deepEqual(Object.keys(store.getDirtyData()), ['persist.game.json']);
+	store.discardAllChanges();
+	assert.equal(data.inactiveRaidError, error);
+	store.resetSaveData();
+	assert.equal(data.inactiveRaidError, null);
 });
 
 test('layout reload controller uses real stale Save block and Discard/Cancel choices before backend reload', async () => {

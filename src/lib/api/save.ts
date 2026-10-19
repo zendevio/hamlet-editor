@@ -29,6 +29,8 @@ export interface LoadedProfile {
 	name_table_version: number;
 	/** Read-only hero references; the inactive raid is not an editable file. */
 	inactive_raid_hero_guids: number[];
+	/** An unreadable inactive raid blocks dismissal, while other files stay editable. */
+	inactive_raid_error: string | null;
 }
 
 export async function loadProfile(profilePath: string): Promise<LoadedProfile> {

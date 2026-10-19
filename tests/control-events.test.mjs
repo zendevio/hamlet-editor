@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { normalizeSteps, snapValueToCustomSteps, getAdjacentStepValue } from '../node_modules/bits-ui/dist/bits/slider/helpers.js';
 
 const server = await createServer({
 	configFile: false,
@@ -30,11 +31,23 @@ beforeEach(() => {
 	}
 });
 
-// Component-free equivalent of Bits UI's render/prop-change normalization:
-// it reports a snapped value through onValueChange, never onValueCommit.
-function normalizeSlider(control, min, max, step = 1) {
-	const normalized = Math.min(max, Math.max(min, min + Math.round((control.value - min) / step) * step));
-	if (normalized !== control.value) control.onValueChange?.(normalized);
+// Installed Bits UI helpers supply the exact payloads from its watch,
+// applyPosition/updateValue, pointer-up and horizontal keyboard paths.
+function bitsSlider(control) {
+	const steps = normalizeSteps(control.step, control.min, control.max);
+	let value = snapValueToCustomSteps(control.value, steps);
+	const position = (next) => {
+		value = snapValueToCustomSteps(Math.min(control.max, Math.max(control.min, next)), steps);
+	};
+	return {
+		get value() { return value; },
+		click(next = value) { position(next); control.onValueCommit(value); },
+		drag(...positions) { positions.forEach(position); control.onValueCommit(value); },
+		key(direction) {
+			value = snapValueToCustomSteps(getAdjacentStepValue(value, steps, direction), steps);
+			control.onValueCommit(value);
+		}
+	};
 }
 
 function renderHeroControls(hpWrites = []) {
@@ -43,14 +56,13 @@ function renderHeroControls(hpWrites = []) {
 			hpWrites.push({ guid: hero.guid, value });
 			store.setHeroHp(hero.guid, value);
 		};
-		const hp = sliderControl(hero.currentHp, writeHp);
 		const max = hpSliderMax(hero.maxHp, hero.currentHp);
+		const hp = sliderControl(hero.currentHp, { min: hero.status === 3 ? 0 : 1, max, step: 1 }, writeHp);
 		assert.ok(max >= hero.currentHp && max >= hero.maxHp && max >= 1);
-		normalizeSlider(hp, hero.status === 3 ? 0 : 1, max);
+		bitsSlider(hp).click();
 		// Also exercise a changed class/armour bound below the saved value.
-		normalizeSlider(hp, 1, 1);
-		hp.onValueCommit(hero.currentHp); // an unchanged user commit is a no-op too
-		normalizeSlider(sliderControl(hero.stress, (value) => store.setHeroStress(hero.guid, value)), 0, 200);
+		bitsSlider(sliderControl(hero.currentHp, { min: 1, max: 1, step: 1 }, writeHp)).click();
+		bitsSlider(sliderControl(hero.stress, { min: 0, max: 200, step: 1 }, (value) => store.setHeroStress(hero.guid, value))).click();
 		for (const [current, commit] of [
 			[hero.resolveLevel, (value) => store.setHeroLevel(hero.guid, value)],
 			[hero.weaponRank, (value) => store.setHeroWeaponRank(hero.guid, value)],
@@ -87,15 +99,16 @@ test('unchanged store calls preserve resolve progress, affliction and flags for 
 test('only a user slider commit can call setHeroHp with a lower HP value', () => {
 	const writes = [];
 	const original = store.getHeroRawData('1').actor.current_hp;
-	const control = sliderControl(original, (value) => {
+	const control = sliderControl(original, { min: 1, max: hpSliderMax(61, original), step: 1 }, (value) => {
 		writes.push(value);
 		store.setHeroHp('1', value);
 	});
-	normalizeSlider(control, 1, 61);
-	normalizeSlider(control, 1, hpSliderMax(61, original));
+	const slider = bitsSlider(control);
+	assert.equal(slider.value, 67);
+	slider.click();
 	assert.deepEqual(writes, []);
 	assert.equal(store.hasDirtyFiles(), false);
-	control.onValueCommit(60); // pointer release or keyboard activation
+	slider.click(60);
 	assert.deepEqual(writes, [60]);
 	assert.equal(store.getHeroRawData('1').actor.current_hp, 60);
 	assert.equal(store.hasDirtyFiles(), true);
@@ -103,7 +116,8 @@ test('only a user slider commit can call setHeroHp with a lower HP value', () =>
 
 test('discard followed by render and prop normalization stays clean for every hero', async () => {
 	for (let pass = 0; pass < 3; pass++) {
-		sliderControl(store.getHeroRawData('1').actor.current_hp, (value) => store.setHeroHp('1', value)).onValueCommit(60);
+		const hp = store.getHeroRawData('1').actor.current_hp;
+		bitsSlider(sliderControl(hp, { min: 1, max: hpSliderMax(61, hp), step: 1 }, (value) => store.setHeroHp('1', value))).click(60);
 		store.setHeroStress('1', 100);
 		store.setWalletAmount('gold', 123);
 		assert.equal(store.hasDirtyFiles(), true);
@@ -119,23 +133,83 @@ test('discard followed by render and prop normalization stays clean for every he
 	}
 });
 
-test('stress and torchlight normalization never writes until a user commits', () => {
+test('stress and torchlight clicks preserve fractions while keyboard steps commit changes', () => {
 	store.getHeroRawData('1').m_Stress = 12.25;
 	store.getSaveData().raid.base_root.torchlight = 75.25;
 	store.clearAllDirty();
-	const stress = sliderControl(12.25, (value) => store.setHeroStress('1', value));
-	const torch = sliderControl(75.25, store.setRaidTorchlight);
-	normalizeSlider(stress, 0, 200);
-	normalizeSlider(torch, 0, 100, 0.5);
+	const stress = bitsSlider(sliderControl(12.25, { min: 0, max: 200, step: 1 }, (value) => store.setHeroStress('1', value)));
+	const torch = bitsSlider(sliderControl(75.25, { min: 0, max: 100, step: 0.5 }, store.setRaidTorchlight));
+	assert.equal(stress.value, 12);
+	assert.equal(torch.value, 75);
+	stress.click();
+	torch.click();
 	assert.equal(store.hasDirtyFiles(), false);
 	assert.equal(store.getHeroRawData('1').m_Stress, 12.25);
 	assert.equal(store.getSaveData().raid.base_root.torchlight, 75.25);
-	stress.onValueCommit(12);
-	torch.onValueCommit(75.5);
-	assert.equal(store.getHeroRawData('1').m_Stress, 12);
+	stress.key('next');
+	torch.key('next');
+	assert.equal(store.getHeroRawData('1').m_Stress, 13);
 	assert.equal(store.getSaveData().raid.base_root.torchlight, 75.5);
 	store.discardAllChanges();
 	assert.equal(store.hasDirtyFiles(), false);
+});
+
+test('fractional HP clicks, keyboard bounds and drags use the actual Bits UI snapped steps', () => {
+	for (const guid of ['1', '34']) {
+		const hero = store.getHeroes().find((hero) => hero.guid === guid);
+		const writes = [];
+		const max = hpSliderMax(hero.maxHp, hero.currentHp);
+		const slider = bitsSlider(sliderControl(hero.currentHp, { min: 1, max, step: 1 }, (value) => {
+			writes.push(value);
+			store.setHeroHp(guid, value);
+		}));
+		const start = slider.value;
+		assert.equal(start, guid === '1' ? 67 : 40);
+		slider.click(); // pointerdown and pointerup with no movement
+		slider.drag(start - 2, start); // pointermove away and back before pointerup
+		assert.deepEqual(writes, []);
+		assert.equal(store.hasDirtyFiles(), false);
+		slider.key('next'); // 67 -> 68 or 40 -> 40 in Bits UI
+		assert.deepEqual(writes, []);
+		assert.equal(store.getHeroRawData(guid).actor.current_hp, hero.currentHp);
+		slider.key('prev');
+		if (guid === '1') {
+			// 68 -> 67 is the starting snapped step, so it still preserves saved HP.
+			assert.deepEqual(writes, []);
+			slider.key('prev');
+		}
+		assert.deepEqual(writes, [guid === '1' ? 66 : 39]);
+		assert.ok(writes.every((value) => value >= 1 && value <= max));
+		store.discardAllChanges();
+	}
+});
+
+test('commits from Bits UI outlying steps clamp to the real min and max', () => {
+	for (const [value, range, direction, expected] of [
+		[67, { min: 1, max: 67.0999984741211, step: 1 }, 'next', 67.0999984741211],
+		[3.4, { min: 2.4, max: 6.2, step: 1 }, 'prev', 2.4]
+	]) {
+		const writes = [];
+		bitsSlider(sliderControl(value, range, (next) => writes.push(next))).key(direction);
+		assert.deepEqual(writes, [expected]);
+		assert.ok(writes.every((next) => next >= range.min && next <= range.max));
+	}
+});
+
+test('snapped starting commits match installed Bits UI for ties, decimal and exponential steps', () => {
+	for (const range of [
+		{ min: 0, max: 100, step: 0.5 },
+		{ min: 1, max: 67.0999984741211, step: 1 },
+		{ min: 0.2, max: 0.81, step: 0.1 },
+		{ min: 0, max: 0.000001, step: 1e-7 }
+	]) {
+		for (const value of [range.min, range.max, range.min + range.step / 2, (range.min + range.max) / 2]) {
+			const writes = [];
+			const control = sliderControl(value, range, (next) => writes.push(next));
+			control.onValueCommit(bitsSlider(control).value);
+			assert.deepEqual(writes, [], JSON.stringify({ value, range }));
+		}
+	}
 });
 
 test('healing preserves buffed fractional HP and only raises HP below the base max', () => {

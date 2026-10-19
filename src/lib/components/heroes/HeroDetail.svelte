@@ -432,10 +432,7 @@
 								</span>
 							</div>
 							<Slider
-								{...sliderControl(hero.currentHp, (value) => setHeroHp(hero.guid, value))}
-								max={hpMax}
-								min={isDead ? 0 : 1}
-								step={1}
+								{...sliderControl(hero.currentHp, { min: isDead ? 0 : 1, max: hpMax, step: 1 }, (value) => setHeroHp(hero.guid, value))}
 								type="single"
 							/>
 							<Button
@@ -473,10 +470,7 @@
 								</span>
 							</div>
 							<Slider
-								{...sliderControl(hero.stress, (value) => setHeroStress(hero.guid, value))}
-								max={200}
-								min={0}
-								step={1}
+								{...sliderControl(hero.stress, { min: 0, max: 200, step: 1 }, (value) => setHeroStress(hero.guid, value))}
 								type="single"
 							/>
 							<Button

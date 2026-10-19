@@ -108,6 +108,7 @@ let raid = $state<RaidData | null>(null);
 let game = $state<GameData | null>(null);
 // Read-only references from an inactive raid, never included in dirty data.
 let inactiveRaidHeroGuids = $state<readonly number[]>([]);
+let inactiveRaidError = $state<string | null>(null);
 let campaignLog = $state<Record<string, unknown> | null>(null);
 let progression = $state<Record<string, unknown> | null>(null);
 let gameInRaid = $state(false);
@@ -288,6 +289,9 @@ export function getSaveData() {
 		},
 		get inactiveRaidHeroGuids() {
 			return inactiveRaidHeroGuids;
+		},
+		get inactiveRaidError() {
+			return inactiveRaidError;
 		},
 		get campaignLog() {
 			return campaignLog;
@@ -547,7 +551,7 @@ export function setEstateName(name: string) {
 }
 
 export function getDismissBlockReason(guid: string): string | null {
-	return dismissBlockReason(guid, { roster, estate, town, upgrades, game, raid, inactiveRaidHeroGuids });
+	return dismissBlockReason(guid, { roster, estate, town, upgrades, game, raid, inactiveRaidHeroGuids, inactiveRaidError });
 }
 
 /** Remove live roster/purchase references, preserving campaign and progression history. */
@@ -562,7 +566,7 @@ export function dismissHero(guid: string): string | null {
 	if (trinkets.length > 0 && estate) {
 		const items = estate.base_root.trinkets.items;
 		let nextKey = Math.max(-1, ...Object.keys(items).map(Number)) + 1;
-		for (const trinket of trinkets) items[String(nextKey++)] = { ...trinket };
+		for (const { id, amount } of trinkets) items[String(nextKey++)] = { id, type: 'trinket', amount };
 		markDirty('persist.estate.json');
 	}
 	const purchases = Object.values(upgrades.base_root.purchases);
@@ -826,6 +830,7 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 		const data = loaded.data;
 		nameTableVersion = loaded.name_table_version;
 		inactiveRaidHeroGuids = Object.freeze([...loaded.inactive_raid_hero_guids]);
+		inactiveRaidError = loaded.inactive_raid_error;
 
 		if (data['persist.roster.json']) {
 			loadRoster(data['persist.roster.json'] as RosterData);
@@ -960,6 +965,7 @@ export function resetSaveData() {
 	raid = null;
 	game = null;
 	inactiveRaidHeroGuids = [];
+	inactiveRaidError = null;
 	campaignLog = null;
 	progression = null;
 	gameInRaid = false;

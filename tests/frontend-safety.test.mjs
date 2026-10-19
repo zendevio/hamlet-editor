@@ -507,12 +507,16 @@ test('dismiss returns every equipped trinket to verified estate entries and disc
     const items = data.estate.base_root.trinkets.items;
     const before = structuredClone(items);
     const equipped = [structuredClone(items['0']), structuredClone(items['1'])];
+    equipped[0].hero_only = { unverified: 42 };
+    equipped[1].slot = 1;
+    equipped[1].amount = 2;
+    const returned = equipped.map(({ id, amount }) => ({ id, type: 'trinket', amount }));
     store.getHeroRawData('44').trinkets.items = { 0: equipped[0], 1: equipped[1] };
     store.clearAllDirty();
     const next = Math.max(...Object.keys(items).map(Number)) + 1;
     assert.equal(store.dismissHero('44'), null);
-    assert.deepEqual(items[String(next)], equipped[0]);
-    assert.deepEqual(items[String(next + 1)], equipped[1]);
+    assert.deepEqual(items[String(next)], returned[0]);
+    assert.deepEqual(items[String(next + 1)], returned[1]);
     assert.deepEqual(Object.fromEntries(Object.entries(items).slice(0, Object.keys(before).length)), before);
     assert.ok(data.dirtyFiles.has('persist.estate.json'));
     store.discardAllChanges();

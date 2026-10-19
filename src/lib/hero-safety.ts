@@ -23,9 +23,10 @@ export interface HeroReferences {
 	raid: RaidData | null;
 	estate: EstateData | null;
 	inactiveRaidHeroGuids: readonly number[];
+	inactiveRaidError: string | null;
 }
 
-/** Preserve complete equipped entries, accepting only the verified trinket shape. */
+/** Validate equipment; only estate trinket fields may be transferred on dismissal. */
 export function equippedTrinkets(hero: HeroBaseRoot): TrinketEntry[] | null {
 	const items = hero.trinkets?.items;
 	if (!items || typeof items !== 'object' || Array.isArray(items)) return null;
@@ -50,6 +51,9 @@ export function dismissBlockReason(guid: string, data: HeroReferences): string |
 		return 'This hero is in the raid party. Return to town before dismissing them.';
 	}
 	if (data.game?.base_root.inraid) return 'Dismissal is unavailable during a raid.';
+	if (data.inactiveRaidError) {
+		return `Dismissal is blocked because saved inactive raid references could not be read. ${data.inactiveRaidError}`;
+	}
 	if (data.inactiveRaidHeroGuids.includes(Number(guid))) {
 		return 'This hero is referenced by the saved inactive raid. Complete that expedition in the game before dismissing them.';
 	}

@@ -558,6 +558,7 @@
 />
 <UnsavedChangesDialog
 	bind:open={showCloseDialog}
+	allowSave={!saveData.isStale}
 	onSaveAndClose={handleSaveAndClose}
 	onDiscardAndClose={handleDiscardAndClose}
 	onCancel={handleCancelClose}

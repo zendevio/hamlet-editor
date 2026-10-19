@@ -168,7 +168,7 @@ Always visible above the hero list. Buttons become active when one or more heroe
 
 | Button | Action | Notes |
 |--------|--------|-------|
-| Heal All | Set `current_hp` to class max for each selected hero's current `armour_rank` | HP-only. Uses the HP table from `game-data.md`. Does NOT touch stress. No confirmation dialog (non-destructive, reversible via Discard). |
+| Heal All | Raise `current_hp` below the class base max for each selected hero's current `armour_rank`; retain existing higher HP and its saved fraction | HP-only. Uses the HP table from `game-data.md`, which excludes buffs. Does NOT touch stress. No confirmation dialog (non-destructive, reversible via Discard). |
 | Clear Stress | Set `m_Stress` to 0 for each selected hero | Stress only. Does NOT clear affliction or virtue (these are independent fields). |
 | Set Level | Dropdown (0-6). Adjusts `resolveXp` to the selected level threshold. Gear ranks and purchases are unchanged. | Applies to each selected hero. |
 | Revive | Enabled only when ALL selected heroes have status = 3 (DEAD). Runs the full revival procedure (section 4.5). | Multi-hero revival is a batch of individual revival operations. |
@@ -188,7 +188,7 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **"Reset this hero"** button — reverts all in-memory changes for this specific hero to the on-disk snapshot. Confirmation: "Revert all unsaved changes to [HeroName]?"
 
 **Vitals Section**
-- **HP** — `Slider` (0 to class max for current armour_rank) + numeric `Input`. "Heal to Max" quick button. Max HP is derived from the HP table in `game-data.md` and displayed inline (e.g., "26 / 38").
+- **HP**: `Slider` from 1 for living heroes (0 for dead heroes) through the larger of class base max and saved HP. The inline display rounds HP; saved fractions survive unchanged slider clicks and drags back to the starting step. Changed commits are clamped to the real bounds, including fractional maxima. "Heal to Max" raises HP below the class base max and retains higher HP. The class HP table in `game-data.md` excludes buffs.
 - **Stress** — `Slider` (0-200) + numeric `Input`. "Clear" quick button (sets `m_Stress` to 0). Stress and affliction are independent fields; clearing stress does NOT auto-clear an active affliction or virtue.
 - **Affliction / Virtue** — `Select` dropdown: None, or known affliction/virtue IDs from game data. "Clear" button. Clearing zeroes `affliction_type_id`, `affliction_severity`, and `virtue_type_id`. This is a separate control from stress editing.
 - **Deaths Door** — `Switch` for `visited_deaths_door`. Shown in an "Advanced" sub-section with tooltip: "Historical flag indicating this hero has previously reached Death's Door. Does not directly affect current gameplay state."
@@ -252,7 +252,7 @@ Single-pane layout with stacked sections.
 ```
 
 **Estate Name**
-- Editable `Input` field. The byte-length constraint (source: `save-files.md` Estate Name Constraint) is handled transparently: the DSON encoder updates the binary length field on save. A character counter is displayed ("24 / ~64 bytes") with a soft warning above ~64 bytes (reasonable max for the game's UI display, though the binary format allows more).
+- Editable `Input` field using the same 32-character editor limit and name validation as hero names. Enter or blur commits; Escape restores the saved name and blurs so focusing again starts a new edit. The DSON encoder updates the binary byte length on save.
 
 **Wallet Section**
 - Grid of `CurrencyCard` components, one per type.
@@ -434,7 +434,7 @@ Sectioned form layout.
 ### 4.3 Editing a Hero
 
 1. User clicks a hero in the list. Detail panel populates.
-2. **Editing HP**: Click the HP number or use the slider. "Heal to Max" snaps to class max for current armour_rank (from HP table in `game-data.md`). Unsaved changes dot appears.
+2. **Editing HP**: Use the slider to commit a different step. Clicking the current step or dragging back to it preserves saved fractional HP without marking changes. "Heal to Max" raises HP below the class base max for current armour_rank (from `game-data.md`) and retains existing higher HP. A real change adds the unsaved changes dot.
 3. **Editing stress**: Adjust the slider or click "Clear." Stress is set to 0. Affliction/virtue state is NOT affected (they are independent fields).
 4. **Editing level**: Open the resolve level dropdown and select a level. This sets resolve XP to the selected level threshold; gear ranks and upgrade purchases are unchanged.
 5. **Adding a quirk**: Click "Add Quirk" under the positive column. Combobox opens. Type "quick" — autocomplete shows "Quick Reflexes (quick_reflexes)." Select it. Chip appears. If the column already has 5 quirks, the button is disabled.
@@ -447,7 +447,7 @@ Sectioned form layout.
 1. User checks checkboxes on multiple heroes.
 2. Batch toolbar updates: "5 of 12 selected."
 3. Detail panel replaced with batch summary (selected hero names/portraits, available actions).
-4. User clicks "Heal All." All selected heroes have HP set to their respective class maximums. No confirmation dialog (non-destructive; reversible via Discard).
+4. User clicks "Heal All." Selected heroes below their class base maximum are raised to it; existing higher HP and its saved fraction are retained. No confirmation dialog (non-destructive; reversible via Discard).
 5. Changes applied in memory. List reflects changes. Unsaved changes dot activates.
 6. User clicks Save.
 
@@ -1022,7 +1022,7 @@ When the editor encounters a corrupt file (source: `save-files.md` Save Corrupti
 3. If inconsistencies found: warning dialog listing them, with "Fix Automatically" and "Save Anyway" options.
 
 **Backend validation and commit:**
-- Before any disk mutation, check load provenance and disk freshness, merge edited deltas onto the ordered decoded snapshots, and validate and encode every dirty file in memory. Untouched earlier duplicate values and keys survive; an edited visible field is updated in every duplicate copy.
+- Before any disk mutation, check load provenance and disk freshness, merge edited deltas onto the ordered decoded snapshots, and validate and encode every dirty file in memory. Equality compares numbers by numeric value recursively through objects and arrays, so JavaScript converting `63.0` to `63` does not count as an edit. Untouched earlier duplicate values and keys survive; a genuinely edited visible field is updated in every duplicate copy.
 - Encoding failures abort before files change. Writes and deletions use a transaction with rollback. Binary round-trip regression tests run in the test suite; there is no post-save round-trip validation step in the application.
 
 ### 9.4 Graceful Degradation for Mod Content
@@ -1133,8 +1133,10 @@ Command names are authoritative from `path-detection.md` and this document.
 | Command | Signature | Purpose |
 |---------|-----------|---------|
 | `list_profiles` | `(save_root: String) -> Result<Vec<ProfileMeta>, String>` | List profiles with metadata (name, week, game mode, DLCs) |
-| `load_profile` | `(profile_path: String) -> Result<ProfileData, String>` | Decode all DSON save files (including `novelty_tracker.json` as opaque blob), return as JSON |
-| `save_profile` | `(profile_path: String, data: ProfileData) -> Result<SaveResult, String>` | Encode and write modified files (including `novelty_tracker.json` passthrough) with round-trip validation |
+| `load_profile` | `(profile_path: String) -> Result<LoadedProfile, String>` | Decode supported saves and return editable data, name-table version and read-only inactive raid metadata |
+| `save_profile` | `(profile_path: String, data: ProfileData, name_table_version: u64) -> Result<(), String>` | Validate provenance and freshness, merge edits and transactionally encode/write modified files |
+
+`LoadedProfile` contains `data`, `name_table_version`, `inactive_raid_hero_guids` and nullable `inactive_raid_error`. When `persist.game.json` has `inraid: false`, a raid at `raid_save` or the top-level fallback `persist.raid.json` is read only for hero references. It is absent from editable data and write snapshots, even at the top level. A decode failure returns the error as metadata and blocks all dismissal; other supported files still load and can be edited and saved. A readable inactive raid blocks only its referenced heroes. Active raid decode errors remain fatal. Optional unsupported files are skipped, remain fingerprinted and cannot be overwritten.
 
 **`ProfileMeta` struct** (returned by `list_profiles`):
 ```rust

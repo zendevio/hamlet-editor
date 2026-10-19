@@ -89,6 +89,7 @@
 			estateNameValue = saveData.game?.base_root?.estatename ?? '';
 			estateNameError = '';
 			estateNameEditing = false;
+			(e.target as HTMLElement)?.blur();
 		}
 	}
 

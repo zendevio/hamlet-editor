@@ -1,5 +1,5 @@
 use ddsavelib::{File, Unhasher};
-use serde_json::json;
+use serde_json::{json, Value};
 
 fn binary(file: &File) -> Vec<u8> {
     let mut bytes = Vec::new();
@@ -12,6 +12,52 @@ fn text(file: &File) -> String {
     file.write_to_json(&mut bytes, true, &Unhasher::empty())
         .unwrap();
     String::from_utf8(bytes).unwrap()
+}
+
+// Reuse bulk review 3's float_dup probe: JSON.stringify turns integral floats into integers.
+fn js_numbers(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => Value::Object(
+            map.iter()
+                .map(|(key, value)| (key.clone(), js_numbers(value)))
+                .collect(),
+        ),
+        Value::Array(values) => Value::Array(values.iter().map(js_numbers).collect()),
+        Value::Number(n) if n.is_f64() && n.as_f64().unwrap().fract() == 0.0 => {
+            json!(n.as_f64().unwrap() as i64)
+        }
+        _ => value.clone(),
+    }
+}
+
+#[test]
+fn js_integral_floats_preserve_duplicate_scalars_objects_and_array_elements() {
+    let source = r#"{"__revision_dont_touch":1,"base_root":{"x":{"current_hp":5.0,"m_Stress":10.0,"map":{"bounds":[1.0,3.0]}},"x":{"current_hp":7.0,"m_Stress":20.0,"map":{"bounds":[2.0,4.0]}},"torchlight":50.0,"torchlight":60.0,"other":0}}"#;
+    let file = File::try_from_json(source.as_bytes()).unwrap();
+    let mut value = js_numbers(&file.to_json_value(&Unhasher::empty()));
+    assert!(value["base_root"]["x"]["current_hp"].is_u64());
+    assert_eq!(
+        binary(&file.merge_json_value(&value).unwrap()),
+        binary(&file)
+    );
+
+    // Editing an unrelated field must not spread the visible float over earlier copies.
+    value["base_root"]["other"] = json!(1);
+    let expected =
+        File::try_from_json(source.replace("\"other\":0", "\"other\":1").as_bytes()).unwrap();
+    assert_eq!(
+        binary(&file.merge_json_value(&value).unwrap()),
+        binary(&expected)
+    );
+
+    // A real edit reaches both copies, retaining unequal unedited floats and array positions.
+    value["base_root"]["x"]["current_hp"] = json!(9);
+    value["base_root"]["x"]["map"]["bounds"][1] = json!(6);
+    let expected = File::try_from_json(br#"{"__revision_dont_touch":1,"base_root":{"x":{"current_hp":9.0,"m_Stress":10.0,"map":{"bounds":[1.0,6.0]}},"x":{"current_hp":9.0,"m_Stress":20.0,"map":{"bounds":[2.0,6.0]}},"torchlight":50.0,"torchlight":60.0,"other":1}}"#.as_slice()).unwrap();
+    assert_eq!(
+        binary(&file.merge_json_value(&value).unwrap()),
+        binary(&expected)
+    );
 }
 
 #[test]

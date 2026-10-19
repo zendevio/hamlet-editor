@@ -47,8 +47,8 @@ pub fn run() {
 
             // Optional startup window mode for test runs:
             // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.
-            // Set the initial native window state before the single visible build.
-            // macOS queues maximize/fullscreen requests on an existing window.
+            // Pass the requested mode to the single visible build. On macOS, tao
+            // still queues maximization after ordering the window front.
             let config = app
                 .config()
                 .app

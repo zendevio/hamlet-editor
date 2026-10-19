@@ -242,6 +242,7 @@ pub fn load_profile_with_table(
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
     let mut inactive_guids = BTreeSet::new();
+    let mut inactive_error = None;
     if dir.join(&raid_path).is_file() {
         if active {
             load_one(
@@ -253,11 +254,15 @@ pub fn load_profile_with_table(
                 &mut snapshots,
             )?;
         } else {
-            let raid = decode_save_file(dir.join(&raid_path).to_string_lossy().into_owned())
-                .map_err(|e| {
-                    format!("Failed to read inactive raid {}: {e}", raid_path.display())
-                })?;
-            inactive_guids = inactive_raid_hero_guids(&raid);
+            match decode_save_file(dir.join(&raid_path).to_string_lossy().into_owned()) {
+                Ok(raid) => inactive_guids = inactive_raid_hero_guids(&raid),
+                Err(error) => {
+                    inactive_error = Some(format!(
+                        "Failed to read inactive raid {}: {error}",
+                        raid_path.display()
+                    ));
+                }
+            }
         }
     }
     if profile_fingerprint(dir)? != fingerprint {
@@ -271,7 +276,7 @@ pub fn load_profile_with_table(
     table.loaded_files = snapshots;
     Ok(
         serde_json::json!({ "data": result, "name_table_version": table.version,
-        "inactive_raid_hero_guids": inactive_guids }),
+        "inactive_raid_hero_guids": inactive_guids, "inactive_raid_error": inactive_error }),
     )
 }
 

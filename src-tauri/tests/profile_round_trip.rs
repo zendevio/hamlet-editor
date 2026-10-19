@@ -120,17 +120,22 @@ fn raw_json(bytes: &[u8]) -> String {
     String::from_utf8(output).unwrap()
 }
 
-fn reorder_objects(value: &mut Value) {
+// Review 3's probe models JSON.stringify numbers; reverse keys to also stress order restoration.
+fn simulate_frontend_json(value: &mut Value) {
     if let Some(map) = value.as_object_mut() {
         for child in map.values_mut() {
-            reorder_objects(child);
+            simulate_frontend_json(child);
         }
         let mut entries: Vec<_> = std::mem::take(map).into_iter().collect();
         entries.reverse();
         map.extend(entries);
     } else if let Some(array) = value.as_array_mut() {
         for child in array {
-            reorder_objects(child);
+            simulate_frontend_json(child);
+        }
+    } else if let Value::Number(n) = value {
+        if n.is_f64() && n.as_f64().unwrap().fract() == 0.0 {
+            *value = json!(n.as_f64().unwrap() as i64);
         }
     }
 }
@@ -151,7 +156,7 @@ fn no_edit_frontend_round_trip_preserves_every_file_and_roster_order() {
             .values()
             .map(|file| file.relative_path.clone())
             .collect();
-        reorder_objects(&mut data);
+        simulate_frontend_json(&mut data);
         sandbox.save(&mut table, data).unwrap();
         let after = tree(&sandbox.profile());
         assert_eq!(before.len(), after.len());
@@ -183,7 +188,7 @@ fn duplicate_achievement_survives_unrelated_edits_and_repeated_saves() {
     let original = fs::read(sandbox.profile().join("persist.progression.json")).unwrap();
     let (mut table, mut data) = sandbox.load();
     data["persist.game.json"]["base_root"]["estatename"] = json!("Fixture estate");
-    reorder_objects(&mut data);
+    simulate_frontend_json(&mut data);
     sandbox.save(&mut table, data.clone()).unwrap();
     data["persist.game.json"]["base_root"]["estatename"] = json!("Second edit");
     sandbox.save(&mut table, data).unwrap();
@@ -709,6 +714,112 @@ fn inactive_raid_references_are_read_only_and_include_non_party_hero_fields() {
             .unwrap();
     assert_eq!(loaded["inactive_raid_hero_guids"], json!([]));
     assert!(loaded["data"].get("persist.raid.json").is_some());
+}
+
+#[test]
+fn undecodable_inactive_raids_allow_other_edits_and_return_a_dismissal_block() {
+    for top_level in [false, true] {
+        let sandbox = Sandbox::new();
+        let raid_path = if top_level {
+            let game_path = sandbox.profile().join("persist.game.json");
+            let bytes = fs::read(&game_path).unwrap();
+            let file = File::try_from_bin(bytes.as_slice()).unwrap();
+            let mut game = file.to_json_value(&Unhasher::empty());
+            game["base_root"]["raid_save"] = json!("");
+            let mut bytes = Vec::new();
+            file.merge_json_value(&game)
+                .unwrap()
+                .write_to_bin(&mut bytes)
+                .unwrap();
+            fs::write(game_path, bytes).unwrap();
+            sandbox.profile().join("persist.raid.json")
+        } else {
+            sandbox
+                .profile()
+                .join("plot_crimson_court_1/persist.raid.json")
+        };
+        fs::write(&raid_path, b"undecodable inactive raid").unwrap();
+        let (mut table, _) = sandbox.load();
+        let loaded = save::load_profile_with_table(
+            sandbox.profile().to_string_lossy().into_owned(),
+            &mut table,
+        )
+        .unwrap();
+        assert_eq!(loaded["inactive_raid_hero_guids"], json!([]));
+        assert!(loaded["inactive_raid_error"]
+            .as_str()
+            .unwrap()
+            .starts_with("Failed to read inactive raid "));
+        assert!(loaded["data"].get("persist.raid.json").is_none());
+        assert!(!table.loaded_files.contains_key("persist.raid.json"));
+        let mut game = loaded["data"]["persist.game.json"].clone();
+        game["base_root"]["estatename"] = json!("Still editable");
+        sandbox
+            .save(&mut table, json!({"persist.game.json":game}))
+            .unwrap();
+        assert_eq!(fs::read(&raid_path).unwrap(), b"undecodable inactive raid");
+        sandbox.activate_raid();
+        let error = save::load_profile_with_table(
+            sandbox.profile().to_string_lossy().into_owned(),
+            &mut table,
+        )
+        .unwrap_err();
+        assert!(
+            error.starts_with("Failed to decode core save persist.raid.json:"),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn review_probe_edits_round_trip_with_javascript_numbers() {
+    let sandbox = Sandbox::new();
+    let (mut table, mut data) = sandbox.load();
+    // Reuse review 3's real-fixture probe: compact purchases, append estate trinkets,
+    // remove a roster hero and replace the last party vector.
+    let purchases = data["persist.upgrades.json"]["base_root"]["purchases"]
+        .as_object()
+        .unwrap();
+    let remaining: Vec<_> = purchases
+        .values()
+        .filter(|purchase| purchase["instance_number"] != json!(44))
+        .cloned()
+        .collect();
+    assert_eq!((purchases.len(), remaining.len()), (1298, 1275));
+    data["persist.upgrades.json"]["base_root"]["purchases"] = Value::Object(
+        remaining
+            .into_iter()
+            .enumerate()
+            .map(|(index, value)| (index.to_string(), value))
+            .collect(),
+    );
+    let items = data["persist.estate.json"]["base_root"]["trinkets"]["items"]
+        .as_object_mut()
+        .unwrap();
+    assert_eq!(items.len(), 82);
+    items.insert(
+        "82".into(),
+        json!({"id":"sun_ring","type":"trinket","amount":1}),
+    );
+    items.insert("83".into(), json!({"id":"a","type":"trinket","amount":1}));
+    data["persist.roster.json"]["base_root"]["last_party"]["last_party_guids"] =
+        json!([1, 48, -1, -1]);
+    data["persist.roster.json"]["base_root"]["heroes"]
+        .as_object_mut()
+        .unwrap()
+        .remove("44");
+    let mut edits = json!({
+        "persist.upgrades.json": data["persist.upgrades.json"],
+        "persist.estate.json": data["persist.estate.json"],
+        "persist.roster.json": data["persist.roster.json"],
+    });
+    simulate_frontend_json(&mut edits);
+    sandbox.save(&mut table, edits.clone()).unwrap();
+    let (_, mut reloaded) = sandbox.load();
+    for (name, expected) in edits.as_object().unwrap() {
+        simulate_frontend_json(&mut reloaded[name]);
+        assert_eq!(&reloaded[name], expected, "{name}");
+    }
 }
 
 #[test]
