@@ -6,6 +6,7 @@ can be reviewed or reverted on its own. Revert an entry with
 
 | Date | Change | Why | Commit |
 | --- | --- | --- | --- |
+| 2026-10-20 | HP, stress and torchlight labels show the slider step with the exact saved value when different. Lowering buffed HP keeps the on-disk HP in the slider range until Save. | Explain preserved fractions and allow returning to the previous HP range before saving. | pending |
 | 2026-10-20 | Unchanged HP, stress and torchlight slider clicks and drags back to the starting step preserve saved fractions. Keyboard and pointer changes stay within the real bounds, including fractional HP maxima. | Bits UI commits snapped values even without a changed step and can report a step above a fractional max. | 858ff75 |
 | 2026-10-20 | Saving unrelated fields preserves unequal duplicate float values after JavaScript converts whole floats to integers. Returned equipped trinkets contain only estate `id`, `type` and `amount` fields. | Preserve hidden duplicate data and keep hero-only metadata out of estate storage. | 858ff75 |
 | 2026-10-20 | An unreadable inactive raid blocks dismissal while the rest of the profile remains editable. Inactive raids, including top-level raid files, are read-only reference data. | Keep unknown hero references safe without preventing unrelated profile edits. | 858ff75 |

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sliderControl } from '#lib/control-events.js';
+	import { sliderControl, sliderValueLabel } from '#lib/control-events.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import PartySlot from '#lib/components/raid/PartySlot.svelte';
 	import RaidInfoCard from '#lib/components/raid/RaidInfoCard.svelte';
@@ -322,7 +322,7 @@
 									Torchlight
 								</label>
 								<span class="text-xs tabular-nums text-muted-foreground">
-									{torchlightValue.toFixed(1)}
+									{sliderValueLabel(torchlightValue, { min: 0, max: 100, step: 0.5 })}
 								</span>
 							</div>
 							<Slider

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { commitChangedValue, sliderControl, hpSliderMax } from '#lib/control-events.js';
+	import { commitChangedValue, sliderControl, sliderValueLabel, hpSliderMax } from '#lib/control-events.js';
 	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 	import { canPickQuirk, CURSE_STATES } from '#lib/hero-safety.js';
 	import { toast } from 'svelte-sonner';
@@ -45,6 +45,7 @@
 	import {
 		getMaxHp,
 		getHeroRawData,
+		getSavedHeroHp,
 		setHeroHp,
 		setHeroStress,
 		setHeroName,
@@ -110,7 +111,7 @@
 	let dismissReason = $derived(getDismissBlockReason(hero.guid));
 	let resolveLevel = $derived(hero.resolveLevel);
 	let maxHp = $derived(getMaxHp(hero.heroClass, hero.armourRank));
-	let hpMax = $derived(hpSliderMax(maxHp, hero.currentHp));
+	let hpMax = $derived(hpSliderMax(maxHp, hero.currentHp, getSavedHeroHp(hero.guid)));
 
 	let positiveQuirks = $derived(
 		Object.entries(hero.quirks).filter(([id]) => isPositiveQuirk(id))
@@ -428,7 +429,7 @@
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{Math.round(hero.currentHp)} / {Math.round(hpMax)}
+									{sliderValueLabel(hero.currentHp, { min: isDead ? 0 : 1, max: hpMax, step: 1 })} / {Math.round(hpMax)}
 								</span>
 							</div>
 							<Slider
@@ -466,7 +467,7 @@
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{hero.stress} / 200
+									{sliderValueLabel(hero.stress, { min: 0, max: 200, step: 1 })} / 200
 								</span>
 							</div>
 							<Slider

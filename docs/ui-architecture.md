@@ -188,8 +188,8 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **"Reset this hero"** button — reverts all in-memory changes for this specific hero to the on-disk snapshot. Confirmation: "Revert all unsaved changes to [HeroName]?"
 
 **Vitals Section**
-- **HP**: `Slider` from 1 for living heroes (0 for dead heroes) through the larger of class base max and saved HP. The inline display rounds HP; saved fractions survive unchanged slider clicks and drags back to the starting step. Changed commits are clamped to the real bounds, including fractional maxima. "Heal to Max" raises HP below the class base max and retains higher HP. The class HP table in `game-data.md` excludes buffs.
-- **Stress** — `Slider` (0-200) + numeric `Input`. "Clear" quick button (sets `m_Stress` to 0). Stress and affliction are independent fields; clearing stress does NOT auto-clear an active affliction or virtue.
+- **HP**: `Slider` from 1 for living heroes (0 for dead heroes) through the larger of class base max, on-disk HP and current HP. The inline display shows the snapped step and an exact saved-value hint when they differ; saved fractions survive unchanged slider clicks and drags back to the starting step. Changed commits are clamped to the real bounds, including fractional maxima. "Heal to Max" raises HP below the class base max and retains higher HP. The class HP table in `game-data.md` excludes buffs.
+- **Stress** — `Slider` (0-200) with a snapped-step label and saved-value hint. "Clear" quick button (sets `m_Stress` to 0). Stress and affliction are independent fields; clearing stress does NOT auto-clear an active affliction or virtue.
 - **Affliction / Virtue** — `Select` dropdown: None, or known affliction/virtue IDs from game data. "Clear" button. Clearing zeroes `affliction_type_id`, `affliction_severity`, and `virtue_type_id`. This is a separate control from stress editing.
 - **Deaths Door** — `Switch` for `visited_deaths_door`. Shown in an "Advanced" sub-section with tooltip: "Historical flag indicating this hero has previously reached Death's Door. Does not directly affect current gameplay state."
 
@@ -571,8 +571,8 @@ HeroesView
 │   │   ├── ClassDisplay
 │   │   └── ResolveLevelEditor (Select)
 │   ├── HeroVitals (Collapsible Card)
-│   │   ├── HPEditor (Slider + Input + HealToMaxButton)
-│   │   ├── StressEditor (Slider + Input + ClearButton)
+│   │   ├── HPEditor (Slider + ValueLabel + HealToMaxButton)
+│   │   ├── StressEditor (Slider + ValueLabel + ClearButton)
 │   │   ├── AfflictionEditor (Select + ClearButton)
 │   │   └── DeathsDoorSwitch (Switch, in Advanced sub-section with Tooltip)
 │   ├── HeroQuirks (Collapsible Card)

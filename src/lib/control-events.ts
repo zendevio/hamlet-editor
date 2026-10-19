@@ -20,8 +20,9 @@ function snappedSliderValue(value: number, { min, max, step }: SliderRange): num
 	const factor = 10 ** precision;
 	let count = Math.ceil((max - min) / step);
 	if (Math.round((max - min) * factor) % Math.round(step * factor) === 0) count++;
-	let closest = value;
-	let distance = Infinity;
+	if (count === 0) return value;
+	let closest = Math.round(min * factor) / factor;
+	let distance = Math.abs(value - closest);
 	for (let i = 0; i < count; i++) {
 		const candidate = Math.round((min + i * step) * factor) / factor;
 		const nextDistance = Math.abs(value - candidate);
@@ -31,6 +32,12 @@ function snappedSliderValue(value: number, { min, max, step }: SliderRange): num
 		}
 	}
 	return closest;
+}
+
+/** Show the thumb's step and retain the exact saved value as a visible hint. */
+export function sliderValueLabel(value: number, range: SliderRange): string {
+	const snapped = snappedSliderValue(value, range);
+	return snapped === value ? String(snapped) : `${snapped} (saved: ${value})`;
 }
 
 /** Preserve saved fractions when a click or drag finishes on the starting step. */
@@ -47,6 +54,6 @@ export function sliderControl(value: number, range: SliderRange, commit: (value:
 }
 
 /** Class HP excludes buffs, so a saved value must always fit in the control. */
-export function hpSliderMax(computedMax: number, currentHp: number): number {
-	return Math.max(computedMax, currentHp, 1);
+export function hpSliderMax(computedMax: number, currentHp: number, savedHp = currentHp): number {
+	return Math.max(computedMax, savedHp, currentHp, 1);
 }

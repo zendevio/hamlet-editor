@@ -870,6 +870,13 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 	}
 }
 
+/** Keep the HP range anchored to disk while unsaved edits lower current HP. */
+export function getSavedHeroHp(guid: string): number | undefined {
+	if (!rosterSnapshot) return undefined;
+	const snapshot = JSON.parse(rosterSnapshot) as RosterData;
+	return snapshot.base_root.heroes[guid]?.hero_file_data.raw_data.base_root.actor.current_hp;
+}
+
 /** Revert a single hero to on-disk state. */
 export function revertHero(guid: string) {
 	if (!rosterSnapshot || !roster) return;

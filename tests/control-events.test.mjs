@@ -16,7 +16,7 @@ const server = await createServer({
 });
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
-const { sliderControl, hpSliderMax, commitChangedValue } = await server.ssrLoadModule('/src/lib/control-events.ts');
+const { sliderControl, sliderValueLabel, hpSliderMax, commitChangedValue } = await server.ssrLoadModule('/src/lib/control-events.ts');
 const { createWindowCloseGuard } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
 const reference = {
 	...JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8')),
@@ -203,13 +203,64 @@ test('snapped starting commits match installed Bits UI for ties, decimal and exp
 		{ min: 0.2, max: 0.81, step: 0.1 },
 		{ min: 0, max: 0.000001, step: 1e-7 }
 	]) {
-		for (const value of [range.min, range.max, range.min + range.step / 2, (range.min + range.max) / 2]) {
+		for (const value of [range.min, range.max, range.min + range.step / 2, (range.min + range.max) / 2, NaN, undefined, Infinity, -Infinity, null, -0]) {
 			const writes = [];
 			const control = sliderControl(value, range, (next) => writes.push(next));
 			control.onValueCommit(bitsSlider(control).value);
 			assert.deepEqual(writes, [], JSON.stringify({ value, range }));
 		}
 	}
+});
+
+test('slider labels match Bits UI steps and explain off-grid saved values', () => {
+	for (const [value, range, expected] of [
+		[67.0999984741211, { min: 1, max: 67.0999984741211, step: 1 }, '67 (saved: 67.0999984741211)'],
+		[0, { min: 1, max: 61, step: 1 }, '1 (saved: 0)'],
+		[12.25, { min: 0, max: 200, step: 1 }, '12 (saved: 12.25)'],
+		[75.25, { min: 0, max: 100, step: 0.5 }, '75 (saved: 75.25)'],
+		[75.5, { min: 0, max: 100, step: 0.5 }, '75.5']
+	]) assert.equal(sliderValueLabel(value, range), expected);
+});
+
+test('deterministic fuzz snapping matches Bits UI including non-finite inputs', () => {
+	let seed = 421;
+	const random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32);
+	const special = [NaN, undefined, Infinity, -Infinity, null, -0];
+	for (let i = 0; i < 5000; i++) {
+		const step = [1, 0.5, 0.1, 0.25, 2, 5, 0.05, 3, 0.3][i % 9];
+		const min = [0, 1, 0.2, 2.4, -3][i % 5];
+		const max = min + Math.round(random() * 20000) / 100;
+		const range = { min, max, step };
+		for (const value of [Math.fround(random() * (max - min + 4) + min - 2), ...special]) {
+			const snapped = snapValueToCustomSteps(value, normalizeSteps(step, min, max));
+			const expected = snapped === value ? String(snapped) : `${snapped} (saved: ${value})`;
+			assert.equal(sliderValueLabel(value, range), expected);
+			const writes = [];
+			sliderControl(value, range, (next) => writes.push(next)).onValueCommit(snapped);
+			assert.deepEqual(writes, []);
+		}
+	}
+});
+
+test('HP range retains saved buffs through edits, hero switches, discard and save', () => {
+	const original = store.getSavedHeroHp('1');
+	assert.equal(original, 67.0999984741211);
+	store.setHeroHp('1', 66);
+	assert.equal(hpSliderMax(61, 66, store.getSavedHeroHp('1')), original);
+	assert.equal(hpSliderMax(61, 80, store.getSavedHeroHp('1')), 80);
+	assert.equal(store.getSavedHeroHp('missing'), undefined);
+	assert.equal(hpSliderMax(1, 0, 0), 1);
+	const other = store.getHeroes().find((hero) => hero.guid === '34');
+	assert.equal(store.getSavedHeroHp(other.guid), other.currentHp);
+	assert.equal(store.getSavedHeroHp('1'), original);
+	store.discardAllChanges();
+	assert.equal(store.getHeroRawData('1').actor.current_hp, original);
+	store.setHeroHp('1', 66);
+	store.clearAllDirty();
+	assert.equal(store.getSavedHeroHp('1'), 66);
+	assert.equal(hpSliderMax(61, 65, store.getSavedHeroHp('1')), 66);
+	store.resetSaveData();
+	assert.equal(store.getSavedHeroHp('1'), undefined);
 });
 
 test('healing preserves buffed fractional HP and only raises HP below the base max', () => {
