@@ -11,13 +11,28 @@ interface SliderRange {
 	step: number;
 }
 
-/** Match Bits UI 2.19.5 normalizeSteps and snapValueToCustomSteps, including lower ties. */
-function snappedSliderValue(value: number, { min, max, step }: SliderRange): number {
+function stepFactor(step: number): number {
 	const text = step.toString();
 	const precision = Math.floor(step) === step ? 0
 		: text.includes('e-') ? parseInt(text.split('e-')[1], 10)
 			: (text.split('.')[1]?.length ?? 0);
-	const factor = 10 ** precision;
+	return 10 ** precision;
+}
+
+/** Keep both endpoints on the step grid used to render and move the thumb. */
+export function alignedSliderRange({ min, max, step }: SliderRange): SliderRange {
+	const factor = stepFactor(step);
+	const scaledStep = Math.round(step * factor);
+	return {
+		min: Math.floor(min * factor / scaledStep) * scaledStep / factor,
+		max: Math.ceil(max * factor / scaledStep) * scaledStep / factor,
+		step
+	};
+}
+
+/** Match Bits UI 2.19.5 normalizeSteps and snapValueToCustomSteps, including lower ties. */
+function snappedSliderValue(value: number, { min, max, step }: SliderRange): number {
+	const factor = stepFactor(step);
 	let count = Math.ceil((max - min) / step);
 	if (Math.round((max - min) * factor) % Math.round(step * factor) === 0) count++;
 	if (count <= 0) return value;
@@ -36,18 +51,29 @@ function snappedSliderValue(value: number, { min, max, step }: SliderRange): num
 
 /** Show the thumb's step and retain the exact saved value as a visible hint. */
 export function sliderValueLabel(value: number, range: SliderRange): string {
-	const snapped = snappedSliderValue(value, range);
+	const snapped = snappedSliderValue(value, alignedSliderRange(range));
 	return snapped === value ? String(snapped) : `${snapped} (saved: ${value})`;
 }
 
 /** Preserve saved fractions when a click or drag finishes on the starting step. */
 export function sliderControl(value: number, range: SliderRange, commit: (value: number) => void) {
-	const snapped = snappedSliderValue(value, range);
+	const snapped = snappedSliderValue(value, alignedSliderRange(range));
+	let shown = snapped;
+	let pointerStart: number | undefined;
 	return {
 		value,
-		...range,
+		...alignedSliderRange(range),
+		// Bits maps pointers over the full track, so rendering must use that scale too.
+		thumbPositioning: 'exact' as const,
+		onValueChange: (next: number) => { shown = next; },
+		onpointerdowncapture: (event: PointerEvent) => {
+			if (event.button === 0) pointerStart = shown;
+		},
+		onkeydowncapture: () => { pointerStart = undefined; },
 		onValueCommit: (next: number) => {
-			if (!Number.isFinite(next) || next === snapped) return;
+			const start = pointerStart;
+			pointerStart = undefined;
+			if (!Number.isFinite(next) || next === snapped || next === start) return;
 			commitChangedValue(value, Math.min(range.max, Math.max(range.min, next)), commit);
 		}
 	};

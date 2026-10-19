@@ -4,7 +4,9 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { normalizeSteps, snapValueToCustomSteps, getAdjacentStepValue } from '../node_modules/bits-ui/dist/bits/slider/helpers.js';
+import { normalizeSteps, snapValueToCustomSteps, getAdjacentStepValue, getThumbStyles } from '../node_modules/bits-ui/dist/bits/slider/helpers.js';
+
+import { linearScale } from '../node_modules/bits-ui/dist/internal/math.js';
 
 const server = await createServer({
 	configFile: false,
@@ -16,7 +18,7 @@ const server = await createServer({
 });
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
-const { sliderControl, sliderValueLabel, hpSliderMax, commitChangedValue } = await server.ssrLoadModule('/src/lib/control-events.ts');
+const { alignedSliderRange, sliderControl, sliderValueLabel, hpSliderMax, commitChangedValue } = await server.ssrLoadModule('/src/lib/control-events.ts');
 const { createWindowCloseGuard } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
 const reference = {
 	...JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8')),
@@ -38,13 +40,24 @@ function bitsSlider(control) {
 	let value = snapValueToCustomSteps(control.value, steps);
 	const position = (next) => {
 		value = snapValueToCustomSteps(Math.min(control.max, Math.max(control.min, next)), steps);
+		control.onValueChange(value);
 	};
 	return {
 		get value() { return value; },
-		click(next = value) { position(next); control.onValueCommit(value); },
-		drag(...positions) { positions.forEach(position); control.onValueCommit(value); },
+		click(next = value) {
+			control.onpointerdowncapture({ button: 0 });
+			position(next);
+			control.onValueCommit(value);
+		},
+		drag(...positions) {
+			control.onpointerdowncapture({ button: 0 });
+			positions.forEach(position);
+			control.onValueCommit(value);
+		},
 		key(direction) {
+			control.onkeydowncapture();
 			value = snapValueToCustomSteps(getAdjacentStepValue(value, steps, direction), steps);
+			control.onValueChange(value);
 			control.onValueCommit(value);
 		}
 	};
@@ -169,13 +182,12 @@ test('fractional HP clicks, keyboard bounds and drags use the actual Bits UI sna
 		slider.drag(start - 2, start); // pointermove away and back before pointerup
 		assert.deepEqual(writes, []);
 		assert.equal(store.hasDirtyFiles(), false);
-		slider.key('next'); // 67 -> 68 or 40 -> 40 in Bits UI
+		slider.key('next'); // upper aligned step either stays put or clamps to saved HP
 		assert.deepEqual(writes, []);
 		assert.equal(store.getHeroRawData(guid).actor.current_hp, hero.currentHp);
 		slider.key('prev');
 		if (guid === '1') {
-			// 68 -> 67 is the starting snapped step, so it still preserves saved HP.
-			assert.deepEqual(writes, []);
+			assert.deepEqual(writes, []); // 68 -> 67 returns to the initial snapped step
 			slider.key('prev');
 		}
 		assert.deepEqual(writes, [guid === '1' ? 66 : 39]);
@@ -232,7 +244,8 @@ test('deterministic fuzz snapping matches Bits UI including non-finite inputs', 
 		const max = min + Math.round(random() * 20000) / 100;
 		const range = { min, max, step };
 		for (const value of [Math.fround(random() * (max - min + 4) + min - 2), ...special]) {
-			const snapped = snapValueToCustomSteps(value, normalizeSteps(step, min, max));
+			const aligned = alignedSliderRange(range);
+			const snapped = snapValueToCustomSteps(value, normalizeSteps(step, aligned.min, aligned.max));
 			const expected = snapped === value ? String(snapped) : `${snapped} (saved: ${value})`;
 			assert.equal(sliderValueLabel(value, range), expected);
 			const writes = [];
@@ -240,6 +253,68 @@ test('deterministic fuzz snapping matches Bits UI including non-finite inputs', 
 			assert.deepEqual(writes, []);
 		}
 	}
+});
+
+// Mirror getPositionFromValue/getThumbScale and applyPosition, including the
+// default half-thumb containment that the previous value-only harness omitted.
+function pointerValueAtThumb(control, width, thumbWidth = 12) {
+	const steps = normalizeSteps(control.step, control.min, control.max);
+	const shown = snapValueToCustomSteps(control.value, steps);
+	const padding = control.thumbPositioning === 'exact' ? 0 : thumbWidth / width * 50;
+	const percent = linearScale([control.min, control.max], [padding, 100 - padding])(shown);
+	const style = getThumbStyles('lr', percent);
+	const clientX = parseFloat(style.left) / 100 * width;
+	const mapped = clientX / width * (control.max - control.min) + control.min;
+	return snapValueToCustomSteps(mapped, steps);
+}
+
+test('thumb-center pointer mapping preserves fractional saves at actual rendered positions', () => {
+	for (const [value, range] of [
+		[67.0999984741211, { min: 1, max: 67.0999984741211, step: 1 }],
+		[39.5999984741211, { min: 1, max: 39.5999984741211, step: 1 }],
+		[0, { min: 1, max: 61, step: 1 }],
+		[75.25, { min: 0, max: 100, step: 0.5 }],
+		[3.4, { min: 2.4, max: 6.2, step: 1 }],
+		[0.35, { min: 0.21, max: 0.81, step: 0.1 }]
+	]) {
+		for (const width of [100, 300, 800]) {
+			const writes = [];
+			const control = sliderControl(value, range, (next) => writes.push(next));
+			const slider = bitsSlider(control);
+			const mapped = pointerValueAtThumb(control, width);
+			assert.equal(mapped, slider.value, JSON.stringify({ value, width }));
+			// Verify mapping itself without relying on the pointer gesture guard.
+			control.onValueCommit(mapped);
+			slider.click(mapped);
+			slider.drag(slider.value - 2 * range.step, mapped);
+			assert.deepEqual(writes, []);
+		}
+	}
+});
+
+test('old contained thumb geometry reproduces the real-cursor HP loss', () => {
+	for (const [value, expected] of [[67.0999984741211, 66], [39.5999984741211, 39]]) {
+		const range = { min: 1, max: value, step: 1 };
+		assert.equal(pointerValueAtThumb({ value, ...range }, 300), expected);
+		// Aligned endpoints alone still leave the padded/full-track scale mismatch.
+		assert.notEqual(pointerValueAtThumb({ value, ...alignedSliderRange(range) }, 300), bitsSlider(sliderControl(value, range, () => {})).value);
+	}
+});
+
+test('pointer guard uses the shown value at gesture start and keeps one-step changes', () => {
+	const writes = [];
+	const control = sliderControl(10.25, { min: 0, max: 100, step: 1 }, (next) => writes.push(next));
+	const slider = bitsSlider(control);
+	slider.key('next');
+	assert.deepEqual(writes, [11]);
+	slider.drag(9, 11); // shown start differs from the initial saved step
+	slider.click();
+	assert.deepEqual(writes, [11]);
+	slider.drag(12);
+	assert.deepEqual(writes, [11, 12]);
+	control.onpointerdowncapture({ button: 0 });
+	slider.key('next'); // keyboard clears pointer state and commits normally
+	assert.deepEqual(writes, [11, 12, 13]);
 });
 
 test('HP range retains saved buffs through edits, hero switches, discard and save', () => {
