@@ -56,7 +56,8 @@ function bitsSlider(control) {
 		},
 		key(direction) {
 			control.onkeydowncapture();
-			value = snapValueToCustomSteps(getAdjacentStepValue(value, steps, direction), steps);
+			value = direction === 'End' ? steps[steps.length - 1]
+				: snapValueToCustomSteps(getAdjacentStepValue(value, steps, direction), steps);
 			control.onValueChange(value);
 			control.onValueCommit(value);
 		}
@@ -182,27 +183,68 @@ test('fractional HP clicks, keyboard bounds and drags use the actual Bits UI sna
 		slider.drag(start - 2, start); // pointermove away and back before pointerup
 		assert.deepEqual(writes, []);
 		assert.equal(store.hasDirtyFiles(), false);
-		slider.key('next'); // upper aligned step either stays put or clamps to saved HP
+		slider.key('next'); // an outlying step preserves the unchanged saved fraction
 		assert.deepEqual(writes, []);
 		assert.equal(store.getHeroRawData(guid).actor.current_hp, hero.currentHp);
+
 		slider.key('prev');
-		if (guid === '1') {
-			assert.deepEqual(writes, []); // 68 -> 67 returns to the initial snapped step
-			slider.key('prev');
-		}
-		assert.deepEqual(writes, [guid === '1' ? 66 : 39]);
+		assert.deepEqual(writes, []); // both endpoints map to the same valid starting step
+		slider.key('prev');
+		assert.deepEqual(writes, [guid === '1' ? 66 : 38]);
 		assert.ok(writes.every((value) => value >= 1 && value <= max));
 		store.discardAllChanges();
 	}
 });
 
-test('commits from Bits UI outlying steps clamp to the real min and max', () => {
+for (const [guid, lowered, expected] of [['1', 50, 67], ['34', 20, 39]]) {
+	for (const gesture of ['drag', 'End']) {
+		test(`${guid}: ${gesture} to an outlying upper step writes integer HP through the real store`, () => {
+			const savedHp = store.getSavedHeroHp(guid);
+			store.setHeroHp(guid, lowered);
+			const hero = store.getHeroes().find((hero) => hero.guid === guid);
+			const writes = [];
+			const slider = bitsSlider(sliderControl(hero.currentHp, {
+				min: 1, max: hpSliderMax(hero.maxHp, hero.currentHp, savedHp), step: 1
+			}, (next) => {
+				writes.push(next);
+				store.setHeroHp(guid, next);
+			}));
+			if (gesture === 'drag') slider.drag(Infinity);
+			else slider.key('End');
+			assert.deepEqual(writes, [expected]);
+			assert.equal(store.getHeroRawData(guid).actor.current_hp, expected);
+			assert.equal(store.hasDirtyFiles(), true);
+			assert.ok('persist.roster.json' in store.getDirtyData());
+		});
+
+		test(`${guid}: unchanged HP at the ${gesture} endpoint preserves its saved fraction`, () => {
+			const hero = store.getHeroes().find((hero) => hero.guid === guid);
+			const writes = [];
+			const slider = bitsSlider(sliderControl(hero.currentHp, {
+				min: 1, max: hpSliderMax(hero.maxHp, hero.currentHp), step: 1
+			}, (next) => {
+				writes.push(next);
+				store.setHeroHp(guid, next);
+			}));
+			if (gesture === 'drag') slider.drag(Infinity);
+			else slider.key('End');
+			assert.deepEqual(writes, []);
+			assert.equal(store.getHeroRawData(guid).actor.current_hp, hero.currentHp);
+			assert.equal(store.hasDirtyFiles(), false);
+		});
+	}
+}
+
+test('outlying commits stay on the grid inside fractional lower and half-step bounds', () => {
 	for (const [value, range, direction, expected] of [
-		[67, { min: 1, max: 67.0999984741211, step: 1 }, 'next', 67.0999984741211],
-		[3.4, { min: 2.4, max: 6.2, step: 1 }, 'prev', 2.4]
+		[4, { min: 2.4, max: 6.2, step: 1 }, 'prev', 3],
+		[75, { min: 0, max: 75.6, step: 0.5 }, 'End', 75.5],
+		[2, { min: 1.2, max: 5, step: 0.5 }, 'prev', 1.5]
 	]) {
 		const writes = [];
-		bitsSlider(sliderControl(value, range, (next) => writes.push(next))).key(direction);
+		const slider = bitsSlider(sliderControl(value, range, (next) => writes.push(next)));
+		if (direction === 'prev') slider.drag(-Infinity);
+		else slider.key(direction);
 		assert.deepEqual(writes, [expected]);
 		assert.ok(writes.every((next) => next >= range.min && next <= range.max));
 	}

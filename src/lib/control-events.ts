@@ -58,6 +58,11 @@ export function sliderValueLabel(value: number, range: SliderRange): string {
 /** Preserve saved fractions when a click or drag finishes on the starting step. */
 export function sliderControl(value: number, range: SliderRange, commit: (value: number) => void) {
 	const snapped = snappedSliderValue(value, alignedSliderRange(range));
+	const factor = stepFactor(range.step);
+	const scaledStep = Math.round(range.step * factor);
+	const minStep = Math.ceil(range.min * factor / scaledStep) * scaledStep / factor;
+	const maxStep = Math.floor(range.max * factor / scaledStep) * scaledStep / factor;
+	const boundedStep = (next: number) => Math.min(maxStep, Math.max(minStep, next));
 	let shown = snapped;
 	let pointerStart: number | undefined;
 	return {
@@ -73,8 +78,11 @@ export function sliderControl(value: number, range: SliderRange, commit: (value:
 		onValueCommit: (next: number) => {
 			const start = pointerStart;
 			pointerStart = undefined;
-			if (!Number.isFinite(next) || next === snapped || next === start) return;
-			commitChangedValue(value, Math.min(range.max, Math.max(range.min, next)), commit);
+			if (!Number.isFinite(next) || minStep > maxStep) return;
+			const adjusted = boundedStep(next);
+			// Compare on the same valid grid even when the shown start lies outside it.
+			if (adjusted === boundedStep(snapped) || (start !== undefined && adjusted === boundedStep(start))) return;
+			commitChangedValue(value, adjusted, commit);
 		}
 	};
 }
