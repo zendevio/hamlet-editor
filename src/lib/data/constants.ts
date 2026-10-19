@@ -13,7 +13,7 @@ export type TreatmentBuildingName = (typeof TREATMENT_BUILDINGS)[number];
 export const BUILDING_ACTIVITIES: Record<TreatmentBuildingName, string[]> = {
 	abbey: ['meditation', 'prayer', 'flagellation'],
 	tavern: ['bar', 'gambling', 'brothel'],
-	sanitarium: ['disease_treatment', 'quirk_treatment']
+	sanitarium: ['disease_treatment', 'treatment']
 };
 
 export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
@@ -23,8 +23,7 @@ export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
 	blacksmith: 'Blacksmith',
 	guild: 'Guild',
 	stage_coach: 'Stage Coach',
-	survivalist: 'Survivalist',
-	barracks: 'Barracks',
+	camping_trainer: 'Survivalist',
 	nomad_wagon: 'Nomad Wagon'
 };
 
@@ -36,7 +35,7 @@ export const ACTIVITY_DISPLAY_NAMES: Record<string, string> = {
 	gambling: 'Gambling',
 	brothel: 'Brothel',
 	disease_treatment: 'Disease Treatment',
-	quirk_treatment: 'Quirk Treatment'
+	treatment: 'Quirk Treatment'
 };
 
 /** Known district IDs (Color of Madness DLC). */
@@ -74,8 +73,7 @@ export const BUILDING_UPGRADE_PREFIXES = [
 	'blacksmith',
 	'guild',
 	'stage_coach',
-	'survivalist',
-	'barracks',
+	'camping_trainer',
 	'nomad_wagon'
 ] as const;
 

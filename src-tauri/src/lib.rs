@@ -1,16 +1,24 @@
 mod commands;
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::Manager;
 
 // ── Managed state ──
 
-/// Shared name table used by save decode commands to un-hash DSON field names.
-pub struct NameTableState(pub Mutex<Vec<String>>);
+/// Upgrade reference names and the provenance of the loaded profile.
+#[derive(Default)]
+pub struct NameTable {
+    pub names: Vec<String>,
+    pub version: u64,
+    pub loaded_profile: Option<PathBuf>,
+}
+
+pub struct NameTableState(pub Mutex<NameTable>);
 
 impl Default for NameTableState {
     fn default() -> Self {
-        Self(Mutex::new(Vec::new()))
+        Self(Mutex::new(NameTable::default()))
     }
 }
 

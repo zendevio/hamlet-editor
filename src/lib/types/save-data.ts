@@ -192,12 +192,27 @@ export interface UpgradesData {
 }
 
 export interface TownBuildingSlot {
-	hero_guid: number;
-	activity_type: string;
+	hero: number;
+	visitsRemaining: number;
+	resident_occupied: number;
+	is_side_effect_result: boolean;
+	[key: string]: unknown;
+}
+
+export interface TownQuirkTreatment {
+	quirk_treatment: string;
+	quirk_treatment_action: number;
+	[key: string]: unknown;
+}
+
+export interface TownActivity {
+	quirk_treatment?: Record<string, Record<string, TownQuirkTreatment>>;
+	[key: string]: unknown;
 }
 
 export interface TownBuilding {
-	slots: Record<string, TownBuildingSlot>;
+	activities?: Record<string, TownActivity>;
+	[key: string]: unknown;
 }
 
 export interface TownDistrict {
@@ -252,6 +267,7 @@ export interface TreatmentHero {
 	classDisplayName: string;
 	buildingName: string;
 	activityType: string;
+	slotIndex: string;
 }
 
 export interface BuildingUpgradeGroup {

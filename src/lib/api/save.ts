@@ -9,22 +9,28 @@ import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Save all dirty file data for the active profile.
- * The backend handles auto-backup (if enabled), binary encoding,
- * round-trip validation, and atomic file writes.
+ * The backend checks load provenance and performs atomic writes per file.
+ * The caller handles backups and post-save validation.
  */
 export async function saveProfile(
 	profilePath: string,
-	data: Record<string, unknown>
+	data: Record<string, unknown>,
+	nameTableVersion: number
 ): Promise<void> {
-	await invoke<void>('save_profile', { profilePath, data });
+	await invoke<void>('save_profile', { profilePath, data, nameTableVersion });
 }
 
 /**
  * Load all save data from disk for the active profile.
- * Returns the full parsed profile data (filename → decoded JSON).
+ * Returns parsed file data and the name-table version used for loading.
  */
-export async function loadProfile(profilePath: string): Promise<Record<string, unknown>> {
-	return await invoke<Record<string, unknown>>('load_profile', { profilePath });
+export interface LoadedProfile {
+	data: Record<string, unknown>;
+	name_table_version: number;
+}
+
+export async function loadProfile(profilePath: string): Promise<LoadedProfile> {
+	return await invoke<LoadedProfile>('load_profile', { profilePath });
 }
 
 // TODO: decodeSaveFile(path: string): Promise<unknown>

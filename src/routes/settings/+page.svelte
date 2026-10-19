@@ -35,7 +35,8 @@
 		setProfileId,
 		setAutoBackup
 	} from '#lib/stores/settings.svelte.js';
-	import { loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
+	import { withCurrentProfile } from '#lib/profiles.js';
+	import { getSaveData, loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
 		detectGameInstallations,
 		detectSaveLocations,
@@ -72,10 +73,17 @@
 	// ── State ──
 
 	const settings = getSettings();
+	const saveData = getSaveData();
 
 	let appVersion = $state('dev');
 
 	onMount(async () => {
+		detectingSaves = true;
+		try {
+			saveLocations = await detectSaveLocations();
+		} finally {
+			detectingSaves = false;
+		}
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
 			appVersion = 'v' + await getVersion();
@@ -111,8 +119,11 @@
 
 	// ── Derived ──
 
+	let availableSaveLocations = $derived(
+		withCurrentProfile(saveLocations, settings.savePath, settings.profileId, saveData.gameInRaid)
+	);
 	let profileOptions = $derived.by(() => {
-		return saveLocations.map((loc) => ({
+		return availableSaveLocations.map((loc) => ({
 			id: loc.profile_id,
 			label: loc.profile_id,
 			hasRaid: loc.has_active_raid,
@@ -131,6 +142,7 @@
 			gameInstalls = await detectGameInstallations();
 			if (gameInstalls.length > 0) {
 				setGamePath(gameInstalls[0].path);
+				if (settings.savePath) await loadProfileFromBackend(settings.savePath);
 				gamePathValid = true;
 				toast.success('Game installation detected', {
 					description: gameInstalls[0].path
@@ -155,8 +167,8 @@
 		try {
 			saveLocations = await detectSaveLocations();
 			if (saveLocations.length > 0) {
-				setSavePath(saveLocations[0].path);
-				setProfileId(saveLocations[0].profile_id);
+				const current = saveLocations.find((loc) => loc.path === settings.savePath) ?? saveLocations[0];
+				await handleProfileChange(current.profile_id);
 				savePathValid = true;
 				toast.success('Save files detected', {
 					description: `Found ${saveLocations.length} profile(s).`
@@ -181,11 +193,11 @@
 			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
 			if (selected && typeof selected === 'string') {
 				setGamePath(selected);
+				if (settings.savePath) await loadProfileFromBackend(settings.savePath);
 				gamePathValid = null;
 			}
-		} catch {
-			// Not in Tauri environment (dev mode in browser), show fallback
-			toast.info('Browse not available in dev mode');
+		} catch (err) {
+			toast.error('Could not load selected game data', { description: String(err) });
 		}
 	}
 
@@ -195,17 +207,18 @@
 			const selected = await open({ directory: true, title: 'Select save file folder' });
 			if (selected && typeof selected === 'string') {
 				setSavePath(selected);
+				setProfileId(selected.split(/[\\/]/).filter(Boolean).at(-1) ?? '');
+				await loadProfileFromBackend(selected);
 				savePathValid = null;
 			}
-		} catch {
-			// Not in Tauri environment (dev mode in browser), show fallback
-			toast.info('Browse not available in dev mode');
+		} catch (err) {
+			toast.error('Could not load selected profile', { description: String(err) });
 		}
 	}
 
 	async function handleProfileChange(value: string) {
 		setProfileId(value);
-		const loc = saveLocations.find((l) => l.profile_id === value);
+		const loc = availableSaveLocations.find((l) => l.profile_id === value);
 		if (loc) {
 			setSavePath(loc.path);
 			// Reload profile data from disk whenever the active profile changes

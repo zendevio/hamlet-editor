@@ -6,7 +6,9 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
+import { ensureNameTable } from '#lib/api/names.js';
 import { loadProfile } from '#lib/api/save.js';
+import { readTreatmentSlots, clearTreatmentSlot } from '#lib/treatment.js';
 import { stripDsonPrefix } from '#lib/utils.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
 import { localize, getMaxHp as getGameDataMaxHp } from '#lib/stores/game-data.svelte.js';
@@ -105,6 +107,11 @@ let campaignLog = $state<Record<string, unknown> | null>(null);
 let progression = $state<Record<string, unknown> | null>(null);
 let gameInRaid = $state(false);
 let isLoaded = $state(false);
+let nameTableVersion = $state(0);
+let isLoading = $state(false);
+let loadedProfilePath = $state('');
+let loadedGamePath = $state('');
+let profileLoadSequence = 0;
 // Svelte 5 requires immutable replacement to trigger reactivity on Sets.
 let dirtyFiles = $state<Set<string>>(new Set());
 // Files to be deleted on next save (e.g. raid file after abandonRaid).
@@ -289,6 +296,18 @@ export function getSaveData() {
 		},
 		get dirtyFiles() {
 			return dirtyFiles;
+		},
+		get isLoading() {
+			return isLoading;
+		},
+		get profilePath() {
+			return loadedProfilePath;
+		},
+		get gamePath() {
+			return loadedGamePath;
+		},
+		get nameTableVersion() {
+			return nameTableVersion;
 		},
 		get isLoaded() {
 			return isLoaded;
@@ -583,36 +602,47 @@ export function dismissHero(guid: string) {
 
 // ── Town & Upgrade Helpers ──
 
-/** Get all heroes currently in treatment for a specific building. */
+/** Read actual activity and slot positions from town data. */
+export function getTreatmentSlots(buildingName?: TreatmentBuildingName) {
+	return readTreatmentSlots(town, buildingName);
+}
+
+/** Get all heroes occupying treatment slots, even if roster status is inconsistent. */
 export function getHeroesInBuilding(buildingName: TreatmentBuildingName): TreatmentHero[] {
-	if (!roster) return [];
 	const result: TreatmentHero[] = [];
-	for (const [guid, entry] of Object.entries(roster.base_root.heroes)) {
-		const root = entry.hero_file_data.raw_data.base_root;
-		if (root['roster.status'] === 2 && root['roster.building_name'] === buildingName) {
-			result.push({
-				guid,
-				name: root.actor.name,
-				heroClass: root.heroClass,
-				classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? localize('hero_class_name_' + root.heroClass),
-				buildingName: root['roster.building_name'],
-				activityType: '' // Activity type is stored in town data slots
-			});
-		}
+	for (const { slot, activityType, slotIndex } of getTreatmentSlots(buildingName)) {
+		if (slot.hero === 0) continue;
+		const guid = String(slot.hero);
+		const root = getHeroRawData(guid);
+		if (!root) continue;
+		result.push({
+			guid,
+			name: root.actor.name,
+			heroClass: root.heroClass,
+			classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? localize('hero_class_name_' + root.heroClass),
+			buildingName,
+			activityType,
+			slotIndex
+		});
 	}
 	return result;
 }
 
-/** Release a hero from treatment: clear building status in roster. */
+/** Cancel treatment in both files, including pending sanitarium actions. */
 export function releaseHeroFromTreatment(guid: string) {
+	if (!town) return;
+	for (const treatment of getTreatmentSlots()) {
+		if (String(treatment.slot.hero) === guid && treatment.slot.hero !== 0) {
+			clearTreatmentSlot(treatment);
+			markDirty('persist.town.json');
+		}
+	}
 	const raw = getHeroRawData(guid);
 	if (!raw) return;
-	raw['roster.status'] = 0;
+	if (raw['roster.status'] === 2) raw['roster.status'] = 0;
 	raw['roster.building_name'] = '';
-	raw['roster.before_on_start_town_visit_status'] = 0;
+	if (raw['roster.status'] === 0) raw['roster.before_on_start_town_visit_status'] = 0;
 	markDirty('persist.roster.json');
-	// Also mark town dirty since the slot reference should be removed
-	markDirty('persist.town.json');
 }
 
 /** Get all building upgrades grouped by building name. */
@@ -810,47 +840,60 @@ export function setGameInRaid(value: boolean) {
 /**
  * Load a full profile from the Rust backend.
  * Calls the `load_profile` command and distributes data to each sub-store.
- * The backend returns an object mapping filename -> decoded JSON object.
+ * The backend returns decoded file data and the name-table version used.
  */
 export async function loadProfileFromBackend(profilePath: string): Promise<void> {
-	// Clear any stale data from a previously loaded profile before populating
-	// the store with the new one.
-	resetSaveData();
+	const sequence = ++profileLoadSequence;
+	const gamePath = getSettings().gamePath;
+	isLoading = true;
+	try {
+		// Clear any stale data from a previously loaded profile before populating
+		// the store with the new one.
+		resetSaveData();
 
-	const data = await loadProfile(profilePath);
+		await ensureNameTable(gamePath);
+		if (sequence !== profileLoadSequence) return;
+		const loaded = await loadProfile(profilePath);
+		if (sequence !== profileLoadSequence) return;
+		const data = loaded.data;
+		nameTableVersion = loaded.name_table_version;
 
-	if (data['persist.roster.json']) {
-		loadRoster(data['persist.roster.json'] as RosterData);
-	}
-	if (data['persist.estate.json']) {
-		loadEstate(data['persist.estate.json'] as EstateData);
-	}
-	if (data['persist.town.json']) {
-		loadTown(data['persist.town.json'] as TownData);
-	}
-	if (data['persist.upgrades.json']) {
-		loadUpgrades(data['persist.upgrades.json'] as UpgradesData);
-	}
-	if (data['persist.raid.json']) {
-		loadRaid(data['persist.raid.json'] as RaidData);
-	}
-	// persist.game.json carries estate name, inraid flag, game mode, etc.
-	if (data['persist.game.json']) {
-		const gameData = data['persist.game.json'] as GameData;
-		loadGame(gameData);
-		setGameInRaid(gameData?.base_root?.inraid ?? false);
-	}
-	if (data['persist.campaign_log.json']) {
-		loadCampaignLog(data['persist.campaign_log.json'] as Record<string, unknown>);
-	}
-	if (data['persist.progression.json']) {
-		loadProgression(data['persist.progression.json'] as Record<string, unknown>);
-	}
-	// persist.novelty_tracker.json is intentionally not loaded into the store (v0.1.0).
-	// The backend reads and re-emits it verbatim during save_profile so the file is
-	// preserved on disk without the frontend ever inspecting its contents.
+		if (data['persist.roster.json']) {
+			loadRoster(data['persist.roster.json'] as RosterData);
+		}
+		if (data['persist.estate.json']) {
+			loadEstate(data['persist.estate.json'] as EstateData);
+		}
+		if (data['persist.town.json']) {
+			loadTown(data['persist.town.json'] as TownData);
+		}
+		if (data['persist.upgrades.json']) {
+			loadUpgrades(data['persist.upgrades.json'] as UpgradesData);
+		}
+		if (data['persist.raid.json']) {
+			loadRaid(data['persist.raid.json'] as RaidData);
+		}
+		// persist.game.json carries estate name, inraid flag, game mode, etc.
+		if (data['persist.game.json']) {
+			const gameData = data['persist.game.json'] as GameData;
+			loadGame(gameData);
+			setGameInRaid(gameData?.base_root?.inraid ?? false);
+		}
+		if (data['persist.campaign_log.json']) {
+			loadCampaignLog(data['persist.campaign_log.json'] as Record<string, unknown>);
+		}
+		if (data['persist.progression.json']) {
+			loadProgression(data['persist.progression.json'] as Record<string, unknown>);
+		}
+		// persist.novelty_tracker.json is intentionally not loaded into the store (v0.1.0).
+		// Unmodified files are left on disk without being re-encoded.
 
-	isLoaded = true;
+		loadedProfilePath = profilePath;
+		loadedGamePath = gamePath;
+		isLoaded = true;
+	} finally {
+		if (sequence === profileLoadSequence) isLoading = false;
+	}
 }
 
 /** Revert a single hero to on-disk state. */
@@ -951,6 +994,9 @@ export function resetSaveData() {
 	progression = null;
 	gameInRaid = false;
 	isLoaded = false;
+	nameTableVersion = 0;
+	loadedProfilePath = '';
+	loadedGamePath = '';
 	dirtyFiles = new Set();
 	deletedFiles = new Set();
 	rosterSnapshot = null;

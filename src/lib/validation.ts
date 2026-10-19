@@ -10,6 +10,8 @@ import {
 	getSaveData,
 	getHeroes,
 	getHeroRawData,
+	getTreatmentSlots,
+	releaseHeroFromTreatment,
 	maxGearRank,
 	xpToLevel,
 	type HeroSummary
@@ -105,32 +107,46 @@ function checkGearRanks(): ValidationIssue[] {
 	return issues;
 }
 
-/**
- * Check that heroes in treatment (status=2) have a building_name set.
- */
+/** Town slots are authoritative; roster.building_name may be blank. */
 function checkTreatmentConsistency(): ValidationIssue[] {
 	const issues: ValidationIssue[] = [];
 	const heroes = getHeroes();
-
+	if (!getSaveData().town) {
+		if (heroes.some((hero) => hero.status === 2)) {
+			issues.push({
+				severity: 'error',
+				category: 'Treatment',
+				message: 'Town data is missing. Reload the profile before changing treatment.'
+			});
+		}
+		return issues;
+	}
+	const slots = getTreatmentSlots().filter(({ slot }) => slot.hero !== 0);
 	for (const hero of heroes) {
-		if (hero.status === 2 && !hero.buildingName) {
-			const guid = hero.guid;
+		const assigned = slots.filter(({ slot }) => String(slot.hero) === hero.guid);
+		if (
+			(hero.status === 2 && assigned.length === 0) ||
+			(assigned.length > 0 && hero.status !== 2) || assigned.length > 1
+		) {
 			issues.push({
 				severity: 'warning',
 				category: 'Treatment',
-				message: `${hero.name} (${hero.classDisplayName}): status is "In Treatment" but no building assigned.`,
-				fix: () => {
-					// Fix by setting status back to Available
-					const raw = getHeroRawData(guid);
-					if (raw) {
-						raw['roster.status'] = 0;
-						raw['roster.building_name'] = '';
-					}
-				}
+				message: `${hero.name} (${hero.classDisplayName}): roster treatment status and town slot assignments disagree. Release treatment to clear both.`,
+				fix: () => releaseHeroFromTreatment(hero.guid)
 			});
 		}
 	}
-
+	const knownHeroes = new Set(heroes.map((hero) => hero.guid));
+	for (const { slot, buildingName, activityType, slotIndex } of slots) {
+		const guid = String(slot.hero);
+		if (knownHeroes.has(guid)) continue;
+		issues.push({
+			severity: 'warning',
+			category: 'Treatment',
+			message: `${buildingName} ${activityType} slot ${Number(slotIndex) + 1} references missing hero ${guid}.`,
+			fix: () => releaseHeroFromTreatment(guid)
+		});
+	}
 	return issues;
 }
 
@@ -223,7 +239,7 @@ export async function validateRoundTrip(
 ): Promise<boolean> {
 	try {
 		const reloaded = await loadProfile(profilePath);
-		const reloadedFile = reloaded[filename];
+		const reloadedFile = reloaded.data[filename];
 
 		if (typeof reloadedFile !== 'object' || reloadedFile === null) {
 			console.warn(`[validateRoundTrip] ${filename}: re-decoded value is not an object`);

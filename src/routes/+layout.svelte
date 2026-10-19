@@ -73,7 +73,7 @@
 	import { isGameRunning, detectSaveLocations, type SaveLocation } from '#lib/api/detect.js';
 	import { saveProfile } from '#lib/api/save.js';
 	import { createBackup } from '#lib/api/backup.js';
-	import { generateNameTable, loadLocalization, setNameTableOnBackend } from '#lib/api/names.js';
+	import { ensureNameTable, loadLocalization } from '#lib/api/names.js';
 	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills } from '#lib/api/gamedata.js';
 	import { scanModDirectories } from '#lib/api/mods.js';
 	import { runPreSaveValidation, validateRoundTrip, type ValidationIssue } from '#lib/validation.js';
@@ -92,6 +92,7 @@
 	let gameDetectionUncertain = $state(false);
 	let isSaving = $state(false);
 	let isProfileLoading = $state(false);
+	let attemptedProfile = $state('');
 	let modCount = $state<number | null>(null);
 
 	// ── Profile Selector ──
@@ -129,8 +130,7 @@
 
 	async function initGameData(gamePath: string) {
 		// 1. Generate name table from game files and push to Rust state.
-		const names = await generateNameTable(gamePath);
-		await setNameTableOnBackend(names);
+		await ensureNameTable(gamePath);
 
 		// 2. Load localization strings and store in the frontend game-data store.
 		const locData = await loadLocalization(gamePath);
@@ -157,10 +157,16 @@
 	}
 
 	// When setup completes (or was already complete on startup), load the profile,
-	// then initialise the name table, localization, and mod scan.
+	// with the shared name-table barrier, then load localization and game libraries.
 	// Also detect save locations to populate the sidebar profile selector.
 	$effect(() => {
-		if (settings.isSetupComplete && !saveData.isLoaded && !isProfileLoading) {
+		const profileKey = `${settings.savePath}\0${settings.gamePath}`;
+		if (!settings.isSetupComplete) attemptedProfile = '';
+		if (
+			settings.isSetupComplete && !saveData.isLoaded && !saveData.isLoading &&
+			!isProfileLoading && attemptedProfile !== profileKey
+		) {
+			attemptedProfile = profileKey;
 			isProfileLoading = true;
 			// Detect all available save locations so the sidebar selector is populated.
 			detectSaveLocations()
@@ -220,7 +226,11 @@
 
 	let isDirty = $derived(hasDirtyFiles());
 	let isGameBlocking = $derived(gameRunning || gameDetectionUncertain);
-	let saveDisabled = $derived(!saveData.isLoaded || isGameBlocking || !isDirty || isSaving);
+	let saveDisabled = $derived(
+		!saveData.isLoaded || saveData.isLoading ||
+		saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath ||
+		isGameBlocking || !isDirty || isSaving
+	);
 
 	// C1: Steam Cloud warning (handles both Unix and Windows path separators)
 	let isSteamCloud = $derived(
@@ -244,7 +254,11 @@
 	let lastBackupTime = $state<Date | null>(null);
 
 	let saveTooltip = $derived.by(() => {
+		if (saveData.isLoading) return 'Loading profile...';
 		if (!saveData.isLoaded) return 'No profile loaded';
+		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) {
+			return 'Paths changed. Reload the profile before saving.';
+		}
 		if (gameRunning) return 'DD Running. Close the game before saving.';
 		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
 		if (isSaving) return 'Saving...';
@@ -372,6 +386,7 @@
 	}
 
 	async function executeSave() {
+		if (saveDisabled) return;
 		isSaving = true;
 		try {
 			// C6: Auto-backup before saving if enabled
@@ -386,7 +401,7 @@
 				}
 			}
 			const dirtyData = getDirtyData();
-			await saveProfile(settings.savePath, dirtyData);
+			await saveProfile(settings.savePath, dirtyData, saveData.nameTableVersion);
 
 			// Round-trip validation: re-read the roster file and check key count.
 			// Non-blocking — a mismatch only surfaces a warning toast.
@@ -449,6 +464,10 @@
 	// ── Close Flow ──
 
 	async function handleSaveAndClose() {
+		if (saveDisabled) {
+			toast.error(saveTooltip);
+			return;
+		}
 		showCloseDialog = false;
 		// Run validation on close — log warnings but don't block the close
 		const closeIssues = runPreSaveValidation();
@@ -461,7 +480,7 @@
 		isSaving = true;
 		try {
 			const dirtyData = getDirtyData();
-			await saveProfile(settings.savePath, dirtyData);
+			await saveProfile(settings.savePath, dirtyData, saveData.nameTableVersion);
 			clearAllDirty();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);

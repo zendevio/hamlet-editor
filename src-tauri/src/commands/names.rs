@@ -34,6 +34,11 @@ const HARDCODED_EVENT_NAMES: &[&str] = &[
 #[tauri::command]
 pub fn generate_name_table(game_path: String) -> Result<Vec<String>, String> {
     let data_root = resolve_data_root(Path::new(&game_path));
+    if !is_data_root(&data_root) {
+        return Err(format!(
+            "Game data not found at {game_path}. Select a valid game installation."
+        ));
+    }
     let mut names: HashSet<String> = HashSet::new();
 
     // Always add hardcoded event names.
@@ -85,14 +90,16 @@ pub fn load_localization(game_path: String) -> Result<HashMap<String, String>, S
 }
 
 /// Store the name table in Tauri managed state so that subsequent
-/// `load_profile` calls can resolve hashed DSON field names.
+/// `load_profile` calls can resolve upgrade tree hashes.
 #[tauri::command]
-pub fn set_name_table(
-    names: Vec<String>,
-    state: State<'_, NameTableState>,
-) -> Result<(), String> {
+pub fn set_name_table(names: Vec<String>, state: State<'_, NameTableState>) -> Result<(), String> {
     let mut guard = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
-    *guard = names;
+    guard.version += 1;
+    guard.loaded_profile = None;
+    guard.names = names;
+    if guard.names.is_empty() {
+        return Err("Name table is empty. Load game data before loading a profile.".to_string());
+    }
     Ok(())
 }
 
@@ -224,19 +231,24 @@ fn resolve_data_root(install_dir: &Path) -> PathBuf {
 }
 
 fn is_data_root(dir: &Path) -> bool {
-    dir.join("heroes").is_dir() || dir.join("campaign").is_dir() || dir.join("localization").is_dir()
+    dir.join("heroes").is_dir()
+        || dir.join("campaign").is_dir()
+        || dir.join("localization").is_dir()
 }
 
 // ---------------------------------------------------------------------------
 // File-specific extractors
 // ---------------------------------------------------------------------------
 
-/// `*.upgrades.json` → parse `trees[].id` and split on `.` to get parts.
+/// `*.upgrades.json` → full `trees[].id` hashes and their component names.
 fn extract_upgrades_json(path: &Path, names: &mut HashSet<String>) {
     let v = read_json(path);
     if let Some(trees) = v.get("trees").and_then(|t| t.as_array()) {
         for tree in trees {
             if let Some(id) = tree.get("id").and_then(|i| i.as_str()) {
+                if !id.is_empty() {
+                    names.insert(id.to_string());
+                }
                 for part in id.split('.') {
                     if !part.is_empty() {
                         names.insert(part.to_string());
@@ -481,8 +493,7 @@ fn parse_string_table(path: &Path, map: &mut HashMap<String, String>, language: 
 
     let re_lang_open = Regex::new(r#"<language id="([^"]+)">"#).unwrap();
     let re_lang_close = Regex::new(r"</language>").unwrap();
-    let re_entry =
-        Regex::new(r#"<entry id="([^"]+)"><!\[CDATA\[([^\]]*)\]\]></entry>"#).unwrap();
+    let re_entry = Regex::new(r#"<entry id="([^"]+)"><!\[CDATA\[([^\]]*)\]\]></entry>"#).unwrap();
 
     // Walk through the file tracking which language block we are inside.
     // We collect byte positions of language open/close tags, then only extract
@@ -502,10 +513,7 @@ fn parse_string_table(path: &Path, map: &mut HashMap<String, String>, language: 
     }
 
     // Match close tags in order and pair with open tags.
-    let closes: Vec<usize> = re_lang_close
-        .find_iter(&content)
-        .map(|m| m.end())
-        .collect();
+    let closes: Vec<usize> = re_lang_close.find_iter(&content).map(|m| m.end()).collect();
 
     for (i, close_end) in closes.iter().enumerate() {
         if let Some((start, is_target)) = open_stack.get(i) {
@@ -539,5 +547,45 @@ fn parse_string_table(path: &Path, map: &mut HashMap<String, String>, language: 
             let text = cap[2].to_string();
             map.insert(id, text);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extracts_full_upgrade_tree_ids_and_parts() {
+        let dir = std::env::temp_dir().join(format!("hamlet-names-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("abbey.upgrades.json");
+        std::fs::write(
+            &path,
+            r#"{"trees":[{"id":"abbey.meditation"},{"id":"camping_trainer.cost"},{"id":""},{}]}"#,
+        )
+        .unwrap();
+        let mut names = HashSet::new();
+        collect_from_file(&path, &mut names);
+        assert_eq!(
+            names,
+            HashSet::from(
+                [
+                    "abbey",
+                    "meditation",
+                    "abbey.meditation",
+                    "camping_trainer",
+                    "cost",
+                    "camping_trainer.cost"
+                ]
+                .map(str::to_string)
+            )
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn invalid_game_directory_does_not_produce_a_seed_only_table() {
+        let error = generate_name_table("/nonexistent/hamlet-game-data".to_string()).unwrap_err();
+        assert!(error.contains("Game data not found"));
     }
 }

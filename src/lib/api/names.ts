@@ -4,16 +4,9 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
-/**
- * Generate a list of hero name strings from the game's name table files.
- * Returns an empty array if the command is not yet implemented or fails.
- */
+/** Generate all known DSON identifiers from the game installation. */
 export async function generateNameTable(gamePath: string): Promise<string[]> {
-	try {
-		return await invoke<string[]>('generate_name_table', { gamePath });
-	} catch {
-		return [];
-	}
+	return await invoke<string[]>('generate_name_table', { gamePath });
 }
 
 /**
@@ -30,12 +23,32 @@ export async function loadLocalization(gamePath: string): Promise<Record<string,
 
 /**
  * Push the name table into Rust managed state so that subsequent
- * `load_profile` calls can resolve hashed DSON field names.
+ * `load_profile` calls can resolve upgrade tree hashes.
  */
 export async function setNameTableOnBackend(names: string[]): Promise<void> {
+	await invoke('set_name_table', { names });
+}
+
+let readyGamePath = '';
+let pendingNames: Promise<void> | null = null;
+
+/** Every profile load, including switches and restores, waits for this barrier. */
+export async function ensureNameTable(gamePath: string): Promise<void> {
+	if (!gamePath) throw new Error('Select a game installation before loading a profile.');
+	if (pendingNames) {
+		await pendingNames;
+		return ensureNameTable(gamePath);
+	}
+	if (readyGamePath === gamePath) return;
+	pendingNames = (async () => {
+		const names = await generateNameTable(gamePath);
+		if (names.length === 0) throw new Error('Name table is empty. Check the game installation.');
+		await setNameTableOnBackend(names);
+		readyGamePath = gamePath;
+	})();
 	try {
-		await invoke('set_name_table', { names });
-	} catch {
-		// Non-fatal — worst case hashed names remain unresolved
+		await pendingNames;
+	} finally {
+		pendingNames = null;
 	}
 }

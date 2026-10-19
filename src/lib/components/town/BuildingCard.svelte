@@ -24,6 +24,7 @@
 		type TreatmentBuildingName,
 		type TreatmentHero,
 		type BuildingUpgradeGroup,
+		getTreatmentSlots,
 		releaseHeroFromTreatment
 	} from '#lib/stores/save-data.svelte.js';
 	import UpgradeTree from './UpgradeTree.svelte';
@@ -63,11 +64,9 @@
 		return ACTIVITY_DISPLAY_NAMES[activity] ?? activity;
 	}
 
-	function getHeroForActivity(activity: string): TreatmentHero | undefined {
-		// Match heroes to activities based on order (simplified; real data uses town slots)
-		const idx = activities.indexOf(activity);
-		return idx >= 0 && idx < treatmentHeroes.length ? treatmentHeroes[idx] : undefined;
-	}
+	let treatmentSlots = $derived(
+		isTreatmentBuilding ? getTreatmentSlots(buildingName as TreatmentBuildingName) : []
+	);
 </script>
 
 <Card>
@@ -107,43 +106,45 @@
 						<h4 class="text-sm font-medium text-muted-foreground">Activity Slots</h4>
 						<div class="grid gap-2">
 							{#each activities as activity (activity)}
-								{@const hero = getHeroForActivity(activity)}
-								<div
-									class="flex items-center justify-between rounded border px-3 py-2"
-								>
-									<div class="flex items-center gap-3">
-										<Badge variant="outline" class="text-xs">
-											{getActivityDisplayName(activity)}
-										</Badge>
-										{#if hero}
-											<div class="flex items-center gap-2">
-												<UserCircleIcon
-													size={18}
-													class="text-muted-foreground"
-												/>
-												<span class="text-sm font-medium">{hero.name}</span>
-												<span class="text-xs text-muted-foreground">
-													{hero.classDisplayName}
+								{#each treatmentSlots.filter((slot) => slot.activityType === activity) as slot (slot.slotIndex)}
+									{@const hero = treatmentHeroes.find((hero) => hero.activityType === activity && hero.slotIndex === slot.slotIndex)}
+									<div
+										class="flex items-center justify-between rounded border px-3 py-2"
+									>
+										<div class="flex items-center gap-3">
+											<Badge variant="outline" class="text-xs">
+												{getActivityDisplayName(activity)} {Number(slot.slotIndex) + 1}
+											</Badge>
+											{#if hero}
+												<div class="flex items-center gap-2">
+													<UserCircleIcon
+														size={18}
+														class="text-muted-foreground"
+													/>
+													<span class="text-sm font-medium">{hero.name}</span>
+													<span class="text-xs text-muted-foreground">
+														{hero.classDisplayName}
+													</span>
+												</div>
+											{:else}
+												<span class="text-sm text-muted-foreground italic">
+													Empty
 												</span>
-											</div>
-										{:else}
-											<span class="text-sm text-muted-foreground italic">
-												Empty
-											</span>
+											{/if}
+										</div>
+										{#if hero}
+											<Button
+												variant="ghost"
+												size="sm"
+												class="h-7 gap-1 text-xs"
+												onclick={() => handleRelease(hero)}
+											>
+												<SignOutIcon size={14} />
+												Release
+											</Button>
 										{/if}
 									</div>
-									{#if hero}
-										<Button
-											variant="ghost"
-											size="sm"
-											class="h-7 gap-1 text-xs"
-											onclick={() => handleRelease(hero)}
-										>
-											<SignOutIcon size={14} />
-											Release
-										</Button>
-									{/if}
-								</div>
+								{/each}
 							{/each}
 						</div>
 					</div>
