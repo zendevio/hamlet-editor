@@ -1,8 +1,8 @@
 use crate::{NameTable, NameTableState};
 use ddsavelib::{name_hash, File, Unhasher};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Cursor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::State;
 
 /// Decode without name substitution so ordinary integers stay integers.
@@ -72,31 +72,40 @@ fn restore_upgrade_hashes(data: &mut serde_json::Value, names: &[String]) -> Res
     Ok(())
 }
 
-/// Encode a JSON value back into a binary DSON save file.
-///
-/// Converts the `serde_json::Value` via ddsavelib's JSON reader, encodes
-/// to binary, and performs an atomic write (write to temp file, then rename).
-pub(crate) fn encode_save_file(path: String, data: &serde_json::Value) -> Result<(), String> {
-    let file =
-        File::from_json_value(data).map_err(|e| format!("Failed to parse JSON input: {e}"))?;
-
-    let mut bin_buf = Vec::new();
-    file.write_to_bin(&mut bin_buf)
-        .map_err(|e| format!("Failed to encode DSON: {e}"))?;
-
-    let tmp_path = format!("{path}.tmp");
-    std::fs::write(&tmp_path, &bin_buf)
-        .map_err(|e| format!("Failed to write temp file {tmp_path}: {e}"))?;
-
-    std::fs::rename(&tmp_path, &path).map_err(|e| {
-        let _ = std::fs::remove_file(&tmp_path);
-        format!("Failed to rename {tmp_path} -> {path}: {e}")
-    })?;
-
-    Ok(())
+/// A decoded snapshot retains order and duplicate fields that JSON maps cannot.
+#[derive(Clone, Debug)]
+pub struct LoadedSave {
+    pub relative_path: PathBuf,
+    pub file: File,
 }
 
-/// Load using a ready name table and return its version with the profile.
+#[cfg(test)]
+pub(crate) fn encode_save_file(path: String, data: &serde_json::Value) -> Result<(), String> {
+    let file = File::from_json_value(data).map_err(|e| e.to_string())?;
+    let mut bytes = Vec::new();
+    file.write_to_bin(&mut bytes).map_err(|e| e.to_string())?;
+    let path = Path::new(&path);
+    super::transaction::apply_changes(
+        path.parent().unwrap(),
+        &BTreeMap::from([(PathBuf::from(path.file_name().unwrap()), bytes)]),
+        &BTreeSet::new(),
+    )
+}
+
+/// Resolve only relative game-provided raid paths inside the profile.
+pub(crate) fn raid_relative_path(game: &serde_json::Value) -> Result<PathBuf, String> {
+    let folder = game
+        .pointer("/base_root/raid_save")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    if folder.is_empty() {
+        return Ok(PathBuf::from("persist.raid.json"));
+    }
+    let folder = Path::new(folder.trim_end_matches('/'));
+    super::transaction::validate_relative(folder)?;
+    Ok(folder.join("persist.raid.json"))
+}
+
 #[tauri::command]
 pub fn load_profile(
     profile_path: String,
@@ -106,59 +115,99 @@ pub fn load_profile(
     load_profile_with_table(profile_path, &mut table)
 }
 
-fn load_profile_with_table(
+/// Load using a ready name table. Also used by the filesystem integration tests.
+pub fn load_profile_with_table(
     profile_path: String,
     table: &mut NameTable,
 ) -> Result<serde_json::Value, String> {
     table.loaded_profile = None;
+    table.loaded_files.clear();
     if table.names.is_empty() {
-        return Err(
-            "Name table is not loaded. Load game data before loading a profile.".to_string(),
-        );
+        return Err("Name table is not loaded. Load game data before loading a profile.".into());
     }
     let dir = Path::new(&profile_path);
     if !dir.is_dir() {
         return Err(format!("Not a directory: {profile_path}"));
     }
-
+    let mut result = serde_json::Map::new();
+    let mut snapshots = HashMap::new();
     let entries = std::fs::read_dir(dir)
         .map_err(|e| format!("Failed to read directory {profile_path}: {e}"))?;
-
-    let mut result = serde_json::Map::new();
-
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-
-        if !super::is_save_file(&name) {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !super::is_save_file(&name)
+            || name == "persist.raid.json"
+            || !entry.file_type().map_err(|e| e.to_string())?.is_file()
+        {
             continue;
         }
-
-        let file_path = entry.path();
-        let path_str = file_path.to_string_lossy().to_string();
-
-        let mut value =
-            decode_save_file(path_str).map_err(|e| format!("Failed to decode {name}: {e}"))?;
-
-        if name == "persist.upgrades.json" {
-            resolve_upgrade_ids(&mut value, &table.names)?;
-        }
-        result.insert(name.to_string(), value);
+        load_one(
+            dir,
+            &name,
+            PathBuf::from(&name),
+            &table.names,
+            &mut result,
+            &mut snapshots,
+        )?;
     }
-
+    let game = result.get("persist.game.json").cloned().unwrap_or_default();
+    let raid_path = raid_relative_path(&game)?;
+    let active = game
+        .pointer("/base_root/inraid")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    if (active || raid_path == Path::new("persist.raid.json")) && dir.join(&raid_path).is_file() {
+        load_one(
+            dir,
+            "persist.raid.json",
+            raid_path,
+            &table.names,
+            &mut result,
+            &mut snapshots,
+        )?;
+    }
     table.loaded_profile = Some(
         dir.canonicalize()
             .map_err(|e| format!("Invalid profile path: {e}"))?,
     );
+    table.loaded_files = snapshots;
     Ok(serde_json::json!({ "data": result, "name_table_version": table.version }))
 }
 
-/// Save all modified files back to a profile directory.
-///
-/// For each key in the `data` object, encodes the value as binary DSON
-/// and writes it to the corresponding file in the profile directory.
-/// Uses atomic writes (temp file + rename) for safety.
+fn load_one(
+    dir: &Path,
+    name: &str,
+    relative_path: PathBuf,
+    names: &[String],
+    result: &mut serde_json::Map<String, serde_json::Value>,
+    snapshots: &mut HashMap<String, LoadedSave>,
+) -> Result<(), String> {
+    let path = dir.join(&relative_path);
+    let bytes =
+        std::fs::read(&path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+    let file = match File::try_from_bin(bytes.as_slice()) {
+        Ok(file) => file,
+        Err(e) => {
+            log::warn!("Skipping undecodable save {}: {e}", path.display());
+            return Ok(());
+        }
+    };
+    let mut value = file.to_json_value(&Unhasher::empty());
+    if name == "persist.upgrades.json" {
+        resolve_upgrade_ids(&mut value, names)?;
+    }
+    result.insert(name.to_owned(), value);
+    snapshots.insert(
+        name.to_owned(),
+        LoadedSave {
+            relative_path,
+            file,
+        },
+    );
+    Ok(())
+}
+
 #[tauri::command]
 pub fn save_profile(
     profile_path: String,
@@ -166,20 +215,29 @@ pub fn save_profile(
     name_table_version: u64,
     state: State<'_, NameTableState>,
 ) -> Result<(), String> {
-    let table = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
-    save_profile_with_table(profile_path, data, name_table_version, &table)
+    let mut table = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
+    save_profile_with_detector(
+        profile_path,
+        data,
+        name_table_version,
+        &mut table,
+        super::detect::is_game_running,
+    )
 }
 
-fn save_profile_with_table(
+/// Detector injection lets tests exercise the same guard as the Tauri command.
+pub fn save_profile_with_detector(
     profile_path: String,
     mut data: serde_json::Value,
     name_table_version: u64,
-    table: &NameTable,
+    table: &mut NameTable,
+    detector: impl FnOnce() -> Result<bool, String>,
 ) -> Result<(), String> {
+    super::detect::ensure_game_stopped(detector)?;
     if table.names.is_empty() || table.version != name_table_version {
         return Err(
             "Name table is missing or changed. Reload game data and the profile before saving."
-                .to_string(),
+                .into(),
         );
     }
     let canonical = Path::new(&profile_path)
@@ -188,69 +246,86 @@ fn save_profile_with_table(
     if table.loaded_profile.as_ref() != Some(&canonical) {
         return Err(
             "Profile was not loaded with the current name table. Reload the profile before saving."
-                .to_string(),
+                .into(),
         );
     }
     if let Some(upgrades) = data.get_mut("persist.upgrades.json") {
-        restore_upgrade_hashes(upgrades, &table.names)?;
+        restore_upgrade_hashes(upgrades, &table.names)
+            .map_err(|e| format!("persist.upgrades.json: {e}"))?;
     }
-    let dir = Path::new(&profile_path);
-    if !dir.is_dir() {
-        return Err(format!("Not a directory: {profile_path}"));
-    }
-
     let obj = data
         .as_object()
-        .ok_or_else(|| "Expected a JSON object for profile data".to_string())?;
-
-    // Handle _deleted: delete listed files before encoding the rest
-    if let Some(deleted) = obj.get("_deleted") {
-        let names = deleted
-            .as_array()
-            .ok_or_else(|| "_deleted must be an array".to_string())?;
-        for name_val in names {
-            let filename = name_val
-                .as_str()
-                .ok_or_else(|| "_deleted entries must be strings".to_string())?;
-            if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
-                return Err(format!(
-                    "Invalid filename in _deleted (path traversal detected): {filename}"
-                ));
-            }
-            if !super::is_save_file(filename) {
-                return Err(format!("Invalid save filename in _deleted: {filename}"));
-            }
-            let file_path = dir.join(filename);
-            if file_path.exists() {
-                std::fs::remove_file(&file_path)
-                    .map_err(|e| format!("Failed to delete {filename}: {e}"))?;
-            }
+        .ok_or("Expected a JSON object for profile data")?;
+    let relative_for = |name: &str| -> Result<PathBuf, String> {
+        if !super::is_save_file(name)
+            || name.contains('/')
+            || name.contains('\\')
+            || name.contains("..")
+        {
+            return Err(format!("Invalid save filename: {name}"));
         }
-    }
-
-    for (filename, value) in obj {
-        // Skip the _deleted control key
-        if filename == "_deleted" {
-            continue;
+        if let Some(loaded) = table.loaded_files.get(name) {
+            return Ok(loaded.relative_path.clone());
         }
-
-        if filename.contains('/') || filename.contains('\\') || filename.contains("..") {
+        // An existing file omitted at load may be undecodable. Never overwrite it.
+        if canonical.join(name).exists() || name == "persist.raid.json" {
             return Err(format!(
-                "Invalid filename (path separators not allowed): {filename}"
+                "{name} was not decoded at load. Reload the profile before saving."
             ));
         }
-        if !super::is_save_file(filename) {
-            return Err(format!("Invalid save filename: {filename}"));
+        Ok(PathBuf::from(name))
+    };
+    let mut deletes = BTreeSet::new();
+    let mut deleted_names = Vec::new();
+    if let Some(deleted) = obj.get("_deleted") {
+        for value in deleted.as_array().ok_or("_deleted must be an array")? {
+            let name = value.as_str().ok_or("_deleted entries must be strings")?;
+            deletes.insert(relative_for(name)?);
+            deleted_names.push(name.to_owned());
         }
-
-        let file_path = dir.join(filename);
-        let path_str = file_path.to_string_lossy().to_string();
-
-        encode_save_file(path_str, value)
-            .map_err(|e| format!("Failed to encode {filename}: {e}"))?;
     }
-
+    let mut writes = BTreeMap::new();
+    let mut updated = HashMap::new();
+    // Validate and encode every file in memory before creating any temp files.
+    for (name, value) in obj {
+        if name == "_deleted" {
+            continue;
+        }
+        let relative_path = relative_for(name)?;
+        let file = if let Some(original) = table.loaded_files.get(name) {
+            original.file.merge_json_value(value)
+        } else {
+            File::from_json_value(value)
+        }
+        .map_err(|e| format!("Failed to encode {name}: {e}"))?;
+        let mut bytes = Vec::new();
+        file.write_to_bin(&mut bytes)
+            .map_err(|e| format!("Failed to encode {name}: {e}"))?;
+        writes.insert(relative_path.clone(), bytes);
+        updated.insert(
+            name.clone(),
+            LoadedSave {
+                relative_path,
+                file,
+            },
+        );
+    }
+    super::transaction::apply_changes(&canonical, &writes, &deletes)?;
+    for name in deleted_names {
+        table.loaded_files.remove(&name);
+    }
+    table.loaded_files.extend(updated);
     Ok(())
+}
+
+#[cfg(test)]
+fn save_profile_with_table(
+    profile_path: String,
+    data: serde_json::Value,
+    name_table_version: u64,
+    table: &mut NameTable,
+) -> Result<(), String> {
+    save_profile_with_detector(profile_path, data, name_table_version, table, || Ok(false))
 }
 
 #[cfg(test)]
@@ -307,7 +382,7 @@ mod tests {
         NameTable {
             names: vec!["abbey.meditation".into()],
             version: 1,
-            loaded_profile: None,
+            ..NameTable::default()
         }
     }
 
@@ -329,7 +404,7 @@ mod tests {
             profile.path(),
             json!({ "_deleted": ["persist.upgrades.json"] }),
             1,
-            &names
+            &mut names
         )
         .is_err());
         assert_eq!(std::fs::read(profile.upgrades()).unwrap(), original);
@@ -345,17 +420,19 @@ mod tests {
         load_profile_with_table(profile.path(), &mut names).unwrap();
         let deletion = json!({ "_deleted": ["persist.upgrades.json"] });
         assert!(
-            save_profile_with_table(profile.path(), deletion.clone(), 0, &names)
+            save_profile_with_table(profile.path(), deletion.clone(), 0, &mut names)
                 .unwrap_err()
                 .contains("missing or changed")
         );
-        assert!(save_profile_with_table(other.path(), deletion, 1, &names)
-            .unwrap_err()
-            .contains("Profile was not loaded"));
+        assert!(
+            save_profile_with_table(other.path(), deletion, 1, &mut names)
+                .unwrap_err()
+                .contains("Profile was not loaded")
+        );
         assert!(Path::new(&profile.upgrades()).exists());
         assert!(Path::new(&other.upgrades()).exists());
         names.version += 1;
-        assert!(save_profile_with_table(profile.path(), json!({}), 1, &names).is_err());
+        assert!(save_profile_with_table(profile.path(), json!({}), 1, &mut names).is_err());
     }
 
     #[test]
@@ -375,7 +452,7 @@ mod tests {
             name_hash("abbey.meditation")
         );
         upgrades["base_root"]["purchases"]["0"]["is_purchased"] = json!(false);
-        save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &names).unwrap();
+        save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names).unwrap();
         let clean = decode_save_file(profile.upgrades()).unwrap();
         assert_eq!(
             clean["base_root"]["purchases"]["0"]["tree_id"],
@@ -404,7 +481,8 @@ mod tests {
                 value;
             loaded["data"]["_deleted"] = json!(["persist.upgrades.json"]);
             assert!(
-                save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &names).is_err()
+                save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names)
+                    .is_err()
             );
             assert!(Path::new(&profile.upgrades()).exists());
         }
@@ -423,7 +501,7 @@ mod tests {
         let mut names = NameTable {
             names: crate::commands::names::generate_name_table(game_path).unwrap(),
             version: 1,
-            loaded_profile: None,
+            ..NameTable::default()
         };
         let loaded = load_profile_with_table(profile.path(), &mut names).unwrap();
         let purchases = loaded["data"]["persist.upgrades.json"]["base_root"]["purchases"]
@@ -433,7 +511,7 @@ mod tests {
         assert!(purchases.values().all(|p| p["tree_id"]
             .as_str()
             .is_some_and(|id| id.starts_with("###"))));
-        save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &names).unwrap();
+        save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names).unwrap();
         assert_eq!(decode_save_file(profile.upgrades()).unwrap(), original);
     }
 }

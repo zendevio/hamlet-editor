@@ -11,6 +11,7 @@ use string_cache::{Atom, EmptyStaticAtomSet};
 
 mod bin;
 mod json;
+mod ordered;
 
 #[cfg(feature = "string_cache")]
 type NameType = Atom<EmptyStaticAtomSet>;
@@ -81,6 +82,52 @@ pub struct File {
     o: Objects,
     f: Fields,
     dat: Data,
+}
+
+impl File {
+    fn validate_values(&self) -> Result<(), String> {
+        for field in self.dat.iter() {
+            let invalid_text = |s: &str| s.chars().any(char::is_control);
+            let reason = if invalid_text(field.name.as_ref()) {
+                Some("field names cannot contain control characters or NUL")
+            } else {
+                match &field.tipe {
+                    FieldType::String(s) if invalid_text(s) => {
+                        Some("strings cannot contain control characters or NUL")
+                    }
+                    FieldType::StringVector(v) if v.iter().any(|s| invalid_text(s)) => {
+                        Some("strings cannot contain control characters or NUL")
+                    }
+                    FieldType::Char(c) if c.is_control() => {
+                        Some("strings cannot contain control characters or NUL")
+                    }
+                    FieldType::Float(f) if !f.is_finite() => {
+                        Some("float must be finite and within f32 range")
+                    }
+                    FieldType::FloatArray(v) if v.iter().any(|f| !f.is_finite()) => {
+                        Some("float must be finite and within f32 range")
+                    }
+                    FieldType::File(Some(inner)) => {
+                        inner.validate_values()?;
+                        None
+                    }
+                    _ => None,
+                }
+            };
+            if let Some(reason) = reason {
+                let mut path = vec![field.name.as_ref()];
+                let mut parent = field.parent;
+                while let Some(idx) = parent {
+                    let object = &self.o[idx];
+                    path.push(self.dat[object.field].name.as_ref());
+                    parent = object.parent;
+                }
+                path.reverse();
+                return Err(format!("{}: {reason}", path.join(".")));
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -161,7 +208,7 @@ impl Objects {
         ndc: u32,
     ) -> Option<ObjIdx> {
         // Overflow checks: We have a maximum of i32::MAX elements due to the binary format
-        if self.len() == u32::try_from(std::i32::MAX).unwrap() {
+        if self.len() == u32::try_from(i32::MAX).unwrap() {
             None
         } else {
             let idx = self.len();
@@ -244,7 +291,7 @@ impl Fields {
     }
 
     fn create_field(&mut self, name: &str) -> Option<FieldIdx> {
-        if self.len() == std::u32::MAX {
+        if self.len() == u32::MAX {
             None
         } else {
             let idx = self.len();
@@ -400,6 +447,8 @@ fn hardcoded_type(parents: &'_ [impl AsRef<str>], name: impl AsRef<str>) -> Opti
 
             [Float, "current_hp"],
             [Float, "m_Stress"],
+            [Float, "torchlight"],
+            [Float, "ambush_start_torchlight"],
             [Float, "actor", "buff_group", "*", "amount"],
             [Float, "chapters", "*", "*", "percent"],
             [Float, "non_rolled_additional_chances", "*", "chance"],

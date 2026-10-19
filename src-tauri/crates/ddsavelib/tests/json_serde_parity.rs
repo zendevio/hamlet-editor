@@ -46,10 +46,8 @@ fn assert_value_parity(json: &str) {
     let unhash = Unhasher::<&str>::empty();
     let value = old.to_json_value(&unhash);
 
-    let from_old_bridge =
-        File::from_json_value(&value).expect("old bridge should succeed");
-    let from_new_direct =
-        File::from_json_value_direct(&value).expect("new direct should succeed");
+    let from_old_bridge = File::from_json_value(&value).expect("old bridge should succeed");
+    let from_new_direct = File::from_json_value_direct(&value).expect("new direct should succeed");
 
     let bin_old = to_bin(&from_old_bridge);
     let bin_new = to_bin(&from_new_direct);
@@ -74,9 +72,7 @@ fn parity_minimal_file() {
 
 #[test]
 fn parity_int_field() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": 42}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": 42}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -85,9 +81,7 @@ fn parity_int_field() {
 
 #[test]
 fn parity_negative_int() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": -1}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": -1}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -96,9 +90,7 @@ fn parity_negative_int() {
 
 #[test]
 fn parity_i32_min() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": -2147483648}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": -2147483648}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -107,9 +99,7 @@ fn parity_i32_min() {
 
 #[test]
 fn parity_i32_max() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": 2147483647}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": 2147483647}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -118,9 +108,7 @@ fn parity_i32_max() {
 
 #[test]
 fn parity_bool_true() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": true}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": true}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -129,9 +117,7 @@ fn parity_bool_true() {
 
 #[test]
 fn parity_bool_false() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": false}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": false}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -140,9 +126,7 @@ fn parity_bool_false() {
 
 #[test]
 fn parity_string_simple() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": "hello"}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": "hello"}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -151,9 +135,7 @@ fn parity_string_simple() {
 
 #[test]
 fn parity_string_empty() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": ""}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"x": ""}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -161,11 +143,10 @@ fn parity_string_empty() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn parity_string_with_escapes() {
-    // The JSON string "hello\nworld" contains a literal newline after parsing.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": "hello\nworld"}}"#,
-    );
+fn parity_control_strings_are_rejected() {
+    let value = serde_json::json!({"__revision_dont_touch":1,"base_root":{"x":"hello\nworld"}});
+    assert!(File::try_from_json(value.to_string().as_bytes()).is_err());
+    assert!(File::from_json_value(&value).is_err());
 }
 
 // ---------------------------------------------------------------------------
@@ -194,9 +175,7 @@ fn parity_nested_objects() {
 
 #[test]
 fn parity_empty_nested_object() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"inner": {}}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"inner": {}}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -243,9 +222,7 @@ fn parity_sibling_objects() {
 #[test]
 fn parity_float_current_hp() {
     // current_hp is a hardcoded Float field.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"current_hp": 42.5}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"current_hp": 42.5}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -255,9 +232,7 @@ fn parity_float_current_hp() {
 #[test]
 fn parity_float_integer_value() {
     // current_hp with an integer-looking value must still be treated as Float.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"current_hp": 100}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"current_hp": 100}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -266,9 +241,7 @@ fn parity_float_integer_value() {
 
 #[test]
 fn parity_float_zero() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"current_hp": 0.0}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"current_hp": 0.0}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -278,9 +251,7 @@ fn parity_float_zero() {
 #[test]
 fn parity_int_vector() {
     // read_page_indexes is a hardcoded IntVector field.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"read_page_indexes": [1, 2, 3]}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"read_page_indexes": [1, 2, 3]}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -289,9 +260,7 @@ fn parity_int_vector() {
 
 #[test]
 fn parity_int_vector_empty() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"read_page_indexes": []}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"read_page_indexes": []}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -301,9 +270,7 @@ fn parity_int_vector_empty() {
 #[test]
 fn parity_string_vector() {
     // goal_ids is a hardcoded StringVector field.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"goal_ids": ["a", "b"]}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"goal_ids": ["a", "b"]}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -330,9 +297,7 @@ fn parity_float_array() {
 #[test]
 fn parity_two_int() {
     // killRange is a hardcoded TwoInt field.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"killRange": [1, 5]}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"killRange": [1, 5]}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -363,9 +328,7 @@ fn parity_two_bool() {
 #[test]
 fn parity_char() {
     // requirement_code is a hardcoded Char field.
-    assert_parity(
-        r#"{"__revision_dont_touch": 1, "base_root": {"requirement_code": "A"}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 1, "base_root": {"requirement_code": "A"}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -420,9 +383,7 @@ fn parity_hash_in_int_vector() {
 #[test]
 fn parity_hash_empty_suffix() {
     // "###" with no suffix must be stored as Int(0) (name_hash("") == 0).
-    assert_parity(
-        r####"{"__revision_dont_touch": 1, "base_root": {"x": "###"}}"####,
-    );
+    assert_parity(r####"{"__revision_dont_touch": 1, "base_root": {"x": "###"}}"####);
 }
 
 // ---------------------------------------------------------------------------
@@ -505,9 +466,7 @@ fn parity_nested_raw_data() {
 #[test]
 fn parity_revision_before_root() {
     // Standard order: __revision_dont_touch appears before the root field.
-    assert_parity(
-        r#"{"__revision_dont_touch": 42, "base_root": {"x": 1}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 42, "base_root": {"x": 1}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -517,9 +476,7 @@ fn parity_revision_before_root() {
 #[test]
 fn parity_revision_after_root() {
     // Non-standard order: __revision_dont_touch appears after the root field.
-    assert_parity(
-        r#"{"base_root": {"x": 1}, "__revision_dont_touch": 42}"#,
-    );
+    assert_parity(r#"{"base_root": {"x": 1}, "__revision_dont_touch": 42}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -528,9 +485,7 @@ fn parity_revision_after_root() {
 
 #[test]
 fn parity_revision_zero() {
-    assert_parity(
-        r#"{"__revision_dont_touch": 0, "base_root": {}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 0, "base_root": {}}"#);
 }
 
 // ---------------------------------------------------------------------------
@@ -540,9 +495,7 @@ fn parity_revision_zero() {
 #[test]
 fn parity_revision_u32_max() {
     // u32::MAX = 4294967295
-    assert_parity(
-        r#"{"__revision_dont_touch": 4294967295, "base_root": {}}"#,
-    );
+    assert_parity(r#"{"__revision_dont_touch": 4294967295, "base_root": {}}"#);
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,9 @@ use thiserror::Error;
 /// Errors that can occur when deserializing from Binary
 #[derive(Debug, Error)]
 pub enum FromBinError {
+    /// A field contained text or a number that cannot safely round-trip.
+    #[error("Invalid value at {0}")]
+    InvalidValue(String),
     /// An I/O error occured.
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
@@ -68,6 +71,9 @@ pub enum FromBinError {
 /// Errors that can occur when deserializing from JSON
 #[derive(Debug, Error)]
 pub enum FromJsonError {
+    /// A field contained text or a number that cannot safely round-trip.
+    #[error("Invalid value at {0}")]
+    InvalidValue(String),
     /// An I/O error occured while writing.
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),

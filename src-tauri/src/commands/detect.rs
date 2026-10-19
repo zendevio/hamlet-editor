@@ -183,6 +183,17 @@ pub fn is_game_running() -> Result<bool, String> {
     Ok(found)
 }
 
+pub(crate) fn ensure_game_stopped(
+    detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<(), String> {
+    if detector()? {
+        return Err(
+            "Darkest Dungeon is running. Close the game before changing save files.".into(),
+        );
+    }
+    Ok(())
+}
+
 /// Validate that a user-chosen directory looks like a valid DD1 save profile.
 #[tauri::command]
 pub fn validate_save_directory(path: String) -> Result<bool, String> {
@@ -375,7 +386,16 @@ fn collect_profiles(
             continue;
         }
 
-        let has_active_raid = profile_dir.join("persist.raid.json").exists();
+        let has_active_raid = decode_save_file(
+            profile_dir
+                .join("persist.game.json")
+                .to_string_lossy()
+                .into_owned(),
+        )
+        .ok()
+        .filter(|game| game.pointer("/base_root/inraid").and_then(|v| v.as_bool()) == Some(true))
+        .and_then(|game| super::save::raid_relative_path(&game).ok())
+        .is_some_and(|relative| profile_dir.join(relative).is_file());
 
         locations.push(SaveLocation {
             path: profile_dir.to_string_lossy().to_string(),
@@ -537,5 +557,50 @@ fn build_game_install(path: String, source: &str) -> GameInstall {
         has_color_of_madness,
         has_musketeer,
         has_mods,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn detects_active_raid_from_raid_save_and_ignores_stale_root_files() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-detect-{}",
+            super::super::transaction::unique_suffix()
+        ));
+        let profile = root.join("profile_0");
+        std::fs::create_dir_all(profile.join("plot_crimson_court_1")).unwrap();
+        std::fs::write(profile.join("persist.roster.json"), b"roster").unwrap();
+        std::fs::write(profile.join("persist.raid.json"), b"stale root raid").unwrap();
+        std::fs::write(
+            profile.join("plot_crimson_court_1/persist.raid.json"),
+            b"active raid",
+        )
+        .unwrap();
+        let game_path = profile
+            .join("persist.game.json")
+            .to_string_lossy()
+            .into_owned();
+        let mut game = json!({"__revision_dont_touch": 1, "base_root": {"inraid": true, "raid_save": "plot_crimson_court_1/"}});
+        let scan = || {
+            let mut locations = Vec::new();
+            collect_profiles(&root, "Manual", &None, &mut locations, &mut HashSet::new());
+            assert_eq!(locations.len(), 1);
+            locations[0].has_active_raid
+        };
+        super::super::save::encode_save_file(game_path.clone(), &game).unwrap();
+        assert!(scan());
+        std::fs::remove_file(profile.join("plot_crimson_court_1/persist.raid.json")).unwrap();
+        assert!(!scan());
+        game["base_root"]["raid_save"] = json!("");
+        super::super::save::encode_save_file(game_path.clone(), &game).unwrap();
+        assert!(scan());
+        game["base_root"]["inraid"] = json!(false);
+        super::super::save::encode_save_file(game_path, &game).unwrap();
+        assert!(!scan());
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

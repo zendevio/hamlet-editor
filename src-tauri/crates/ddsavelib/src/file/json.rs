@@ -29,6 +29,14 @@ fn infer_type_from_value(
     value: &serde_json::Value,
     name_stack: &[NameType],
 ) -> Result<FieldType, FromJsonError> {
+    if value
+        .as_str()
+        .is_some_and(|s| s.chars().any(char::is_control))
+    {
+        return Err(FromJsonError::InvalidValue(
+            "strings cannot contain control characters or NUL".into(),
+        ));
+    }
     if let Some(mut hc) = hardcoded_type(name_stack, name) {
         match &mut hc {
             FieldType::Float(ref mut f) => {
@@ -59,6 +67,11 @@ fn infer_type_from_value(
                 let mut tmp = Vec::with_capacity(arr.len());
                 for elem in arr {
                     if let Some(s) = elem.as_str() {
+                        if s.chars().any(char::is_control) {
+                            return Err(FromJsonError::InvalidValue(
+                                "strings cannot contain control characters or NUL".into(),
+                            ));
+                        }
                         if let Some(rest) = s.strip_prefix("###") {
                             tmp.push(name_hash(rest));
                             continue;
@@ -80,11 +93,7 @@ fn infer_type_from_value(
             }
             FieldType::StringVector(ref mut v) => {
                 let arr = value.as_array().ok_or_else(|| {
-                    FromJsonError::LiteralFormat(
-                        "expected array for StringVector".to_owned(),
-                        0,
-                        0,
-                    )
+                    FromJsonError::LiteralFormat("expected array for StringVector".to_owned(), 0, 0)
                 })?;
                 let mut tmp = Vec::with_capacity(arr.len());
                 for elem in arr {
@@ -101,11 +110,7 @@ fn infer_type_from_value(
             }
             FieldType::FloatArray(ref mut v) => {
                 let arr = value.as_array().ok_or_else(|| {
-                    FromJsonError::LiteralFormat(
-                        "expected array for FloatArray".to_owned(),
-                        0,
-                        0,
-                    )
+                    FromJsonError::LiteralFormat("expected array for FloatArray".to_owned(), 0, 0)
                 })?;
                 let mut tmp = Vec::with_capacity(arr.len());
                 for elem in arr {
@@ -186,9 +191,7 @@ fn infer_type_from_value(
             }
             let i = n
                 .as_i64()
-                .ok_or_else(|| {
-                    FromJsonError::LiteralFormat("expected integer".to_owned(), 0, 0)
-                })
+                .ok_or_else(|| FromJsonError::LiteralFormat("expected integer".to_owned(), 0, 0))
                 .and_then(|v| i32::try_from(v).map_err(Into::into))?;
             Ok(FieldType::Int(i))
         }
@@ -245,8 +248,7 @@ fn walk_field_value(
                     .create_object(field_idx, parent, 0, 0)
                     .ok_or(FromJsonError::IntegerErr)?;
                 file.f[field_idx].field_info |= 1;
-                file.f[field_idx].field_info |=
-                    (obj_idx.numeric() & FieldInfo::OBJ_IDX_BITS) << 11;
+                file.f[field_idx].field_info |= (obj_idx.numeric() & FieldInfo::OBJ_IDX_BITS) << 11;
 
                 name_stack.push(name_type);
                 let mut children = Vec::new();
@@ -265,7 +267,11 @@ fn walk_field_value(
             }
         }
         leaf => {
-            let field_type = infer_type_from_value(name, leaf, name_stack)?;
+            let field_type = infer_type_from_value(name, leaf, name_stack).map_err(|e| {
+                let mut path: Vec<&str> = name_stack.iter().map(|s| s.as_ref()).collect();
+                path.push(name);
+                FromJsonError::InvalidValue(format!("{}: {e}", path.join(".")))
+            })?;
             file.dat.create_data(name_type, parent, field_type);
         }
     }
@@ -292,12 +298,10 @@ fn build_file_from_map_value(
         }
     }
 
-    let version = version.ok_or_else(|| {
-        FromJsonError::Expected(BUILTIN_VERSION_FIELD.to_owned(), 0, 0)
-    })?;
-    let root_key = root_key.ok_or_else(|| {
-        FromJsonError::Expected("root field".to_owned(), 0, 0)
-    })?;
+    let version =
+        version.ok_or_else(|| FromJsonError::Expected(BUILTIN_VERSION_FIELD.to_owned(), 0, 0))?;
+    let root_key =
+        root_key.ok_or_else(|| FromJsonError::Expected("root field".to_owned(), 0, 0))?;
     let root_value = root_value.unwrap();
 
     let mut file = File::default();
@@ -321,7 +325,10 @@ struct TopLevelSeed;
 impl<'de> DeserializeSeed<'de> for TopLevelSeed {
     type Value = File;
 
-    fn deserialize<D: serde::Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        self,
+        deserializer: D,
+    ) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_map(TopLevelVisitor)
     }
 }
@@ -364,9 +371,8 @@ fn build_file_from_map_access<'de, A: MapAccess<'de>>(mut map: A) -> Result<File
     if !root_processed {
         return Err(de::Error::custom("missing root field"));
     }
-    let version = version.ok_or_else(|| {
-        de::Error::custom(format!("missing {}", BUILTIN_VERSION_FIELD))
-    })?;
+    let version =
+        version.ok_or_else(|| de::Error::custom(format!("missing {}", BUILTIN_VERSION_FIELD)))?;
 
     let data_size = file
         .fixup_offsets()
@@ -392,12 +398,17 @@ impl<'de, 'a> DeserializeSeed<'de> for FieldValueSeed<'a> {
         self,
         deserializer: D,
     ) -> Result<Self::Value, D::Error> {
-        deserializer.deserialize_any(FieldValueVisitor {
-            file: self.file,
-            name: self.name,
-            parent: self.parent,
-            name_stack: self.name_stack,
-        })
+        let mut path: Vec<&str> = self.name_stack.iter().map(|s| s.as_ref()).collect();
+        path.push(&self.name);
+        let path = path.join(".");
+        deserializer
+            .deserialize_any(FieldValueVisitor {
+                file: self.file,
+                name: self.name,
+                parent: self.parent,
+                name_stack: self.name_stack,
+            })
+            .map_err(|e| de::Error::custom(format!("{path}: {e}")))
     }
 }
 
@@ -460,10 +471,9 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
 
     fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
         match hardcoded_type(self.name_stack, &self.name) {
-            Some(FieldType::Float(_)) => {
-                self.create_leaf(FieldType::Float(v as f32))
-                    .map_err(from_json_to_serde)
-            }
+            Some(FieldType::Float(_)) => self
+                .create_leaf(FieldType::Float(v as f32))
+                .map_err(from_json_to_serde),
             _ => Err(E::custom(format!(
                 "non-hardcoded float not allowed for field '{}'",
                 self.name
@@ -472,6 +482,11 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        if v.chars().any(char::is_control) {
+            return Err(E::custom(
+                "strings cannot contain control characters or NUL",
+            ));
+        }
         let ft = match hardcoded_type(self.name_stack, &self.name) {
             Some(FieldType::Char(_)) => {
                 let bytes = v.as_bytes();
@@ -500,6 +515,11 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
                 while let Some(elem) = seq.next_element::<serde_json::Value>()? {
                     let i = match &elem {
                         serde_json::Value::String(s) if s.starts_with("###") => {
+                            if s.chars().any(char::is_control) {
+                                return Err(de::Error::custom(
+                                    "strings cannot contain control characters or NUL",
+                                ));
+                            }
                             name_hash(&s[3..])
                         }
                         serde_json::Value::Number(n) => {
@@ -509,7 +529,9 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
                             i32::try_from(raw)
                                 .map_err(|_| de::Error::custom("i32 overflow in IntVector"))?
                         }
-                        _ => return Err(de::Error::custom("expected int or ###string in IntVector")),
+                        _ => {
+                            return Err(de::Error::custom("expected int or ###string in IntVector"))
+                        }
                     };
                     v.push(i);
                 }
@@ -537,10 +559,10 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
                     .next_element::<i64>()?
                     .ok_or_else(|| de::Error::custom("TwoInt expects 2 elements, got 1"))?;
                 while seq.next_element::<serde_json::Value>()?.is_some() {}
-                let i1 = i32::try_from(i1)
-                    .map_err(|_| de::Error::custom("i32 overflow in TwoInt"))?;
-                let i2 = i32::try_from(i2)
-                    .map_err(|_| de::Error::custom("i32 overflow in TwoInt"))?;
+                let i1 =
+                    i32::try_from(i1).map_err(|_| de::Error::custom("i32 overflow in TwoInt"))?;
+                let i2 =
+                    i32::try_from(i2).map_err(|_| de::Error::custom("i32 overflow in TwoInt"))?;
                 FieldType::TwoInt(i1, i2)
             }
             Some(FieldType::TwoBool(_, _)) => {
@@ -591,8 +613,7 @@ impl<'de, 'a> Visitor<'de> for FieldValueVisitor<'a> {
                 .create_object(field_idx, parent, 0, 0)
                 .ok_or_else(|| de::Error::custom("too many objects"))?;
             file.f[field_idx].field_info |= 1;
-            file.f[field_idx].field_info |=
-                (obj_idx.numeric() & FieldInfo::OBJ_IDX_BITS) << 11;
+            file.f[field_idx].field_info |= (obj_idx.numeric() & FieldInfo::OBJ_IDX_BITS) << 11;
 
             name_stack.push(name_type);
             let mut children: Vec<FieldIdx> = Vec::new();
@@ -638,6 +659,8 @@ impl File {
             .map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
         de.end()
             .map_err(|e| FromJsonError::SerdeJson(e.to_string()))?;
+        file.validate_values()
+            .map_err(FromJsonError::InvalidValue)?;
         Ok(file)
     }
 
@@ -652,10 +675,13 @@ impl File {
     /// `serde_json::Value`; use [`File::try_from_json`] on raw bytes to
     /// preserve them.
     pub fn from_json_value(value: &serde_json::Value) -> Result<Self, FromJsonError> {
-        let map = value.as_object().ok_or_else(|| {
-            FromJsonError::Expected("top-level object".to_owned(), 0, 0)
-        })?;
-        build_file_from_map_value(map)
+        let map = value
+            .as_object()
+            .ok_or_else(|| FromJsonError::Expected("top-level object".to_owned(), 0, 0))?;
+        let file = build_file_from_map_value(map)?;
+        file.validate_values()
+            .map_err(FromJsonError::InvalidValue)?;
+        Ok(file)
     }
 
     /// Alias preserved for test compatibility.
@@ -776,7 +802,7 @@ impl File {
         let dat = &self.dat[field_idx];
         writer.write_all(&indent)?;
         writer.write_all(b"\"")?;
-        writer.write_all(dat.name.as_bytes())?;
+        writer.write_all(escape(dat.name.as_ref()).as_bytes())?;
         writer.write_all(b"\" : ")?;
         match &dat.tipe {
             Bool(b) => writer.write_all(if *b { b"true" } else { b"false" })?,

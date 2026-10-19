@@ -24,8 +24,9 @@ fn parse(json: &str) -> File {
 
 /// Parse a JSON string and expect failure.
 fn parse_err(json: &str) -> ddsavelib::err::FromJsonError {
-    File::try_from_json(json.as_bytes())
-        .expect_err(&format!("expected parse to fail, but it succeeded\ninput: {json}"))
+    File::try_from_json(json.as_bytes()).expect_err(&format!(
+        "expected parse to fail, but it succeeded\ninput: {json}"
+    ))
 }
 
 /// Parse → write_to_json → return the JSON bytes.
@@ -57,9 +58,7 @@ fn with_string_field(value: &str) -> String {
     // Escape the value for embedding inside the JSON literal.
     // We use serde_json to produce a correctly-escaped JSON string.
     let json_string = serde_json::to_string(value).unwrap();
-    format!(
-        r#"{{ "__revision_dont_touch": 0, "base_root": {{ "label": {json_string} }} }}"#
-    )
+    format!(r#"{{ "__revision_dont_touch": 0, "base_root": {{ "label": {json_string} }} }}"#)
 }
 
 // ---------------------------------------------------------------------------
@@ -117,11 +116,16 @@ fn tab_cr_newline_whitespace_parses() {
 fn string_round_trip(original: &str) -> String {
     let input_json = with_string_field(original);
     let output_bytes = round_trip_bytes(&input_json);
-    let val: serde_json::Value = serde_json::from_slice(&output_bytes)
-        .expect("output must be valid JSON");
+    let val: serde_json::Value =
+        serde_json::from_slice(&output_bytes).expect("output must be valid JSON");
     val.pointer("/base_root/label")
         .and_then(|v| v.as_str())
-        .unwrap_or_else(|| panic!("label field missing in output:\n{}", std::str::from_utf8(&output_bytes).unwrap()))
+        .unwrap_or_else(|| {
+            panic!(
+                "label field missing in output:\n{}",
+                std::str::from_utf8(&output_bytes).unwrap()
+            )
+        })
         .to_owned()
 }
 
@@ -139,42 +143,57 @@ fn escape_double_quote_round_trips() {
 }
 
 #[test]
-fn escape_newline_round_trips() {
-    let original = "line1\nline2";
-    assert_eq!(string_round_trip(original), original);
+fn escape_newline_is_rejected() {
+    let input = with_string_field("line1\nline2");
+    assert!(File::try_from_json(input.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 #[test]
-fn escape_tab_round_trips() {
-    let original = "col1\tcol2";
-    assert_eq!(string_round_trip(original), original);
+fn escape_tab_is_rejected() {
+    let input = with_string_field("col1\tcol2");
+    assert!(File::try_from_json(input.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 #[test]
-fn escape_carriage_return_round_trips() {
-    let original = "before\rafter";
-    assert_eq!(string_round_trip(original), original);
+fn escape_carriage_return_is_rejected() {
+    let input = with_string_field("before\rafter");
+    assert!(File::try_from_json(input.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 #[test]
-fn escape_backspace_round_trips() {
-    // 0x08 = backspace
-    let original = "a\x08b";
-    assert_eq!(string_round_trip(original), original);
+fn escape_backspace_is_rejected() {
+    let input = with_string_field("a\x08b");
+    assert!(File::try_from_json(input.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 #[test]
-fn escape_form_feed_round_trips() {
-    // 0x0C = form feed
-    let original = "page1\x0Cpage2";
-    assert_eq!(string_round_trip(original), original);
+fn escape_form_feed_is_rejected() {
+    let input = with_string_field("page1\x0Cpage2");
+    assert!(File::try_from_json(input.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 #[test]
-fn escape_all_seven_combined_round_trips() {
-    // All 7 escapable characters in one string.
-    let original = "\\\"\n\t\r\x08\x0C";
-    assert_eq!(string_round_trip(original), original);
+fn escape_all_seven_combined_is_rejected() {
+    let input = with_string_field("\\\"\n\t\r\x08\x0C");
+    assert!(File::try_from_json(input.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 // Also verify the raw JSON bytes produced by write_to_json for a couple of
@@ -193,14 +212,9 @@ fn output_encodes_backslash_as_double_backslash() {
 }
 
 #[test]
-fn output_encodes_newline_as_backslash_n() {
+fn output_rejects_newline_strings() {
     let input = with_string_field("a\nb");
-    let output = round_trip_bytes(&input);
-    let output_str = std::str::from_utf8(&output).unwrap();
-    assert!(
-        output_str.contains(r#"a\nb"#),
-        "newline must be encoded as \\n in JSON output; got: {output_str}"
-    );
+    assert!(File::try_from_json(input.as_bytes()).is_err());
 }
 
 // ---------------------------------------------------------------------------
@@ -357,7 +371,9 @@ fn output_revision_appears_before_root() {
     let rev_pos = output
         .find("__revision_dont_touch")
         .expect("__revision_dont_touch must appear in output");
-    let root_pos = output.find("base_root").expect("root must appear in output");
+    let root_pos = output
+        .find("base_root")
+        .expect("root must appear in output");
 
     assert!(
         rev_pos < root_pos,
@@ -424,7 +440,9 @@ fn custom_root_name_parses() {
         Some(3)
     );
     assert!(
-        val.get("custom_root").map(|v| v.is_object()).unwrap_or(false),
+        val.get("custom_root")
+            .map(|v| v.is_object())
+            .unwrap_or(false),
         "custom_root must be present and be an object"
     );
 }
@@ -433,9 +451,7 @@ fn custom_root_name_parses() {
 fn very_long_field_name_round_trips() {
     // A field name that is 100 characters long must survive the round-trip.
     let long_name: String = "a".repeat(100);
-    let json = format!(
-        r#"{{ "__revision_dont_touch": 0, "base_root": {{ "{long_name}": 7 }} }}"#
-    );
+    let json = format!(r#"{{ "__revision_dont_touch": 0, "base_root": {{ "{long_name}": 7 }} }}"#);
     let val = to_serde_value(&json);
     assert_eq!(
         val.pointer(&format!("/base_root/{long_name}"))
