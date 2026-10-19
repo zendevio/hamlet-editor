@@ -15,7 +15,9 @@ The editor should detect if Darkest Dungeon is running and prevent edits. Detect
 - Editing files the game has open can corrupt data
 
 ### Steam Cloud Warning
-If saves are in a Steam userdata path, warn users to:
+The editor does not detect Steam Cloud sync (decided 2026-10-19, to avoid
+maintaining path heuristics). The README and a static note in the setup
+wizard's save-folder step tell users to:
 - Disable Steam Cloud sync for DD, OR
 - Close Steam entirely before editing
 

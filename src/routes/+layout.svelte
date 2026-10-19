@@ -232,11 +232,6 @@
 		isGameBlocking || !isDirty || isSaving
 	);
 
-	// C1: Steam Cloud warning (handles both Unix and Windows path separators)
-	let isSteamCloud = $derived(
-		settings.savePath.includes('/userdata/') || settings.savePath.includes('\\userdata\\')
-	);
-
 	// C2: Modded content detection
 	let hasModdedContent = $derived.by(() => {
 		if (!saveData.isLoaded) return false;
@@ -736,14 +731,6 @@
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
 						Game Status Unknown: Save Blocked
-					</Badge>
-				{/if}
-
-				<!-- C1: Steam Cloud warning -->
-				{#if isSteamCloud}
-					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
-						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
-						Steam Cloud Active
 					</Badge>
 				{/if}
 

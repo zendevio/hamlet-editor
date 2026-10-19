@@ -69,7 +69,6 @@ Horizontal bar across the top of the main content area.
 | Badge | Condition | Color | Text |
 |-------|-----------|-------|------|
 | Game running | `is_game_running()` returns true | Red | "DD Running — Save Blocked" |
-| Steam Cloud | Saves are in a Steam `userdata` path | Amber | "Steam Cloud Active" |
 | Raid active | `persist.raid.json` exists AND `inraid: true` in game.json. If only one condition is true, show amber "Raid State Inconsistent" warning instead. | Amber | "Raid Active" |
 | Mod content | Modded class/trinket/quirk IDs detected | Amber | "Modded Content" |
 | Unsaved changes | Any in-memory edit differs from on-disk state | Orange dot on Save button + ARIA label "Unsaved changes" | Tooltip: "Unsaved changes" (accessible to screen readers) |
@@ -104,7 +103,7 @@ A non-dismissable modal dialog sequence. Reappears whenever persisted paths beco
 **Step 2 — Save File Location**
 - Calls `detect_save_locations()` (source: `path-detection.md`).
 - Lists discovered profiles with metadata: profile ID, save name, week number, game mode, source (Steam/GOG/Epic/Manual).
-- If the save path is inside a Steam `userdata` directory, an inline amber callout warns: "Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam before saving to avoid conflicts."
+- A static amber note warns that Steam Cloud sync can overwrite or conflict with edited saves, and to disable it for the game or close Steam before saving. There is no automatic cloud detection.
 - "Browse manually..." as fallback. On selection, calls `validate_save_directory(path)`.
 
 **Step 3 — Confirmation**
@@ -418,7 +417,7 @@ Sectioned form layout.
 1. App opens. No saved config found.
 2. Setup Wizard modal appears (non-dismissable).
 3. Step 1: `detect_game_installations()` runs. If found, path is pre-filled with DLC tags. User accepts or overrides.
-4. Step 2: `detect_save_locations()` runs. Profiles listed with metadata. User selects one. Steam Cloud callout shown if applicable.
+4. Step 2: `detect_save_locations()` runs. Profiles listed with metadata. User selects one. The static Steam Cloud note is always shown.
 5. Step 3: Summary. "Open Profile" loads data and closes wizard.
 6. LoadingScreen is shown during profile load with status text ("Decoding save files...", "Loading game data...", "Scanning mods...").
 7. Heroes view renders with the roster populated.
@@ -526,7 +525,6 @@ App
 │   ├── GlobalSearchTrigger
 │   ├── StatusBadges
 │   │   ├── GameRunningBadge (Badge variant=destructive)
-│   │   ├── SteamCloudBadge (Badge variant=outline, custom amber styling)
 │   │   ├── RaidActiveBadge (Badge variant=outline, custom amber styling)
 │   │   ├── ModContentBadge (Badge variant=outline, custom amber styling)
 │   │   └── UnsavedChangesDot
@@ -980,7 +978,6 @@ Enforced via Tauri window config: **800 x 600**. The app does not resize below t
 
 | Condition | Location | Message |
 |-----------|----------|---------|
-| Steam Cloud active | Header badge (persistent) | "Saves in Steam Cloud folder. Disable sync or close Steam before saving." |
 | Mid-raid editing | Raid view banner (non-dismissable) | "Raid editing is high-risk. Backup recommended." + "Create Backup Now" button |
 | Unsaved changes on exit | Modal | "Save before closing?" with Save/Discard/Cancel |
 | Level/gear mismatch | Hero detail inline | "Weapon rank (2) below max for this level (4). Update?" |

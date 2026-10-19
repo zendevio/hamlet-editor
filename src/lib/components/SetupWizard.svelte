@@ -52,10 +52,6 @@
 	let canAdvanceFromStep1 = $derived(selectedGameInstall !== null);
 	let canAdvanceFromStep2 = $derived(selectedSave !== null);
 
-	let isSteamCloudSave = $derived(
-		selectedSave !== null && selectedSave.source === 'Steam'
-	);
-
 	let dlcTags = $derived.by(() => {
 		if (!selectedGameInstall) return [];
 		const tags: string[] = [];
@@ -340,6 +336,14 @@
 			</DialogHeader>
 
 			<div class="space-y-3">
+				<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+					<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
+					<p class="wrap-break-word text-amber-700 dark:text-amber-400">
+						If Steam Cloud sync is on for Darkest Dungeon, it can overwrite or conflict with
+						edited saves. Disable it for the game, or close Steam before saving.
+					</p>
+				</div>
+
 				{#if !saveDetectRan}
 					<Button onclick={detectSavePaths} disabled={detecting} class="w-full">
 						{#if detecting}
@@ -379,18 +383,6 @@
 						</Button>
 					</div>
 				{:else}
-					{#if isSteamCloudSave}
-						<div
-							class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs"
-						>
-							<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
-							<p class="wrap-break-word text-amber-700 dark:text-amber-400">
-								Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam
-								before saving to avoid conflicts.
-							</p>
-						</div>
-					{/if}
-
 					<div class="max-h-48 space-y-2 overflow-y-auto">
 						{#each saveLocations as loc}
 							{@const isSelected = selectedSave === loc}
