@@ -5,6 +5,7 @@ pub mod gamedata;
 pub mod mods;
 pub mod names;
 pub mod save;
+pub(crate) mod transaction;
 
 /// Check whether a filename matches the DD1 save file pattern:
 /// `persist.*.json` or `novelty_tracker.json`.

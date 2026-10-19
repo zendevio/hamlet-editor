@@ -1,5 +1,7 @@
 mod commands;
 
+pub use commands::{backup, save};
+
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -12,6 +14,7 @@ pub struct NameTable {
     pub names: Vec<String>,
     pub version: u64,
     pub loaded_profile: Option<PathBuf>,
+    pub loaded_files: std::collections::HashMap<String, commands::save::LoadedSave>,
 }
 
 pub struct NameTableState(pub Mutex<NameTable>);

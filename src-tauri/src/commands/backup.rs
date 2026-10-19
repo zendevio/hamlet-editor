@@ -1,199 +1,236 @@
 use chrono::{DateTime, Local, NaiveDateTime, Utc};
-use serde::Serialize;
-use std::path::Path;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
-// ---------------------------------------------------------------------------
-// Data structures
-// ---------------------------------------------------------------------------
+const MANIFEST: &str = ".hamlet-backup.json";
 
 #[derive(Serialize, Clone, Debug)]
 pub struct BackupEntry {
     pub path: String,
-    pub timestamp: String, // ISO 8601
+    pub timestamp: String,
     pub file_count: usize,
     pub profile_id: String,
 }
 
-// ---------------------------------------------------------------------------
-// Tauri commands
-// ---------------------------------------------------------------------------
-
-/// Create a timestamped backup of all save files in the profile.
-///
-/// Copies `persist.*.json` and `novelty_tracker.json` to:
-/// `<app_local_data_dir>/backups/<profile_id>__<YYYY-MM-DD>__<HH-MM-SS>/`
-///
-/// Returns the backup directory path on success.
-#[tauri::command]
-pub fn create_backup(profile_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
-    let profile_dir = Path::new(&profile_path);
-    if !profile_dir.is_dir() {
-        return Err(format!("Not a directory: {profile_path}"));
-    }
-
-    let profile_id = profile_dir
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or_else(|| format!("Cannot determine profile ID from: {profile_path}"))?;
-
-    let now = Local::now();
-    let folder_name = format!(
-        "{}__{}__{}",
-        profile_id,
-        now.format("%Y-%m-%d"),
-        now.format("%H-%M-%S")
-    );
-
-    let backups_root = app_handle
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Failed to resolve app local data dir: {e}"))?
-        .join("backups");
-
-    let backup_dir = backups_root.join(&folder_name);
-
-    std::fs::create_dir_all(&backup_dir)
-        .map_err(|e| format!("Failed to create backup directory: {e}"))?;
-
-    let copied = copy_save_files(profile_dir, &backup_dir)?;
-
-    if copied == 0 {
-        // Clean up empty backup directory
-        let _ = std::fs::remove_dir(&backup_dir);
-        return Err("No save files found to back up".to_string());
-    }
-
-    Ok(backup_dir.to_string_lossy().to_string())
+#[derive(Serialize, Deserialize)]
+struct BackupManifest {
+    source_profile: PathBuf,
+    timestamp: String,
+    files: Vec<PathBuf>,
 }
 
-/// List all backups for the given profile.
-///
-/// Scans `<app_local_data_dir>/backups/` for directories whose name starts
-/// with the profile ID (e.g. `profile_0__*`). Returns timestamp, path, and
-/// file count for each, sorted newest-first.
+fn backups_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_local_data_dir()
+        .map(|path| path.join("backups"))
+        .map_err(|e| format!("Failed to resolve app local data dir: {e}"))
+}
+
+#[tauri::command]
+pub fn create_backup(profile_path: String, app_handle: tauri::AppHandle) -> Result<String, String> {
+    create_backup_at(Path::new(&profile_path), &backups_root(&app_handle)?)
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+/// Copy recursive save files as raw bytes, including unsupported codec files and
+/// the game's own backup directory. Never follow symlinks out of the profile.
+pub fn create_backup_at(profile: &Path, root: &Path) -> Result<PathBuf, String> {
+    let source = profile
+        .canonicalize()
+        .map_err(|e| format!("Invalid profile {}: {e}", profile.display()))?;
+    let mut files = read_save_tree(&source)?;
+    if files.is_empty() {
+        return Err("No save files found to back up".into());
+    }
+    let now = Local::now();
+    let manifest = BackupManifest {
+        source_profile: source.clone(),
+        timestamp: now.with_timezone(&Utc).to_rfc3339(),
+        files: files.keys().cloned().collect(),
+    };
+    files.insert(
+        PathBuf::from(MANIFEST),
+        serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?,
+    );
+    std::fs::create_dir_all(root)
+        .map_err(|e| format!("Failed to create backups directory: {e}"))?;
+    let id = source
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or("Invalid profile ID")?;
+    let directory = root.join(format!(
+        "{}__{}__{}__{}",
+        id,
+        now.format("%Y-%m-%d"),
+        now.format("%H-%M-%S%.3f"),
+        super::transaction::unique_suffix()
+    ));
+    std::fs::create_dir(&directory)
+        .map_err(|e| format!("Failed to create backup {}: {e}", directory.display()))?;
+    if let Err(e) = super::transaction::apply_changes(&directory, &files, &BTreeSet::new()) {
+        let _ = std::fs::remove_dir_all(&directory);
+        return Err(e);
+    }
+    Ok(directory)
+}
+
 #[tauri::command]
 pub fn list_backups(
     profile_path: String,
     app_handle: tauri::AppHandle,
 ) -> Result<Vec<BackupEntry>, String> {
-    let profile_dir = Path::new(&profile_path);
-    let profile_id = profile_dir
+    list_backups_at(Path::new(&profile_path), &backups_root(&app_handle)?)
+}
+
+/// New backups match the exact canonical source path. Legacy backups have no
+/// manifest: keep showing them when their profile_N ID matches, since their
+/// original account/location cannot be recovered from the old format.
+pub fn list_backups_at(profile: &Path, root: &Path) -> Result<Vec<BackupEntry>, String> {
+    let source = profile
+        .canonicalize()
+        .map_err(|e| format!("Invalid profile: {e}"))?;
+    let id = source
         .file_name()
         .and_then(|n| n.to_str())
-        .ok_or_else(|| format!("Cannot determine profile ID from: {profile_path}"))?
-        .to_string();
-
-    let backups_root = app_handle
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Failed to resolve app local data dir: {e}"))?
-        .join("backups");
-
-    if !backups_root.is_dir() {
+        .ok_or("Invalid profile ID")?;
+    if !root.is_dir() {
         return Ok(Vec::new());
     }
-
-    let prefix = format!("{}__", profile_id);
-
-    let entries = std::fs::read_dir(&backups_root)
-        .map_err(|e| format!("Failed to read backups directory: {e}"))?;
-
-    let mut backups: Vec<BackupEntry> = Vec::new();
-
-    for entry in entries.flatten() {
-        let entry_path = entry.path();
-        if !entry_path.is_dir() {
+    let mut backups = Vec::new();
+    for entry in std::fs::read_dir(root).map_err(|e| format!("Failed to read backups: {e}"))? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        if !entry.file_type().map_err(|e| e.to_string())?.is_dir() {
             continue;
         }
-
-        let dir_name = match entry_path.file_name().and_then(|n| n.to_str()) {
-            Some(n) => n.to_string(),
-            None => continue,
+        let directory = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let manifest = match read_manifest(&directory) {
+            Ok(manifest) => manifest,
+            Err(e) => {
+                log::warn!("Skipping invalid backup {}: {e}", directory.display());
+                continue;
+            }
         };
-
-        if !dir_name.starts_with(&prefix) {
-            continue;
-        }
-
-        let file_count = count_save_files(&entry_path);
-        let timestamp = parse_timestamp_from_dirname(&dir_name).unwrap_or_else(|| dir_name.clone());
-
+        let timestamp = if let Some(manifest) = manifest {
+            if manifest.source_profile != source {
+                continue;
+            }
+            manifest.timestamp
+        } else {
+            if !name.starts_with(&format!("{id}__")) {
+                continue;
+            }
+            parse_timestamp_from_dirname(&name).unwrap_or(name)
+        };
         backups.push(BackupEntry {
-            path: entry_path.to_string_lossy().to_string(),
+            path: directory.to_string_lossy().into_owned(),
             timestamp,
-            file_count,
-            profile_id: profile_id.clone(),
+            file_count: read_save_tree(&directory)?.len(),
+            profile_id: id.to_owned(),
         });
     }
-
-    // Sort newest-first by timestamp string (ISO 8601 sorts lexicographically)
     backups.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-
     Ok(backups)
 }
 
-/// Restore a backup to the profile directory.
-///
-/// Safety: creates a pre-restore backup first (so the user can always undo),
-/// then copies all files from the backup directory into the profile directory,
-/// overwriting existing files.
 #[tauri::command]
 pub fn restore_backup(
     backup_path: String,
     profile_path: String,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    let backup_dir = Path::new(&backup_path);
-    if !backup_dir.is_dir() {
-        return Err(format!("Backup directory does not exist: {backup_path}"));
-    }
-
-    let profile_dir = Path::new(&profile_path);
-    if !profile_dir.is_dir() {
-        return Err(format!("Profile directory does not exist: {profile_path}"));
-    }
-
-    // Create a pre-restore safety backup
-    create_backup(profile_path.clone(), app_handle)?;
-
-    // Copy all files from backup to profile, overwriting
-    copy_save_files(backup_dir, profile_dir)?;
-
-    Ok(())
+    restore_backup_with_detector(
+        Path::new(&backup_path),
+        Path::new(&profile_path),
+        &backups_root(&app_handle)?,
+        super::detect::is_game_running,
+    )
 }
 
-/// Restore from the game's own backup subdirectory.
-///
-/// The game creates its own backups in `<profile>/backup/`. This command
-/// creates a pre-restore safety backup first, then copies files from the
-/// game's backup directory to the profile root.
+/// Guard and filesystem core shared by the command and integration tests.
+pub fn restore_backup_with_detector(
+    backup: &Path,
+    profile: &Path,
+    root: &Path,
+    detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<(), String> {
+    super::detect::ensure_game_stopped(detector)?;
+    let source = profile
+        .canonicalize()
+        .map_err(|e| format!("Invalid profile: {e}"))?;
+    let manifest = read_manifest(backup)?;
+    if let Some(manifest) = &manifest {
+        if manifest.source_profile != source {
+            return Err("Backup belongs to a different source profile".into());
+        }
+    } else {
+        let id = source
+            .file_name()
+            .and_then(|n| n.to_str())
+            .ok_or("Invalid profile ID")?;
+        if !backup
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.starts_with(&format!("{id}__")))
+        {
+            return Err("Legacy backup profile ID does not match the destination".into());
+        }
+    }
+    let files = read_save_tree(backup)?;
+    let complete_snapshot = manifest.is_some();
+    if let Some(manifest) = manifest {
+        let expected: BTreeSet<_> = manifest.files.into_iter().collect();
+        let actual: BTreeSet<_> = files.keys().cloned().collect();
+        if expected != actual {
+            return Err("Backup files do not match the manifest. Restore was not started.".into());
+        }
+    }
+    let deletes = if complete_snapshot {
+        restore_deletions(&source, &files)?
+    } else {
+        // Old backups were top-level-only copies, not complete snapshots.
+        BTreeSet::new()
+    };
+    if files.is_empty() {
+        return Err("No save files found in backup".into());
+    }
+    create_backup_at(&source, root)?;
+    super::transaction::apply_changes(&source, &files, &deletes)
+}
+
 #[tauri::command]
 pub fn restore_game_backup(
     profile_path: String,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    let profile_dir = Path::new(&profile_path);
-    if !profile_dir.is_dir() {
-        return Err(format!("Profile directory does not exist: {profile_path}"));
+    restore_game_backup_with_detector(
+        Path::new(&profile_path),
+        &backups_root(&app_handle)?,
+        super::detect::is_game_running,
+    )
+}
+
+pub fn restore_game_backup_with_detector(
+    profile: &Path,
+    root: &Path,
+    detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<(), String> {
+    super::detect::ensure_game_stopped(detector)?;
+    let mut files = read_save_tree(&profile.join("backup"))?;
+    // These top-level files in the game's backup are stale snapshots, not the
+    // active raid_save directory. Never transplant them into the profile root.
+    files.remove(Path::new("persist.raid.json"));
+    files.remove(Path::new("persist.map.json"));
+    if files.is_empty() {
+        return Err("No save files found in game backup".into());
     }
-
-    let game_backup_dir = profile_dir.join("backup");
-    if !game_backup_dir.is_dir() {
-        return Err(format!(
-            "Game backup directory does not exist: {}",
-            game_backup_dir.display()
-        ));
-    }
-
-    // Create a pre-restore safety backup
-    create_backup(profile_path.clone(), app_handle)?;
-
-    // Copy all files from game backup to profile root
-    copy_save_files(&game_backup_dir, profile_dir)?;
-
-    Ok(())
+    create_backup_at(profile, root)?;
+    // The game's partial backup is not a complete profile snapshot, so it does
+    // not authorize deleting files from the active profile.
+    super::transaction::apply_changes(profile, &files, &BTreeSet::new())
 }
 
 /// Open the editor's backups directory in the system file manager.
@@ -220,88 +257,77 @@ pub fn open_backup_folder(app_handle: tauri::AppHandle) -> Result<String, String
     Ok(path)
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/// Copy all save files from `src_dir` to `dst_dir`.
-/// Returns the number of files copied.
-fn copy_save_files(src_dir: &Path, dst_dir: &Path) -> Result<usize, String> {
-    let entries = std::fs::read_dir(src_dir)
-        .map_err(|e| format!("Failed to read directory {}: {e}", src_dir.display()))?;
-
-    let mut count = 0;
-
-    for entry in entries.flatten() {
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-
-        if !super::is_save_file(&name) {
-            continue;
-        }
-
-        let src_file = entry.path();
-        if !src_file.is_file() {
-            continue;
-        }
-
-        let dst_file = dst_dir.join(&*file_name);
-
-        std::fs::copy(&src_file, &dst_file).map_err(|e| {
-            format!(
-                "Failed to copy {} -> {}: {e}",
-                src_file.display(),
-                dst_file.display()
-            )
-        })?;
-
-        count += 1;
+fn read_manifest(directory: &Path) -> Result<Option<BackupManifest>, String> {
+    match std::fs::read(directory.join(MANIFEST)) {
+        Ok(bytes) => serde_json::from_slice(&bytes)
+            .map(Some)
+            .map_err(|e| format!("Invalid backup manifest: {e}")),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!("Failed to read backup manifest: {e}")),
     }
-
-    Ok(count)
 }
 
-/// Count the number of save files in a directory.
-fn count_save_files(dir: &Path) -> usize {
-    std::fs::read_dir(dir)
-        .map(|entries| {
-            entries
-                .flatten()
-                .filter(|e| {
-                    let name = e.file_name();
-                    let n = name.to_string_lossy();
-                    super::is_save_file(&n) && e.path().is_file()
-                })
-                .count()
+pub(crate) fn read_save_tree(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>, String> {
+    fn visit(
+        root: &Path,
+        relative: &Path,
+        files: &mut BTreeMap<PathBuf, Vec<u8>>,
+    ) -> Result<(), String> {
+        let directory = root.join(relative);
+        for entry in std::fs::read_dir(&directory)
+            .map_err(|e| format!("Failed to read {}: {e}", directory.display()))?
+        {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let kind = entry.file_type().map_err(|e| e.to_string())?;
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            let path = relative.join(name.as_ref());
+            if kind.is_dir() && !name.starts_with(".hamlet-transaction-") {
+                visit(root, &path, files)?;
+            } else if kind.is_file() && super::is_save_file(&name) {
+                files.insert(
+                    path,
+                    std::fs::read(entry.path())
+                        .map_err(|e| format!("Failed to read {}: {e}", entry.path().display()))?,
+                );
+            } else if kind.is_symlink() && super::is_save_file(&name) {
+                return Err(format!(
+                    "Cannot back up symlink save {}",
+                    entry.path().display()
+                ));
+            }
+        }
+        Ok(())
+    }
+    let mut files = BTreeMap::new();
+    visit(root, Path::new(""), &mut files)?;
+    Ok(files)
+}
+
+fn restore_deletions(
+    profile: &Path,
+    files: &BTreeMap<PathBuf, Vec<u8>>,
+) -> Result<BTreeSet<PathBuf>, String> {
+    let filenames: BTreeSet<_> = files.keys().filter_map(|p| p.file_name()).collect();
+    Ok(read_save_tree(profile)?
+        .into_keys()
+        .filter(|path| {
+            !files.contains_key(path)
+                && path
+                    .file_name()
+                    .is_some_and(|name| filenames.contains(name))
         })
-        .unwrap_or(0)
+        .collect())
 }
 
-/// Parse an ISO 8601 timestamp from a backup directory name.
-///
-/// Expected format: `<profile_id>__<YYYY-MM-DD>__<HH-MM-SS>`
-/// Returns: `Some("YYYY-MM-DDTHH:MM:SS")` or `None` if parsing fails.
-fn parse_timestamp_from_dirname(dir_name: &str) -> Option<String> {
-    // Split on double-underscore to get [profile_id, date, time]
-    let parts: Vec<&str> = dir_name.splitn(3, "__").collect();
-    if parts.len() != 3 {
+fn parse_timestamp_from_dirname(name: &str) -> Option<String> {
+    let parts: Vec<_> = name.split("__").collect();
+    if parts.len() < 3 {
         return None;
     }
-
-    let date_str = parts[1]; // "YYYY-MM-DD"
-    let time_str = parts[2]; // "HH-MM-SS"
-
-    // Convert "HH-MM-SS" to "HH:MM:SS"
-    let time_colon = time_str.replace('-', ":");
-
-    let datetime_str = format!("{date_str}T{time_colon}");
-
-    // Validate by parsing
-    NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%dT%H:%M:%S")
+    let datetime = format!("{}T{}", parts[1], parts[2].replace('-', ":"));
+    NaiveDateTime::parse_from_str(&datetime, "%Y-%m-%dT%H:%M:%S%.f")
         .ok()
-        .map(|ndt| {
-            // Convert to UTC ISO 8601 for consistent API output
-            let local_dt: DateTime<Local> = ndt.and_local_timezone(Local).single()?;
-            Some(local_dt.with_timezone(&Utc).to_rfc3339())
-        })?
+        .and_then(|value| value.and_local_timezone(Local).single())
+        .map(|value: DateTime<Local>| value.with_timezone(&Utc).to_rfc3339())
 }

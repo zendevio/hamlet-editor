@@ -11,7 +11,8 @@ use ddsavelib::{File, Unhasher};
 /// Encode `file` to binary bytes.
 fn to_bin(file: &File) -> Vec<u8> {
     let mut bin = Vec::new();
-    file.write_to_bin(&mut bin).expect("write_to_bin should not fail on a Vec");
+    file.write_to_bin(&mut bin)
+        .expect("write_to_bin should not fail on a Vec");
     bin
 }
 
@@ -317,19 +318,12 @@ fn string_with_quotes_binary_roundtrip() {
 }
 
 #[test]
-fn string_with_newline_binary_roundtrip() {
-    // JSON-encode the newline: "line1\nline2"
-    let json = r#"{
-        "__revision_dont_touch": 1,
-        "base_root": { "multiline": "line1\nline2" }
-    }"#;
-    let val = bin_roundtrip(json);
-    let root = val.get("base_root").unwrap().as_object().unwrap();
-    assert_eq!(
-        root.get("multiline").and_then(|v| v.as_str()),
-        Some("line1\nline2"),
-        "newline in strings must survive binary round-trip"
-    );
+fn string_with_newline_is_rejected_before_binary_encoding() {
+    let json = r#"{"__revision_dont_touch": 1,"base_root": {"multiline": "line1\nline2"}}"#;
+    assert!(File::try_from_json(json.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }
 
 // ---------------------------------------------------------------------------
@@ -355,7 +349,11 @@ fn nested_objects_three_levels_binary_roundtrip() {
         .and_then(|v| v.get("level2"))
         .and_then(|v| v.get("deep_value"))
         .and_then(|v| v.as_i64());
-    assert_eq!(deep, Some(99), "3-level nested value must survive binary round-trip");
+    assert_eq!(
+        deep,
+        Some(99),
+        "3-level nested value must survive binary round-trip"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -399,9 +397,21 @@ fn multiple_sibling_fields_binary_roundtrip() {
     }"#;
     let val = bin_roundtrip(json);
     let root = val.get("base_root").unwrap().as_object().unwrap();
-    assert_eq!(root.get("field_a").and_then(|v| v.as_i64()), Some(10), "field_a must be 10");
-    assert_eq!(root.get("field_b").and_then(|v| v.as_i64()), Some(20), "field_b must be 20");
-    assert_eq!(root.get("field_c").and_then(|v| v.as_i64()), Some(30), "field_c must be 30");
+    assert_eq!(
+        root.get("field_a").and_then(|v| v.as_i64()),
+        Some(10),
+        "field_a must be 10"
+    );
+    assert_eq!(
+        root.get("field_b").and_then(|v| v.as_i64()),
+        Some(20),
+        "field_b must be 20"
+    );
+    assert_eq!(
+        root.get("field_c").and_then(|v| v.as_i64()),
+        Some(30),
+        "field_c must be 30"
+    );
     assert_eq!(root.len(), 3, "all 3 sibling fields must be present");
 }
 
@@ -559,7 +569,11 @@ fn deeply_nested_objects_ten_levels_binary_roundtrip() {
         .and_then(|v| v.get("leaf"))
         .and_then(|v| v.as_i64());
 
-    assert_eq!(leaf, Some(42), "leaf value must survive 10-level deep nesting round-trip");
+    assert_eq!(
+        leaf,
+        Some(42),
+        "leaf value must survive 10-level deep nesting round-trip"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -584,7 +598,11 @@ fn object_with_fifty_fields_binary_roundtrip() {
     let val = bin_roundtrip(&json);
     let root = val.get("base_root").unwrap().as_object().unwrap();
 
-    assert_eq!(root.len(), 50, "all 50 fields must survive binary round-trip");
+    assert_eq!(
+        root.len(),
+        50,
+        "all 50 fields must survive binary round-trip"
+    );
 
     for i in 0..50u64 {
         let key = format!("field_{:02}", i);

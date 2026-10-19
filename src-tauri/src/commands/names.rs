@@ -96,6 +96,7 @@ pub fn set_name_table(names: Vec<String>, state: State<'_, NameTableState>) -> R
     let mut guard = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
     guard.version += 1;
     guard.loaded_profile = None;
+    guard.loaded_files.clear();
     guard.names = names;
     if guard.names.is_empty() {
         return Err("Name table is empty. Load game data before loading a profile.".to_string());
