@@ -1,6 +1,7 @@
 mod commands;
 
 use std::sync::Mutex;
+use tauri::Manager;
 
 // ── Managed state ──
 
@@ -31,6 +32,18 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+            }
+
+            // Optional startup window mode for test runs:
+            // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.
+            if let Ok(mode) = std::env::var("HAMLET_WINDOW") {
+                if let Some(window) = app.get_webview_window("main") {
+                    match mode.as_str() {
+                        "maximized" => window.maximize()?,
+                        "fullscreen" => window.set_fullscreen(true)?,
+                        other => log::warn!("Ignoring unknown HAMLET_WINDOW value: {other}"),
+                    }
+                }
             }
             Ok(())
         })
