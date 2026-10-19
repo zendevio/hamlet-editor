@@ -232,8 +232,7 @@ pub fn load_class_skills(game_path: String) -> Result<Vec<ClassSkills>, String> 
     // ── 2. Parse combat skills from each .info.darkest file ─────────────────
     let combat_re = Regex::new(r#"combat_skill:\s+\.id\s+"([^"]+)""#).unwrap();
     // Map from class_id -> ClassSkills (combat filled, camping empty for now).
-    let mut map: std::collections::HashMap<String, ClassSkills> =
-        std::collections::HashMap::new();
+    let mut map: std::collections::HashMap<String, ClassSkills> = std::collections::HashMap::new();
 
     for (class_id, path) in &candidates {
         let content = match std::fs::read_to_string(path) {
@@ -310,7 +309,11 @@ fn parse_quirk_library(path: &Path, out: &mut Vec<QuirkDef>) {
             .get("is_disease")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
-        out.push(QuirkDef { id, is_positive, is_disease });
+        out.push(QuirkDef {
+            id,
+            is_positive,
+            is_disease,
+        });
     }
 }
 
@@ -337,7 +340,11 @@ fn parse_trinket_file(path: &Path, out: &mut Vec<TrinketDef>) {
             .and_then(|arr| arr.first())
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
-        out.push(TrinketDef { id, rarity, class_restriction });
+        out.push(TrinketDef {
+            id,
+            rarity,
+            class_restriction,
+        });
     }
 }
 
@@ -352,7 +359,10 @@ fn parse_darkest_armour_hp(class_id: &str, path: &Path, re: &Regex) -> Option<Cl
     if hp_by_rank.is_empty() {
         return None;
     }
-    Some(ClassStats { class_id: class_id.to_string(), hp_by_rank })
+    Some(ClassStats {
+        class_id: class_id.to_string(),
+        hp_by_rank,
+    })
 }
 
 /// Parse a `*.camping_skills.json` file and append skill IDs to the
