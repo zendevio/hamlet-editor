@@ -753,6 +753,7 @@
 			</DialogTitle>
 			<DialogDescription>
 				This will replace your current save files with the selected backup.
+				If this restore adds or removes files, quit Steam first.
 			</DialogDescription>
 		</DialogHeader>
 
@@ -807,6 +808,7 @@
 			</DialogTitle>
 			<DialogDescription>
 				Restore from the game's own backup/ subdirectory inside the save profile.
+				If this restore adds or removes files, quit Steam first.
 			</DialogDescription>
 		</DialogHeader>
 

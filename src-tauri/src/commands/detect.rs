@@ -195,6 +195,33 @@ pub(crate) fn ensure_game_stopped(
     Ok(())
 }
 
+/// Steam's main client names: steam_osx (macOS), steam.exe (Windows),
+/// steam (Linux). Helpers such as steamwebhelper do not own the storage cache.
+pub fn is_steam_running() -> Result<bool, String> {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    Ok(sys
+        .processes()
+        .values()
+        .any(|p| is_steam_process(&p.name().to_string_lossy())))
+}
+
+fn is_steam_process(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "steam_osx" | "steam.exe" | "steam"
+    )
+}
+
+pub(crate) fn ensure_steam_stopped(
+    detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<(), String> {
+    if detector()? {
+        return Err("Quit Steam completely before restoring this backup. It adds or removes save files, and the running Steam client would keep stale file sizes, which stops the game from loading the campaign. Overwrite-only restores and normal saves are not affected.".into());
+    }
+    Ok(())
+}
+
 /// Validate that a user-chosen directory looks like a valid DD1 save profile.
 #[tauri::command]
 pub fn validate_save_directory(path: String) -> Result<bool, String> {
@@ -608,6 +635,22 @@ mod tests {
 
 #[cfg(test)]
 mod process_name_tests {
+    #[test]
+    fn matches_only_main_steam_clients() {
+        for name in ["steam_osx", "STEAM.EXE", "steam"] {
+            assert!(super::is_steam_process(name), "{name}");
+        }
+        for name in [
+            "steamwebhelper",
+            "steamservice.exe",
+            "steam-helper",
+            "Darkest",
+            "steam_osx_helper",
+        ] {
+            assert!(!super::is_steam_process(name), "{name}");
+        }
+    }
+
     #[test]
     fn matches_platform_names_and_linux_truncation() {
         for name in [

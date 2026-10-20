@@ -342,19 +342,19 @@ pub fn save_profile_with_detector(
                 "{name} was not decoded at load. Reload the profile before saving."
             ));
         }
-        Ok(PathBuf::from(name))
+        Err(format!(
+            "Cannot create save file {name}. Normal saves only overwrite files decoded at load. Reload the profile before saving."
+        ))
     };
     let mut writes = BTreeMap::new();
     let mut updated = HashMap::new();
     // Validate and encode every file in memory before creating any temp files.
     for (name, value) in obj {
         let relative_path = relative_for(name)?;
-        let file = if let Some(original) = table.loaded_files.get(name) {
-            original.file.merge_json_value(value)
-        } else {
-            File::from_json_value(value)
-        }
-        .map_err(|e| format!("Failed to encode {name}: {e}"))?;
+        let file = table.loaded_files[name]
+            .file
+            .merge_json_value(value)
+            .map_err(|e| format!("Failed to encode {name}: {e}"))?;
         let mut bytes = Vec::new();
         file.write_to_bin(&mut bytes)
             .map_err(|e| format!("Failed to encode {name}: {e}"))?;

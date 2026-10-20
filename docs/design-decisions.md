@@ -51,6 +51,17 @@ Configurable (boolean setting, off by default):
 - Note: `app_data_dir()` maps to `%APPDATA%` (Roaming) on Windows. We use `app_local_data_dir()` instead since backups are machine-local.
 - Timestamped copies with profile identifier
 
+### Backup Restore and Steam
+Both restore commands compute writes and deletions before changing files or
+creating a safety backup. If the restore adds or removes files, Steam must be
+fully stopped: its running remote-storage cache retains stale file sizes and
+can stop the game from loading the campaign. Overwrite-only restores remain
+allowed. All restores still require the game to be stopped first. Main client
+process names are matched exactly, ignoring case: `steam_osx` on macOS,
+`steam.exe` on Windows, and `steam` on Linux; helper processes are excluded.
+Normal profile saves only overwrite files decoded at load and never delete files.
+Legacy and game backups remain partial snapshots and do not authorize deletions.
+
 ## Path Detection
 
 ### Auto-Detection

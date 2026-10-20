@@ -151,20 +151,22 @@ pub fn restore_backup(
     profile_path: String,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    restore_backup_with_detector(
+    restore_backup_with_detectors(
         Path::new(&backup_path),
         Path::new(&profile_path),
         &backups_root(&app_handle)?,
         super::detect::is_game_running,
+        super::detect::is_steam_running,
     )
 }
 
 /// Guard and filesystem core shared by the command and integration tests.
-pub fn restore_backup_with_detector(
+pub fn restore_backup_with_detectors(
     backup: &Path,
     profile: &Path,
     root: &Path,
     detector: impl FnOnce() -> Result<bool, String>,
+    steam_detector: impl FnOnce() -> Result<bool, String>,
 ) -> Result<(), String> {
     super::detect::ensure_game_stopped(detector)?;
     let source = profile
@@ -206,6 +208,7 @@ pub fn restore_backup_with_detector(
     if files.is_empty() {
         return Err("No save files found in backup".into());
     }
+    ensure_restore_safe(&source, &files, &deletes, steam_detector)?;
     create_backup_at(&source, root)?;
     super::transaction::apply_changes(&source, &files, &deletes)
 }
@@ -215,17 +218,19 @@ pub fn restore_game_backup(
     profile_path: String,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    restore_game_backup_with_detector(
+    restore_game_backup_with_detectors(
         Path::new(&profile_path),
         &backups_root(&app_handle)?,
         super::detect::is_game_running,
+        super::detect::is_steam_running,
     )
 }
 
-pub fn restore_game_backup_with_detector(
+pub fn restore_game_backup_with_detectors(
     profile: &Path,
     root: &Path,
     detector: impl FnOnce() -> Result<bool, String>,
+    steam_detector: impl FnOnce() -> Result<bool, String>,
 ) -> Result<(), String> {
     super::detect::ensure_game_stopped(detector)?;
     let mut files = read_save_tree(&profile.join("backup"))?;
@@ -236,10 +241,24 @@ pub fn restore_game_backup_with_detector(
     if files.is_empty() {
         return Err("No save files found in game backup".into());
     }
+    ensure_restore_safe(profile, &files, &BTreeSet::new(), steam_detector)?;
     create_backup_at(profile, root)?;
     // The game's partial backup is not a complete profile snapshot, so it does
     // not authorize deleting files from the active profile.
     super::transaction::apply_changes(profile, &files, &BTreeSet::new())
+}
+
+/// Check the complete change set before creating a safety backup or staging writes.
+fn ensure_restore_safe(
+    profile: &Path,
+    writes: &BTreeMap<PathBuf, Vec<u8>>,
+    deletes: &BTreeSet<PathBuf>,
+    steam_detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<(), String> {
+    if !deletes.is_empty() || writes.keys().any(|path| !profile.join(path).exists()) {
+        super::detect::ensure_steam_stopped(steam_detector)?;
+    }
+    Ok(())
 }
 
 /// Open the editor's backups directory in the system file manager.

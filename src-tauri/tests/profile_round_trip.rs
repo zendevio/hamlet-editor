@@ -320,9 +320,13 @@ fn backup_restore_recurses_keeps_raw_bytes_and_scopes_deletion() {
         .permissions();
     permissions.set_readonly(true);
     fs::set_permissions(backup.join("persist.roster.json"), permissions).unwrap();
-    backup::restore_backup_with_detector(&backup, &sandbox.profile(), &sandbox.backups(), || {
-        Ok(false)
-    })
+    backup::restore_backup_with_detectors(
+        &backup,
+        &sandbox.profile(),
+        &sandbox.backups(),
+        || Ok(false),
+        || Ok(false),
+    )
     .unwrap();
     let after = tree(&sandbox.profile());
     for (path, bytes) in before {
@@ -357,10 +361,11 @@ fn backup_listing_uses_exact_source_and_keeps_legacy_profile_ids() {
     assert!(backup::list_backups_at(&second.profile(), &first.backups())
         .unwrap()
         .is_empty());
-    assert!(backup::restore_backup_with_detector(
+    assert!(backup::restore_backup_with_detectors(
         &backup,
         &second.profile(),
         &second.backups(),
+        || Ok(false),
         || Ok(false)
     )
     .unwrap_err()
@@ -388,10 +393,11 @@ fn incomplete_backup_manifest_blocks_restore_before_mutation() {
     fs::remove_file(backup.join("plot_crimson_court_1/persist.map.json")).unwrap();
     let before = tree(&sandbox.profile());
     let count = fs::read_dir(sandbox.backups()).unwrap().count();
-    let error = backup::restore_backup_with_detector(
+    let error = backup::restore_backup_with_detectors(
         &backup,
         &sandbox.profile(),
         &sandbox.backups(),
+        || Ok(false),
         || Ok(false),
     )
     .unwrap_err();
@@ -417,19 +423,22 @@ fn all_three_write_commands_refuse_a_running_game_before_any_changes() {
     )
     .unwrap_err();
     assert!(error.starts_with("Darkest Dungeon is running"));
-    let error = backup::restore_backup_with_detector(
+    let error = backup::restore_backup_with_detectors(
         Path::new("missing-backup"),
         &sandbox.profile(),
         &sandbox.backups(),
         || Ok(true),
+        || panic!("Steam detection must not precede the game-running guard"),
     )
     .unwrap_err();
     assert!(error.starts_with("Darkest Dungeon is running"));
-    let error =
-        backup::restore_game_backup_with_detector(&sandbox.profile(), &sandbox.backups(), || {
-            Ok(true)
-        })
-        .unwrap_err();
+    let error = backup::restore_game_backup_with_detectors(
+        &sandbox.profile(),
+        &sandbox.backups(),
+        || Ok(true),
+        || panic!("Steam detection must not precede the game-running guard"),
+    )
+    .unwrap_err();
     assert!(error.starts_with("Darkest Dungeon is running"));
     assert_eq!(tree(&sandbox.profile()), before);
     assert!(!sandbox.backups().exists());
@@ -444,8 +453,13 @@ fn game_backup_restore_does_not_transplant_stale_raid_or_map_to_root() {
             .join("plot_crimson_court_1/persist.raid.json"),
     )
     .unwrap();
-    backup::restore_game_backup_with_detector(&sandbox.profile(), &sandbox.backups(), || Ok(false))
-        .unwrap();
+    backup::restore_game_backup_with_detectors(
+        &sandbox.profile(),
+        &sandbox.backups(),
+        || Ok(false),
+        || Ok(false),
+    )
+    .unwrap();
     assert!(!sandbox.profile().join("persist.raid.json").exists());
     assert!(!sandbox.profile().join("persist.map.json").exists());
     assert_eq!(
@@ -844,4 +858,105 @@ fn backup_listing_uses_manifest_counts_and_skips_invalid_entries() {
     let listed = backup::list_backups_at(&sandbox.profile(), &sandbox.backups()).unwrap();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].file_count, expected_count);
+}
+
+#[test]
+fn editor_restore_checks_steam_before_safety_backup_or_mutation() {
+    for change in ["create", "delete", "overwrite"] {
+        for steam_running in [false, true] {
+            let sandbox = Sandbox::new();
+            let original = tree(&sandbox.profile());
+            let backup_root = sandbox.0.join("source-backups");
+            let snapshot = backup::create_backup_at(&sandbox.profile(), &backup_root).unwrap();
+            match change {
+                "create" => fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap(),
+                "delete" => {
+                    fs::write(sandbox.profile().join("persist.raid.json"), b"new raid").unwrap()
+                }
+                _ => fs::write(
+                    sandbox.profile().join("persist.roster.json"),
+                    b"changed roster",
+                )
+                .unwrap(),
+            }
+            let before = tree(&sandbox.profile());
+            let result = backup::restore_backup_with_detectors(
+                &snapshot,
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || Ok(steam_running),
+            );
+            if steam_running && change != "overwrite" {
+                assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+                assert_eq!(tree(&sandbox.profile()), before);
+                assert!(!sandbox.backups().exists());
+            } else {
+                result.unwrap();
+                assert_eq!(tree(&sandbox.profile()), original);
+                assert_eq!(fs::read_dir(sandbox.backups()).unwrap().count(), 1);
+            }
+        }
+    }
+}
+
+#[test]
+fn game_restore_checks_creates_but_allows_overwrites_and_preserves_extra_files() {
+    for creates in [false, true] {
+        for steam_running in [false, true] {
+            let sandbox = Sandbox::new();
+            // The fixture's game backup includes files absent from the profile.
+            // Populate its restore targets so only the roster controls creation.
+            for (path, bytes) in tree(&sandbox.profile().join("backup")) {
+                if path != Path::new("persist.raid.json") && path != Path::new("persist.map.json") {
+                    fs::write(sandbox.profile().join(path), bytes).unwrap();
+                }
+            }
+            if creates {
+                fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+            } else {
+                fs::write(
+                    sandbox.profile().join("persist.roster.json"),
+                    b"changed roster",
+                )
+                .unwrap();
+            }
+            fs::write(sandbox.profile().join("persist.raid.json"), b"keep raid").unwrap();
+            let before = tree(&sandbox.profile());
+            let result = backup::restore_game_backup_with_detectors(
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || Ok(steam_running),
+            );
+            if creates && steam_running {
+                assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+                assert_eq!(tree(&sandbox.profile()), before);
+                assert!(!sandbox.backups().exists());
+            } else {
+                result.unwrap();
+                assert_eq!(
+                    fs::read(sandbox.profile().join("persist.roster.json")).unwrap(),
+                    fs::read(sandbox.profile().join("backup/persist.roster.json")).unwrap()
+                );
+                assert_eq!(
+                    fs::read(sandbox.profile().join("persist.raid.json")).unwrap(),
+                    b"keep raid"
+                );
+                assert_eq!(fs::read_dir(sandbox.backups()).unwrap().count(), 1);
+            }
+        }
+    }
+}
+
+#[test]
+fn normal_save_refuses_missing_files_before_writing_anything() {
+    let sandbox = Sandbox::new();
+    let (mut table, mut data) = sandbox.load();
+    let before = tree(&sandbox.profile());
+    data["persist.new_optional.json"] = json!({"__revision_dont_touch": 1, "base_root": {}});
+    data["persist.roster.json"]["base_root"]["test_field"] = json!(1);
+    let error = sandbox.save(&mut table, data).unwrap_err();
+    assert!(error.starts_with("Cannot create save file persist.new_optional.json."));
+    assert_eq!(tree(&sandbox.profile()), before);
 }
