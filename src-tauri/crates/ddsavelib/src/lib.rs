@@ -48,7 +48,7 @@
 //! ## Features
 //!
 //! * `string_cache` (default: yes): Uses the `string_cache` crate to intern strings, yielding a
-//! performance boost for decoding binary files.
+//!   performance boost for decoding binary files.
 
 pub mod err;
 mod file;
@@ -97,7 +97,9 @@ mod tests {
 
         // Encode to binary.
         let mut bin = Vec::new();
-        file1.write_to_bin(&mut bin).expect("binary write should succeed");
+        file1
+            .write_to_bin(&mut bin)
+            .expect("binary write should succeed");
         assert!(!bin.is_empty(), "binary output must not be empty");
 
         // Decode from binary.
@@ -116,7 +118,10 @@ mod tests {
         // The top-level object must have the same keys.
         let keys1: std::collections::BTreeSet<_> = v1.as_object().unwrap().keys().collect();
         let keys2: std::collections::BTreeSet<_> = v2.as_object().unwrap().keys().collect();
-        assert_eq!(keys1, keys2, "top-level field sets must match after round-trip");
+        assert_eq!(
+            keys1, keys2,
+            "top-level field sets must match after round-trip"
+        );
     }
 
     // ── to_json_value / from_json_value bridge API ─────────────────────────
@@ -190,7 +195,9 @@ mod tests {
 
         fn count_fields(v: &serde_json::Value) -> usize {
             match v {
-                serde_json::Value::Object(m) => m.len() + m.values().map(count_fields).sum::<usize>(),
+                serde_json::Value::Object(m) => {
+                    m.len() + m.values().map(count_fields).sum::<usize>()
+                }
                 serde_json::Value::Array(a) => a.iter().map(count_fields).sum(),
                 _ => 0,
             }

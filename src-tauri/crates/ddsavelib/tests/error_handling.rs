@@ -149,10 +149,8 @@ fn array_for_unknown_field_is_rejected() {
     // An unknown field name receiving an array has no hardcoded type and the
     // heuristic branch will encounter BeginArray and return LiteralFormat.
     assert!(
-        parse_json(
-            r#"{"__revision_dont_touch": 1, "base_root": {"unknown_field": [1, 2, 3]}}"#
-        )
-        .is_err(),
+        parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"unknown_field": [1, 2, 3]}}"#)
+            .is_err(),
         "array for unknown field must be rejected"
     );
 }
@@ -162,10 +160,8 @@ fn float_for_unknown_field_is_rejected() {
     // For non-hardcoded fields, the heuristic treats Number tokens as i32.
     // 3.14 cannot be parsed as i32, so it must be rejected.
     assert!(
-        parse_json(
-            r#"{"__revision_dont_touch": 1, "base_root": {"unknown_field": 3.14}}"#
-        )
-        .is_err(),
+        parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"unknown_field": 3.14}}"#)
+            .is_err(),
         "float for non-hardcoded field must be rejected (must be i32)"
     );
 }
@@ -226,10 +222,8 @@ fn all_zeros_binary_is_rejected() {
 #[test]
 fn unicode_escape_in_string_is_accepted() {
     // serde_json correctly handles \uXXXX per RFC 8259.
-    let file = parse_json(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": "\u0041"}}"#
-    )
-    .expect(r"\uXXXX escape should be accepted by serde parser");
+    let file = parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"x": "\u0041"}}"#)
+        .expect(r"\uXXXX escape should be accepted by serde parser");
     let unhash = ddsavelib::Unhasher::<&str>::empty();
     let val = file.to_json_value(&unhash);
     assert_eq!(val["base_root"]["x"].as_str(), Some("A"));
@@ -238,10 +232,8 @@ fn unicode_escape_in_string_is_accepted() {
 #[test]
 fn forward_slash_escape_in_string_is_accepted() {
     // serde_json correctly handles \/ per RFC 8259.
-    let file = parse_json(
-        r#"{"__revision_dont_touch": 1, "base_root": {"x": "a\/b"}}"#
-    )
-    .expect(r"\/ escape should be accepted by serde parser");
+    let file = parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"x": "a\/b"}}"#)
+        .expect(r"\/ escape should be accepted by serde parser");
     let unhash = ddsavelib::Unhasher::<&str>::empty();
     let val = file.to_json_value(&unhash);
     assert_eq!(val["base_root"]["x"].as_str(), Some("a/b"));
@@ -255,10 +247,7 @@ fn forward_slash_escape_in_string_is_accepted() {
 fn number_exceeding_i32_max_is_rejected() {
     // i32::MAX is 2147483647; 2147483648 overflows i32.
     assert!(
-        parse_json(
-            r#"{"__revision_dont_touch": 1, "base_root": {"x": 2147483648}}"#
-        )
-        .is_err(),
+        parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"x": 2147483648}}"#).is_err(),
         "i32::MAX + 1 must be rejected for a non-hardcoded int field"
     );
 }
@@ -267,10 +256,7 @@ fn number_exceeding_i32_max_is_rejected() {
 fn number_below_i32_min_is_rejected() {
     // i32::MIN is -2147483648; -2147483649 underflows i32.
     assert!(
-        parse_json(
-            r#"{"__revision_dont_touch": 1, "base_root": {"x": -2147483649}}"#
-        )
-        .is_err(),
+        parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"x": -2147483649}}"#).is_err(),
         "i32::MIN - 1 must be rejected for a non-hardcoded int field"
     );
 }
@@ -283,10 +269,8 @@ fn number_below_i32_min_is_rejected() {
 fn empty_string_for_char_field_is_rejected() {
     // requirement_code is hardcoded as Char. It requires exactly one ASCII byte.
     assert!(
-        parse_json(
-            r#"{"__revision_dont_touch": 1, "base_root": {"requirement_code": ""}}"#
-        )
-        .is_err(),
+        parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"requirement_code": ""}}"#)
+            .is_err(),
         "empty string for Char field must be rejected"
     );
 }
@@ -294,10 +278,8 @@ fn empty_string_for_char_field_is_rejected() {
 #[test]
 fn multi_char_string_for_char_field_is_rejected() {
     assert!(
-        parse_json(
-            r#"{"__revision_dont_touch": 1, "base_root": {"requirement_code": "AB"}}"#
-        )
-        .is_err(),
+        parse_json(r#"{"__revision_dont_touch": 1, "base_root": {"requirement_code": "AB"}}"#)
+            .is_err(),
         "multi-char string for Char field must be rejected"
     );
 }

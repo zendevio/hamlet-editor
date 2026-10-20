@@ -36,7 +36,7 @@ function assertCombatCleared(hero) {
 	assert.equal(hero.actor.combat_ready, false);
 }
 
-test('snap-4 Bonel revival resets only roster town fields and Discard restores the death', () => {
+test('Town Bonel revival resets only roster town fields and Discard restores the death', () => {
 	const data = load(4);
 	store.loadCampaignLog(structuredClone(dismiss.campaignLog));
 	store.loadProgression(structuredClone(dismiss.progression));
@@ -63,7 +63,7 @@ test('snap-4 Bonel revival resets only roster town fields and Discard restores t
 	assert.equal(store.hasDirtyFiles(), false);
 });
 
-test('snap-3 revival, capacity exhaustion and unknown capacity fail atomically', () => {
+test('In-raid revival, capacity exhaustion and unknown capacity fail atomically', () => {
 	for (const mode of ['raid', 'full', 'unknown']) {
 		const data = load(mode === 'raid' ? 3 : 4);
 		if (mode === 'full') data.roster.base_root.heroes['999'] = structuredClone(data.roster.base_root.heroes['96']);
@@ -109,7 +109,7 @@ test('capacity follows current Stage Coach purchases, mode and enabled Shieldbre
 	assert.equal(safety.rosterCapacity(data.game, data.upgrades, rules), null);
 });
 
-test('snap-3 Courtyard abandon matches minimal town return, retains raid_save and raid data, and Discard restores', () => {
+test('Captured Courtyard abandon matches minimal town return, retains raid_save and raid data, and Discard restores', () => {
 	const data = load(3);
 	store.loadTown(structuredClone(dismiss.town));
 	store.loadCampaignLog(structuredClone(dismiss.campaignLog));

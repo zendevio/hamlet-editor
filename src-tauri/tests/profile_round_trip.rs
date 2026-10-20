@@ -131,7 +131,7 @@ fn raw_json(bytes: &[u8]) -> String {
     String::from_utf8(output).unwrap()
 }
 
-// Review 3's probe models JSON.stringify numbers; reverse keys to also stress order restoration.
+// Model JSON.stringify numbers and reverse keys to stress order restoration.
 fn simulate_frontend_json(value: &mut Value) {
     if let Some(map) = value.as_object_mut() {
         for child in map.values_mut() {
@@ -813,7 +813,7 @@ fn undecodable_inactive_raids_are_ignored_and_active_decode_errors_remain_fatal(
 fn review_probe_edits_round_trip_with_javascript_numbers() {
     let sandbox = Sandbox::new();
     let (mut table, mut data) = sandbox.load();
-    // Reuse review 3's real-fixture probe: compact purchases, append estate trinkets,
+    // Exercise the captured save: compact purchases, append estate trinkets,
     // remove a roster hero and replace the last party vector.
     let purchases = data["persist.upgrades.json"]["base_root"]["purchases"]
         .as_object()

@@ -23,7 +23,8 @@ fn from_json(json: &str) -> File {
 
 fn to_bin(file: &File) -> Vec<u8> {
     let mut bin = Vec::new();
-    file.write_to_bin(&mut bin).expect("write_to_bin should not fail on a Vec");
+    file.write_to_bin(&mut bin)
+        .expect("write_to_bin should not fail on a Vec");
     bin
 }
 
@@ -161,8 +162,14 @@ fn duplicate_object_fields_both_emitted_with_allow_dupes() {
     );
 
     // And the fields inside them should also be present.
-    assert!(out.contains("\"a\""), "'a' from first 'obj' must appear in output");
-    assert!(out.contains("\"b\""), "'b' from second 'obj' must appear in output");
+    assert!(
+        out.contains("\"a\""),
+        "'a' from first 'obj' must appear in output"
+    );
+    assert!(
+        out.contains("\"b\""),
+        "'b' from second 'obj' must appear in output"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -354,8 +361,12 @@ fn hash_prefix_in_intvector_elements() {
     let jester_hash = name_hash("jester");
 
     // The output array must contain 1, jester_hash, 3 in order.
-    let array_start = out.find('[').expect("output must contain an array opening '['");
-    let array_end = out[array_start..].find(']').expect("output must contain ']'")
+    let array_start = out
+        .find('[')
+        .expect("output must contain an array opening '['");
+    let array_end = out[array_start..]
+        .find(']')
+        .expect("output must contain ']'")
         + array_start;
     let array_content = &out[array_start..=array_end];
 
@@ -378,8 +389,14 @@ fn hash_prefix_in_intvector_elements() {
         .find(&jester_hash.to_string())
         .expect("jester hash must appear in array");
     let pos_3 = array_content.rfind('3').unwrap();
-    assert!(pos_1 < pos_hash, "element 1 must precede hash element in array");
-    assert!(pos_hash < pos_3, "hash element must precede element 3 in array");
+    assert!(
+        pos_1 < pos_hash,
+        "element 1 must precede hash element in array"
+    );
+    assert!(
+        pos_hash < pos_3,
+        "hash element must precede element 3 in array"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -483,8 +500,8 @@ fn revision_before_root_parses_and_value_correct() {
 fn revision_after_root_parses_successfully() {
     let json = r#"{ "base_root": { "x": 1 }, "__revision_dont_touch": 42 }"#;
     // This must not panic or return an error.
-    let file = File::try_from_json(json.as_bytes())
-        .expect("revision after root must parse successfully");
+    let file =
+        File::try_from_json(json.as_bytes()).expect("revision after root must parse successfully");
 
     let out = to_json_str(&file, true);
     assert!(
@@ -651,7 +668,10 @@ fn name_hash_long_string_wraps_consistently() {
     // Also verify the result is a valid i32 (always true by type, but confirms
     // no panic from wrapping arithmetic).
     let _ = i32::from(hash1 as i16); // just accesses the value without panic
-    // The result could be any i32; we only require determinism.
+                                     // The result could be any i32; we only require determinism.
     let hash3 = name_hash(&long_name);
-    assert_eq!(hash1, hash3, "name_hash must be deterministic on third call too");
+    assert_eq!(
+        hash1, hash3,
+        "name_hash must be deterministic on third call too"
+    );
 }

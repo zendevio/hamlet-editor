@@ -1,4 +1,5 @@
 mod commands;
+mod migration;
 
 pub use commands::{backup, save};
 
@@ -44,6 +45,8 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            migration::migrate_legacy_data(app.handle());
 
             // Optional startup window mode for test runs:
             // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.

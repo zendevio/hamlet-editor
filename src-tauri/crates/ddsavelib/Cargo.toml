@@ -4,7 +4,9 @@ version = "0.2.0"
 description = "Library for reading/writing Darkest Dungeon save files. Originally by robojumper."
 authors = ["robojumper <robojumper@gmail.com>"]
 edition = "2021"
-license = "MIT OR Apache-2.0"
+# Vendored from robojumper/DarkestDungeonSaveEditor (rust/ddsaveedit/ddsavelib),
+# with local modifications. See README.md and LICENSE.
+license = "MIT"
 
 [features]
 default = ["string_cache"]

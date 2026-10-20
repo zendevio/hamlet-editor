@@ -1,8 +1,8 @@
 # Profile fixture
 
-`profile_0/` is the owner-approved copy of the pristine 2026-10-19 22:07:12 save, including its raid subfolder and the game's own backup. Tests copy it into unique temporary directories and never modify the fixture or the original save.
+`profile_0/` is a copy of the pristine 2026-10-19 22:07:12 save, including its raid subfolder and the game's own backup. Tests copy it into unique temporary directories and never modify the fixture or the original save.
 
-`upgrade-names.json` contains only the resolved upgrade tree identifiers referenced by this profile, extracted from the existing decoded `pristine_fixednames/persist.upgrades.json` reference. Tests do not need an installed game or the owner's paths.
+`upgrade-names.json` contains only the resolved upgrade tree identifiers referenced by this profile, extracted from the existing decoded `pristine_fixednames/persist.upgrades.json` reference. Tests do not need an installed game or machine-specific paths.
 
 No-edit encoding is compared against a direct ddsavelib binary round trip. The library clears bit 31 in field-info words and zeroes alignment padding. Game acceptance of that existing normalization is not asserted by these tests.
 
