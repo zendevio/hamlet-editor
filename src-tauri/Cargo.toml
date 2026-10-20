@@ -1,6 +1,6 @@
 [package]
 name = "hamlet-editor"
-version = "0.4.0"
+version = "1.0.0"
 description = "Darkest Dungeon save game editor"
 authors = ["Alin Gheorghe"]
 license = ""
