@@ -18,4 +18,4 @@ itoa = "1"
 ryu = "1"
 serde = { version = "1", default-features = false }
 serde_json = { version = "1", features = ["preserve_order"] }
-string_cache = { version = "0.8.1", default-features = false, optional = true }
+string_cache = { version = "0.9.0", default-features = false, optional = true }
