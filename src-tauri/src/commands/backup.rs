@@ -103,10 +103,7 @@ pub fn list_backups_at(profile: &Path, root: &Path) -> Result<Vec<BackupEntry>, 
     let source = profile
         .canonicalize()
         .map_err(|e| format!("Invalid profile: {e}"))?;
-    let id = source
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or("Invalid profile ID")?;
+    let id = profile_id(&source)?;
     if !root.is_dir() {
         return Ok(Vec::new());
     }
