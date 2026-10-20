@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { commitChangedValue, sliderControl, sliderValueLabel, hpSliderMax } from '#lib/control-events.js';
+	import { commitChangedValue, sliderControl, sliderValueLabel, sliderNumberLabel, hpSliderMax } from '#lib/control-events.js';
 	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 	import { canPickQuirk, CURSE_STATES } from '#lib/hero-safety.js';
 	import { toast } from 'svelte-sonner';
@@ -60,7 +60,7 @@
 		toggleQuirkLock,
 		addHeroQuirk,
 		revertHero,
-		markDirty,
+		setHeroTrinket,
 		RESOLVE_LEVEL_NAMES,
 		RESOLVE_XP_THRESHOLDS,
 		getDlcFlags,
@@ -268,16 +268,9 @@
 		commitChangedValue(vampireQuirkId ?? '', newStateId, (id) => setHeroCurseState(hero.guid, id));
 	}
 
-	// D3: Trinket slot equip via TrinketPicker
-	function handleTrinketSelect(slot: '0' | '1', trinketId: string) {
-		const raw = getHeroRawData(hero.guid);
-		if (!raw) return;
-		if (trinketId) {
-			raw.trinkets.items[slot] = { id: trinketId, type: 'trinket', amount: 1 };
-		} else {
-			delete raw.trinkets.items[slot];
-		}
-		markDirty('persist.roster.json');
+	function handleTrinketSelect(slot: '0' | '1', trinketId: string, source: 'inventory' | 'catalogue' = 'catalogue') {
+		const reason = setHeroTrinket(hero.guid, slot, trinketId, source);
+		if (reason) toast.error(reason);
 	}
 
 	// D8: Dismiss confirmation dialog
@@ -290,7 +283,8 @@
 	}
 
 	function handleRevert() {
-		revertHero(hero.guid);
+		const reason = revertHero(hero.guid);
+		if (reason) toast.error(reason);
 	}
 </script>
 
@@ -429,7 +423,7 @@
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{sliderValueLabel(hero.currentHp, { min: isDead ? 0 : 1, max: hpMax, step: 1 })} / {Math.round(hpMax)}
+									{sliderValueLabel(hero.currentHp, { min: isDead ? 0 : 1, max: hpMax, step: 1 })} / {sliderNumberLabel(hpMax)}
 								</span>
 							</div>
 							<Slider
@@ -901,7 +895,8 @@
 								</div>
 								<TrinketPicker
 									value={trinketSlot0?.id ?? ''}
-									onselect={(id) => handleTrinketSelect('0', id)}
+									heroClass={hero.heroClass}
+									onselect={(id, source) => handleTrinketSelect('0', id, source)}
 								/>
 							</div>
 							<!-- Slot 1 -->
@@ -916,7 +911,8 @@
 								</div>
 								<TrinketPicker
 									value={trinketSlot1?.id ?? ''}
-									onselect={(id) => handleTrinketSelect('1', id)}
+									heroClass={hero.heroClass}
+									onselect={(id, source) => handleTrinketSelect('1', id, source)}
 								/>
 							</div>
 						</div>

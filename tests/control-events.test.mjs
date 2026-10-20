@@ -18,7 +18,7 @@ const server = await createServer({
 });
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
-const { alignedSliderRange, sliderControl, sliderValueLabel, hpSliderMax, commitChangedValue } = await server.ssrLoadModule('/src/lib/control-events.ts');
+const { alignedSliderRange, sliderControl, sliderValueLabel, sliderNumberLabel, hpSliderMax, commitChangedValue } = await server.ssrLoadModule('/src/lib/control-events.ts');
 const { createWindowCloseGuard } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
 const reference = {
 	...JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8')),
@@ -38,6 +38,7 @@ beforeEach(() => {
 function bitsSlider(control) {
 	const steps = normalizeSteps(control.step, control.min, control.max);
 	let value = snapValueToCustomSteps(control.value, steps);
+	const resync = () => { value = control.restoreValue(); };
 	const position = (next) => {
 		value = snapValueToCustomSteps(Math.min(control.max, Math.max(control.min, next)), steps);
 		control.onValueChange(value);
@@ -48,11 +49,13 @@ function bitsSlider(control) {
 			control.onpointerdowncapture({ button: 0 });
 			position(next);
 			control.onValueCommit(value);
+			resync();
 		},
 		drag(...positions) {
 			control.onpointerdowncapture({ button: 0 });
 			positions.forEach(position);
 			control.onValueCommit(value);
+			resync();
 		},
 		key(direction) {
 			control.onkeydowncapture();
@@ -60,6 +63,7 @@ function bitsSlider(control) {
 				: snapValueToCustomSteps(getAdjacentStepValue(value, steps, direction), steps);
 			control.onValueChange(value);
 			control.onValueCommit(value);
+			resync();
 		}
 	};
 }
@@ -188,8 +192,6 @@ test('fractional HP clicks, keyboard bounds and drags use the actual Bits UI sna
 		assert.equal(store.getHeroRawData(guid).actor.current_hp, hero.currentHp);
 
 		slider.key('prev');
-		assert.deepEqual(writes, []); // both endpoints map to the same valid starting step
-		slider.key('prev');
 		assert.deepEqual(writes, [guid === '1' ? 66 : 38]);
 		assert.ok(writes.every((value) => value >= 1 && value <= max));
 		store.discardAllChanges();
@@ -212,6 +214,7 @@ for (const [guid, lowered, expected] of [['1', 50, 67], ['34', 20, 39]]) {
 			if (gesture === 'drag') slider.drag(Infinity);
 			else slider.key('End');
 			assert.deepEqual(writes, [expected]);
+			assert.equal(slider.value, expected);
 			assert.equal(store.getHeroRawData(guid).actor.current_hp, expected);
 			assert.equal(store.hasDirtyFiles(), true);
 			assert.ok('persist.roster.json' in store.getDirtyData());
@@ -228,6 +231,10 @@ for (const [guid, lowered, expected] of [['1', 50, 67], ['34', 20, 39]]) {
 			}));
 			if (gesture === 'drag') slider.drag(Infinity);
 			else slider.key('End');
+			assert.deepEqual(writes, []);
+			assert.equal(slider.value, Math.floor(hero.currentHp));
+			slider.key('next'); // ArrowRight must resync again without writing the saved fraction.
+			assert.equal(slider.value, Math.floor(hero.currentHp));
 			assert.deepEqual(writes, []);
 			assert.equal(store.getHeroRawData(guid).actor.current_hp, hero.currentHp);
 			assert.equal(store.hasDirtyFiles(), false);
@@ -268,10 +275,11 @@ test('snapped starting commits match installed Bits UI for ties, decimal and exp
 
 test('slider labels match Bits UI steps and explain off-grid saved values', () => {
 	for (const [value, range, expected] of [
-		[67.0999984741211, { min: 1, max: 67.0999984741211, step: 1 }, '67 (saved: 67.0999984741211)'],
+		[67.0999984741211, { min: 1, max: 67.0999984741211, step: 1 }, '67 (saved: 67.1)'],
+		[39.5999984741211, { min: 1, max: 39.5999984741211, step: 1 }, '39.6'],
 		[0, { min: 1, max: 61, step: 1 }, '1 (saved: 0)'],
-		[12.25, { min: 0, max: 200, step: 1 }, '12 (saved: 12.25)'],
-		[75.25, { min: 0, max: 100, step: 0.5 }, '75 (saved: 75.25)'],
+		[12.25, { min: 0, max: 200, step: 1 }, '12 (saved: 12.3)'],
+		[75.25, { min: 0, max: 100, step: 0.5 }, '75 (saved: 75.3)'],
 		[75.5, { min: 0, max: 100, step: 0.5 }, '75.5']
 	]) assert.equal(sliderValueLabel(value, range), expected);
 });
@@ -288,7 +296,8 @@ test('deterministic fuzz snapping matches Bits UI including non-finite inputs', 
 		for (const value of [Math.fround(random() * (max - min + 4) + min - 2), ...special]) {
 			const aligned = alignedSliderRange(range);
 			const snapped = snapValueToCustomSteps(value, normalizeSteps(step, aligned.min, aligned.max));
-			const expected = snapped === value ? String(snapped) : `${snapped} (saved: ${value})`;
+			const expected = snapped > range.max || snapped < range.min ? sliderNumberLabel(value)
+				: snapped === value ? String(snapped) : `${snapped} (saved: ${sliderNumberLabel(value)})`;
 			assert.equal(sliderValueLabel(value, range), expected);
 			const writes = [];
 			sliderControl(value, range, (next) => writes.push(next)).onValueCommit(snapped);
@@ -429,4 +438,21 @@ test('failed preparation or native close never leaves the close guard approved',
 	assert.equal(guard.shouldConfirm(), true);
 	await assert.rejects(guard.closeAfter(() => true, async () => { throw new Error('close failed'); }), /close failed/);
 	assert.equal(guard.shouldConfirm(), true);
+});
+
+test('adjusted and ignored commits restore valid HP, stress and torchlight steps', () => {
+	for (const [initial, range, expected] of [
+		[67.0999984741211, { min: 1, max: 67.0999984741211, step: 1 }, 67],
+		[39.5999984741211, { min: 1, max: 39.5999984741211, step: 1 }, 39],
+		[12.25, { min: 0, max: 200, step: 1 }, 12],
+		[75.25, { min: 0, max: 100, step: 0.5 }, 75]
+	]) {
+		const writes = [];
+		const slider = bitsSlider(sliderControl(initial, range, (next) => writes.push(next)));
+		slider.click();
+		assert.equal(slider.value, expected);
+		assert.deepEqual(writes, []);
+	}
+	assert.equal(sliderNumberLabel(67.0999984741211), '67.1');
+	assert.equal(sliderNumberLabel(39.5999984741211), '39.6');
 });

@@ -188,7 +188,7 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **"Reset this hero"** button — reverts all in-memory changes for this specific hero to the on-disk snapshot. Confirmation: "Revert all unsaved changes to [HeroName]?"
 
 **Vitals Section**
-- **HP**: `Slider` from 1 for living heroes (0 for dead heroes) through the larger of class base max, on-disk HP and current HP. The inline display shows the snapped step and an exact saved-value hint when they differ; saved fractions survive unchanged slider clicks and drags back to the starting step. Slider endpoints expand to the step grid, and thumbs use exact track positions so pointer input matches their rendered positions. Changed commits use the nearest step inside the real bounds, including fractional maxima (67.1 permits an integer commit of 67). No-op checks compare those adjusted steps so unchanged saved fractions remain intact. Bits UI can still leave the thumb on an expanded endpoint after a commit; the label reflects the stored value until the control is refreshed. "Heal to Max" raises HP below the class base max and retains higher HP. The class HP table in `game-data.md` excludes buffs.
+- **HP**: `Slider` from 1 for living heroes (0 for dead heroes) through the larger of class base max, on-disk HP and current HP. The inline display shows the snapped step and a saved-value hint when they differ, formatting fractions to one decimal; a step above the real maximum is shown as the saved value instead. The maximum also uses one decimal when fractional; saved fractions survive unchanged slider clicks and drags back to the starting step. Slider endpoints expand to the step grid, and thumbs use exact track positions so pointer input matches their rendered positions. Changed commits use the nearest step inside the real bounds, including fractional maxima (67.1 permits an integer commit of 67). No-op checks compare those adjusted steps so unchanged saved fractions remain intact. After each commit, the shared slider wrapper restores the step representing the stored value within the real bounds. This corrects adjusted or ignored endpoint commits without a store write or remount, retaining keyboard focus. "Heal to Max" raises HP below the class base max and retains higher HP. The class HP table in `game-data.md` excludes buffs.
 - **Stress** — `Slider` (0-200) with a snapped-step label and saved-value hint. "Clear" quick button (sets `m_Stress` to 0). Stress and affliction are independent fields; clearing stress does NOT auto-clear an active affliction or virtue.
 - **Affliction / Virtue** — `Select` dropdown: None, or known affliction/virtue IDs from game data. "Clear" button. Clearing zeroes `affliction_type_id`, `affliction_severity`, and `virtue_type_id`. This is a separate control from stress editing.
 - **Deaths Door** — `Switch` for `visited_deaths_door`. Shown in an "Advanced" sub-section with tooltip: "Historical flag indicating this hero has previously reached Death's Door. Does not directly affect current gameplay state."
@@ -211,8 +211,8 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **Armour Rank** — `Select` dropdown (0-4), independent of resolve level. Changes update the roster rank index and displayed max HP.
 - Gear icons: `heroes/<class>/icons_equip/eqp_weapon_<rank>.png` and `eqp_armour_<rank>.png` (note: British spelling `armour`).
 - **Trinkets** — two trinket slots. Each shows trinket icon (`panels/icons_equip/trinket/inv_trinket+<id>.png`) + localized name. Click to open `TrinketPicker` popover.
-  - TrinketPicker shows all trinkets in estate storage (not equipped on other heroes). Search by name. Class-restricted trinkets marked with a class icon. Rarity color border (from `trinkets/*.rarities.trinkets.json`).
-  - Equipping a trinket removes it from estate storage; unequipping returns it. Cross-file consistency (roster <-> estate) is maintained automatically.
+  - TrinketPicker lists "In your inventory" first, aggregating counts greater than one, then "Add new from catalogue" for explicit creation. Both groups search by localized name or ID. Loaded game-data class restrictions filter both groups for the selected hero. If definitions are unavailable, the existing static catalogue remains available and class restrictions cannot be checked. Unknown inventory IDs remain selectable.
+  - Equipping from inventory consumes one item, decrementing its amount or deleting its numbered entry. Catalogue creation leaves inventory untouched. Replacing or choosing "Unequip to inventory" returns the previous item using the same append helper as dismissal. Selecting the equipped ID does nothing. Moves needing storage are blocked with a message if the estate file is missing or unsupported. Roster and estate become dirty as needed; Discard All restores both. Single-hero Revert asks for Discard All if equipment differs, preventing a partial revert from duplicating trinkets.
 
 **Blood Curse Section** (conditional: visible only if the hero has any `disease_vampire_*` quirk AND Crimson Court DLC is installed (`dlc.crimsonCourt` from game installation detection))
 - Current state displayed with localized description:
@@ -439,7 +439,7 @@ Sectioned form layout.
 4. **Editing level**: Open the resolve level dropdown and select a level. This sets resolve XP to the selected level threshold; gear ranks and upgrade purchases are unchanged.
 5. **Adding a quirk**: Click "Add Quirk" under the positive column. Combobox opens. Type "quick" — autocomplete shows "Quick Reflexes (quick_reflexes)." Select it. Chip appears. If the column already has 5 quirks, the button is disabled.
 6. **Locking a quirk**: Click the lock/unlock icon on a quirk chip. Toggles `is_locked`.
-7. **Equipping a trinket**: Click an empty trinket slot. TrinketPicker opens showing estate storage trinkets. Search, select. Trinket moves from estate to hero (both roster and estate updated in memory).
+7. **Equipping a trinket**: Open a hero trinket picker. Select from "In your inventory" to move one item from estate to hero, or explicitly choose "Add new from catalogue" to create one. Replacement returns the old item to estate. Discard All restores both files.
 8. **Save**: Click Save (or `Ctrl/Cmd+S`). Pre-save validation runs. If auto-backup is on, backup is created. The backend validates and encodes every dirty file in memory, then commits writes and deletions transactionally. Toast: "Saved successfully."
 
 ### 4.4 Batch Operations
@@ -690,7 +690,7 @@ RaidView
 
 | Component | shadcn Base | Purpose |
 |-----------|------------|---------|
-| `TrinketPicker` | `Combobox` (Command + Popover) | Search trinkets by name/ID, shows icon + rarity + class restriction |
+| `TrinketPicker` | `Combobox` (Command + Popover) | Search by name/ID, inventory counts before explicit catalogue creation, filter loaded class restrictions |
 | `QuirkPicker` | `Combobox` (Command + Popover) | Search quirks, grouped by category (positive/negative/disease) |
 | `GameAssetImage` | Custom | Loads PNG from game installation via `load_game_asset()`. Shows placeholder silhouette on failure. Caches loaded assets in memory (LRU). |
 | `ConfirmDialog` | `AlertDialog` | Standardized confirmation modal. Cancel always left/default. Destructive operations require checkbox. |

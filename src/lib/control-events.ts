@@ -49,10 +49,16 @@ function snappedSliderValue(value: number, { min, max, step }: SliderRange): num
 	return closest;
 }
 
-/** Show the thumb's step and retain the exact saved value as a visible hint. */
+/** Display fractional save values and limits consistently. */
+export function sliderNumberLabel(value: number): string {
+	return !Number.isFinite(value) || Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/** Never label the current value with a step above the real maximum. */
 export function sliderValueLabel(value: number, range: SliderRange): string {
 	const snapped = snappedSliderValue(value, alignedSliderRange(range));
-	return snapped === value ? String(snapped) : `${snapped} (saved: ${value})`;
+	if (snapped > range.max || snapped < range.min) return sliderNumberLabel(value);
+	return snapped === value ? String(snapped) : `${snapped} (saved: ${sliderNumberLabel(value)})`;
 }
 
 /** Preserve saved fractions when a click or drag finishes on the starting step. */
@@ -63,10 +69,15 @@ export function sliderControl(value: number, range: SliderRange, commit: (value:
 	const minStep = Math.ceil(range.min * factor / scaledStep) * scaledStep / factor;
 	const maxStep = Math.floor(range.max * factor / scaledStep) * scaledStep / factor;
 	const boundedStep = (next: number) => Math.min(maxStep, Math.max(minStep, next));
+	let stored = value;
 	let shown = snapped;
 	let pointerStart: number | undefined;
 	return {
 		value,
+		restoreValue: () => {
+			shown = boundedStep(snappedSliderValue(stored, alignedSliderRange(range)));
+			return shown;
+		},
 		...alignedSliderRange(range),
 		// Bits maps pointers over the full track, so rendering must use that scale too.
 		thumbPositioning: 'exact' as const,
@@ -82,7 +93,7 @@ export function sliderControl(value: number, range: SliderRange, commit: (value:
 			const adjusted = boundedStep(next);
 			// Compare on the same valid grid even when the shown start lies outside it.
 			if (adjusted === boundedStep(snapped) || (start !== undefined && adjusted === boundedStep(start))) return;
-			commitChangedValue(value, adjusted, commit);
+			if (commitChangedValue(stored, adjusted, commit)) stored = adjusted;
 		}
 	};
 }

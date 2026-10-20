@@ -1,14 +1,17 @@
 <script lang="ts">
+	import { tick } from "svelte";
 	import { Slider as SliderPrimitive } from "bits-ui";
 	import { cn, type WithoutChildrenOrChild } from "#lib/utils.js";
 
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
+		restoreValue,
+		onValueCommit,
 		orientation = "horizontal",
 		class: className,
 		...restProps
-	}: WithoutChildrenOrChild<SliderPrimitive.RootProps> = $props();
+	}: WithoutChildrenOrChild<SliderPrimitive.RootProps> & { restoreValue?: () => number } = $props();
 </script>
 
 <!--
@@ -25,6 +28,14 @@ get along, so we shut typescript up by casting `value` to `never`.
 		className
 	)}
 	{...restProps}
+	onValueCommit={async (next: number | number[]) => {
+		onValueCommit?.(next as never);
+		if (!restoreValue) return;
+		// Wait for a committed store update, then correct Bits' local snapped value.
+		// Updating the binding preserves the existing thumb and keyboard focus.
+		await tick();
+		value = restoreValue();
+	}}
 >
 	{#snippet children({ thumbItems })}
 		<span
@@ -41,7 +52,7 @@ get along, so we shut typescript up by casting `value` to `never`.
 				)}
 			/>
 		</span>
-		{#each thumbItems as thumb (thumb)}
+		{#each thumbItems as thumb (thumb.index)}
 			<SliderPrimitive.Thumb
 				data-slot="slider-thumb"
 				index={thumb.index}

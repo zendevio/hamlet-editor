@@ -6,6 +6,7 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
+import { equipTrinket, returnTrinkets, type TrinketSource } from '#lib/trinkets.js';
 import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 import { updateWallet, updateEstateItem } from '#lib/estate.js';
 import { updateTorchlight, updateHungerBuffer, updateRaidAmount, abandonRaidData, abandonRaidBlockReason } from '#lib/raid.js';
@@ -16,7 +17,7 @@ import { loadProfile } from '#lib/api/save.js';
 import { readTreatmentSlots, clearTreatmentSlot } from '#lib/treatment.js';
 import { stripDsonPrefix } from '#lib/utils.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
-import { localize, getMaxHp as getGameDataMaxHp } from '#lib/stores/game-data.svelte.js';
+import { getGameData, localize, getMaxHp as getGameDataMaxHp } from '#lib/stores/game-data.svelte.js';
 import {
 	TREATMENT_BUILDINGS,
 	BUILDING_ACTIVITIES,
@@ -564,9 +565,7 @@ export function dismissHero(guid: string): string | null {
 	if (!upgrades) return 'No upgrade data loaded.';
 	const trinkets = equippedTrinkets(roster.base_root.heroes[guid].hero_file_data.raw_data.base_root)!;
 	if (trinkets.length > 0 && estate) {
-		const items = estate.base_root.trinkets.items;
-		let nextKey = Math.max(-1, ...Object.keys(items).map(Number)) + 1;
-		for (const { id, amount } of trinkets) items[String(nextKey++)] = { id, type: 'trinket', amount };
+		returnTrinkets(estate.base_root.trinkets.items, trinkets);
 		markDirty('persist.estate.json');
 	}
 	const purchases = Object.values(upgrades.base_root.purchases);
@@ -579,6 +578,16 @@ export function dismissHero(guid: string): string | null {
 	delete roster.base_root.heroes[guid];
 	roster.base_root.dismissed_hero_count = count.value + 1;
 	markDirty('persist.roster.json');
+	return null;
+}
+
+export function setHeroTrinket(guid: string, slot: '0' | '1', id: string, source: TrinketSource): string | null {
+	const hero = getHeroRawData(guid);
+	if (!hero) return 'This hero is no longer in the roster.';
+	const result = equipTrinket(hero, estate, slot, id, source, getGameData().trinkets);
+	if (result.error) return result.error;
+	if (result.changed) markDirty('persist.roster.json');
+	if (result.estateChanged) markDirty('persist.estate.json');
 	return null;
 }
 
@@ -883,6 +892,10 @@ export function revertHero(guid: string) {
 	const snapshot = JSON.parse(rosterSnapshot) as RosterData;
 	const original = snapshot.base_root.heroes[guid];
 	if (!original) return;
+	const current = getHeroRawData(guid);
+	if (JSON.stringify(current?.trinkets) !== JSON.stringify(original.hero_file_data.raw_data.base_root.trinkets)) {
+		return 'Use Discard All to restore trinket edits and estate inventory together.';
+	}
 	roster.base_root.heroes[guid] = JSON.parse(JSON.stringify(original));
 }
 
