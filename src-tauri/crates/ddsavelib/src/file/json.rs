@@ -759,7 +759,7 @@ impl File {
         unhash: &Unhasher<T>,
     ) -> std::io::Result<()> {
         writer.write_all(b"{\n")?;
-        writer.write_all(&indent)?;
+        writer.write_all(indent)?;
         writer.write_all(b"    ")?;
         writer.write_all(b"\"")?;
         writer.write_all(BUILTIN_VERSION_FIELD.as_bytes())?;
@@ -781,7 +781,7 @@ impl File {
             )?;
             indent.truncate(indent.len() - 4);
         }
-        writer.write_all(&indent)?;
+        writer.write_all(indent)?;
         writer.write_all(b"}")?;
         Ok(())
     }
@@ -822,7 +822,7 @@ impl File {
                 )?;
                 indent.truncate(indent.len() - 4);
             }
-            writer.write_all(&indent)?;
+            writer.write_all(indent)?;
             writer.write_all(b"}")
         }
     }
@@ -838,7 +838,7 @@ impl File {
     ) -> std::io::Result<()> {
         use FieldType::*;
         let dat = &self.dat[field_idx];
-        writer.write_all(&indent)?;
+        writer.write_all(indent)?;
         writer.write_all(b"\"")?;
         writer.write_all(escape(dat.name.as_ref()).as_bytes())?;
         writer.write_all(b"\" : ")?;

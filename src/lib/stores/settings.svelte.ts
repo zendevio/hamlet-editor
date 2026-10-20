@@ -10,6 +10,7 @@ import { resetGameData } from '#lib/stores/game-data.svelte.js';
 
 // ── Persistence helpers ──
 
+// Resolved under Tauri AppData; legacy data is copied before the webview starts.
 const STORE_FILE = 'settings.json';
 
 async function getStore() {

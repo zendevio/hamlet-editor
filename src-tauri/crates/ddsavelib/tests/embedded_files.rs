@@ -14,7 +14,8 @@ use ddsavelib::{File, Unhasher};
 /// Encode `file` to binary bytes.
 fn to_bin(file: &File) -> Vec<u8> {
     let mut bin = Vec::new();
-    file.write_to_bin(&mut bin).expect("write_to_bin should not fail on a Vec");
+    file.write_to_bin(&mut bin)
+        .expect("write_to_bin should not fail on a Vec");
     bin
 }
 
@@ -222,7 +223,11 @@ fn static_save_basic_nested_file() {
         .and_then(|v| v.get("static_save"))
         .and_then(|v| v.get("__revision_dont_touch"))
         .and_then(|v| v.as_u64());
-    assert_eq!(inner_rev, Some(100), "static_save inner revision must survive as 100");
+    assert_eq!(
+        inner_rev,
+        Some(100),
+        "static_save inner revision must survive as 100"
+    );
 
     // Inner field survives.
     let hp = val
@@ -257,9 +262,7 @@ fn independent_revisions_outer_42_inner_100() {
 
     let val = bin_roundtrip(json);
 
-    let outer_rev = val
-        .get("__revision_dont_touch")
-        .and_then(|v| v.as_u64());
+    let outer_rev = val.get("__revision_dont_touch").and_then(|v| v.as_u64());
     assert_eq!(outer_rev, Some(42), "outer revision must be 42");
 
     let inner_rev = val
@@ -268,7 +271,11 @@ fn independent_revisions_outer_42_inner_100() {
         .and_then(|v| v.get("raw_data"))
         .and_then(|v| v.get("__revision_dont_touch"))
         .and_then(|v| v.as_u64());
-    assert_eq!(inner_rev, Some(100), "inner revision must be 100, independent of outer");
+    assert_eq!(
+        inner_rev,
+        Some(100),
+        "inner revision must be 100, independent of outer"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -296,9 +303,7 @@ fn independent_revisions_outer_0_inner_u32_max() {
 
     let val = bin_roundtrip(&json);
 
-    let outer_rev = val
-        .get("__revision_dont_touch")
-        .and_then(|v| v.as_u64());
+    let outer_rev = val.get("__revision_dont_touch").and_then(|v| v.as_u64());
     assert_eq!(outer_rev, Some(0), "outer revision must be 0");
 
     let inner_rev = val
@@ -647,7 +652,10 @@ fn json_then_binary_then_json_then_binary_all_match() {
     let file2 = File::try_from_json(&*json2_bytes).expect("re-parsing JSON output must succeed");
     let bin2 = to_bin(&file2);
 
-    assert_eq!(bin1, bin2, "JSON->bin->JSON->bin must produce identical binary");
+    assert_eq!(
+        bin1, bin2,
+        "JSON->bin->JSON->bin must produce identical binary"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -680,7 +688,10 @@ fn bridge_api_raw_data_appears_as_nested_object_with_revision() {
         .and_then(|v| v.get("raw_data"))
         .expect("raw_data must be present in to_json_value output");
 
-    assert!(raw_data.is_object(), "raw_data must be a JSON object in to_json_value output");
+    assert!(
+        raw_data.is_object(),
+        "raw_data must be a JSON object in to_json_value output"
+    );
 
     // Inner revision.
     assert_eq!(
@@ -766,7 +777,10 @@ fn bridge_api_to_from_to_json_value_idempotent() {
         .and_then(|v| v.get("raw_data"))
         .and_then(|v| v.get("base_root"))
         .and_then(|v| v.get("hp"));
-    assert_eq!(hp1, hp2, "inner hp must be identical after to->from->to round-trip");
+    assert_eq!(
+        hp1, hp2,
+        "inner hp must be identical after to->from->to round-trip"
+    );
 
     let dead1 = val1
         .get("base_root")
@@ -780,7 +794,10 @@ fn bridge_api_to_from_to_json_value_idempotent() {
         .and_then(|v| v.get("raw_data"))
         .and_then(|v| v.get("base_root"))
         .and_then(|v| v.get("dead"));
-    assert_eq!(dead1, dead2, "inner dead bool must be identical after to->from->to round-trip");
+    assert_eq!(
+        dead1, dead2,
+        "inner dead bool must be identical after to->from->to round-trip"
+    );
 }
 
 #[test]
@@ -806,7 +823,10 @@ fn bridge_api_to_from_to_json_value_full_equality() {
     let file2 = File::from_json_value(&val1).expect("from_json_value should succeed");
     let val2 = to_value(&file2);
 
-    assert_eq!(val1, val2, "to_json_value output must be fully equal after from_json_value round-trip");
+    assert_eq!(
+        val1, val2,
+        "to_json_value output must be fully equal after from_json_value round-trip"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -879,7 +899,10 @@ fn multiple_raw_data_fields_in_different_objects() {
 
     // The two embedded files must be independent: different revisions and hp values.
     assert_ne!(hp_a, hp_b, "the two heroes must have different hp values");
-    assert_ne!(rev_a, rev_b, "the two embedded files must have different revisions");
+    assert_ne!(
+        rev_a, rev_b,
+        "the two embedded files must have different revisions"
+    );
 }
 
 #[test]

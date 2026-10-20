@@ -22,7 +22,7 @@ const reference = {
 	...JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8')),
 	...JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'))
 };
-reference.estate.base_root.trinkets.items = { '0': { id: 'lane_m_ring', type: 'trinket', amount: 3 } };
+reference.estate.base_root.trinkets.items = { '0': { id: 'test_inventory_ring', type: 'trinket', amount: 3 } };
 const metadata = { added_buffs: 3, hero_name: 'Bonel', previous_trinket_id: 'before', did_transform: true, trinkets_gained_count: 2 };
 const item = (id, amount = 1) => ({ id, type: 'trinket', amount });
 const hero = () => ({ heroClass: 'crusader', trinkets: { items: {} } });
@@ -128,7 +128,7 @@ test('real store dirties both files, Discard restores both, and single-hero reve
 test('catalogue store creation dirties only roster and missing estate blocks replacement atomically', () => {
 	store.getHeroRawData('1').trinkets.items = {};
 	store.clearAllDirty();
-	assert.equal(store.setHeroTrinket('1', '0', 'lane_m_ring', 'catalogue'), null);
+	assert.equal(store.setHeroTrinket('1', '0', 'test_inventory_ring', 'catalogue'), null);
 	assert.deepEqual(Object.keys(store.getDirtyData()), ['persist.roster.json']);
 	const savedRoster = structuredClone(store.getSaveData().roster);
 	store.resetSaveData();

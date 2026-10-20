@@ -395,9 +395,9 @@ Sectioned form layout.
 **Backup Section**
 - Auto-backup toggle (`Switch`). Off by default. When enabled, creates a backup before every save operation.
 - Backup location display (read-only, OS-conventional path from `app_local_data_dir()`):
-  - Windows: `%LOCALAPPDATA%\hamlet-editor\backups\`
-  - macOS: `~/Library/Application Support/hamlet-editor/backups/`
-  - Linux: `~/.local/share/hamlet-editor/backups/`
+  - Windows: `%LOCALAPPDATA%\io.github.zendevio.hamlet-editor\backups\`
+  - macOS: `~/Library/Application Support/io.github.zendevio.hamlet-editor/backups/`
+  - Linux: `~/.local/share/io.github.zendevio.hamlet-editor/backups/`
 - "Open Backup Folder" button (system file manager).
 - "Restore from Game Backup" button — reads from the game's own `profile_#/backup/` directory.
 - Recent backup list with timestamps, profile identifiers, and "Restore" buttons.
@@ -456,7 +456,7 @@ Sectioned form layout.
 
 ### 4.5 Reviving a Dead Hero
 
-Town revival is a roster-only edit based on the captured dead hero Bonel (run7 snap-4). Game acceptance of editor revival is pending in-game verification (checklist scenario 11).
+Town revival is a roster-only edit based on the captured dead hero Bonel after the in-game Courtyard retreat. Town revival was verified in game on 2026-10-20 (checklist scenario 11).
 
 Roster capacity refuses campaigns with non-empty `persistent_ugcs`: enabled mod overrides are not loaded. Revival names mods in its block message and refuses unknown class maximum HP. Bloodmoon has no mode folder of its own (its mode_settings.json declares `"replaces_default_mode": "new_game_plus"`), so it uses the new_game_plus Stage Coach overlay, then base. The current install has no Stage Coach overlay for either mode.
 

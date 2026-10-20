@@ -14,7 +14,7 @@ fn text(file: &File) -> String {
     String::from_utf8(bytes).unwrap()
 }
 
-// Reuse bulk review 3's float_dup probe: JSON.stringify turns integral floats into integers.
+// JSON.stringify turns integral floats into integers; preserve unequal duplicate values.
 fn js_numbers(value: &Value) -> Value {
     match value {
         Value::Object(map) => Value::Object(

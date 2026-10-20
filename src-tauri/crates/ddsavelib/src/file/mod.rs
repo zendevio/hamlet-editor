@@ -256,7 +256,7 @@ struct ObjIdx(u32);
 impl ObjIdx {
     /// Returns the numeric value of this object index
     fn numeric(self) -> u32 {
-        self.0 as u32
+        self.0
     }
 }
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

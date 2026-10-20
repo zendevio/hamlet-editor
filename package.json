@@ -44,5 +44,13 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
-	}
+	},
+	"packageManager": "pnpm@12.14.0",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/zendevio/hamlet-editor.git"
+	},
+	"homepage": "https://github.com/zendevio/hamlet-editor",
+	"author": "Alin M. Gheorghe"
 }

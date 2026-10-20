@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Hamlet Editor",
   "version": "1.0.0",
-  "identifier": "com.hamlet-editor.app",
+  "identifier": "io.github.zendevio.hamlet-editor",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:5173",
@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: asset: https://asset.localhost; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'none'"
     }
   },
   "bundle": {
@@ -36,6 +36,28 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Alin M. Gheorghe",
+    "copyright": "Copyright (c) 2026 Alin M. Gheorghe",
+    "category": "Utility",
+    "shortDescription": "Save game editor for Darkest Dungeon",
+    "longDescription": "Unofficial cross-platform save editor for Darkest Dungeon 1 with automatic backups. Not affiliated with Red Hook Studios.",
+    "homepage": "https://github.com/zendevio/hamlet-editor",
+    "license": "MIT",
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "wix": {
+        "upgradeCode": "1eea8875-0530-5ed9-bd91-2e5432982f80"
+      }
+    },
+    "resources": {
+      "../LICENSE": "licenses/Hamlet-Editor-LICENSE",
+      "../THIRD_PARTY_NOTICES.md": "licenses/THIRD_PARTY_NOTICES.md",
+      "../THIRD_PARTY_LICENSES.md": "licenses/THIRD_PARTY_LICENSES.md",
+      "crates/ddsavelib/LICENSE": "licenses/ddsavelib-LICENSE"
+    }
   }
 }

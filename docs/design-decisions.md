@@ -45,9 +45,9 @@ Always available — user-triggered backup of current save state.
 Configurable (boolean setting, off by default):
 - When enabled, creates a backup before every edit operation
 - Backup location follows Tauri `app_local_data_dir` conventions (backups are machine-specific, not meant to roam):
-  - **Windows**: `%LOCALAPPDATA%\hamlet-editor\backups\` (AppData\Local via `app_local_data_dir()`)
-  - **macOS**: `~/Library/Application Support/hamlet-editor/backups/`
-  - **Linux**: `~/.local/share/hamlet-editor/backups/`
+  - **Windows**: `%LOCALAPPDATA%\io.github.zendevio.hamlet-editor\backups\` (AppData\Local via `app_local_data_dir()`)
+  - **macOS**: `~/Library/Application Support/io.github.zendevio.hamlet-editor/backups/`
+  - **Linux**: `~/.local/share/io.github.zendevio.hamlet-editor/backups/`
 - Note: `app_data_dir()` maps to `%APPDATA%` (Roaming) on Windows. We use `app_local_data_dir()` instead since backups are machine-local.
 - Timestamped copies with profile identifier
 

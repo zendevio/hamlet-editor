@@ -12,8 +12,7 @@ use ddsavelib::{File, Unhasher};
 
 /// Parse JSON into a File. Panics with the source error on failure.
 fn from_json(json: &str) -> File {
-    File::try_from_json(json.as_bytes())
-        .unwrap_or_else(|e| panic!("try_from_json failed: {e}"))
+    File::try_from_json(json.as_bytes()).unwrap_or_else(|e| panic!("try_from_json failed: {e}"))
 }
 
 /// Encode a File to binary bytes.
@@ -26,8 +25,7 @@ fn to_bin(file: &File) -> Vec<u8> {
 
 /// Decode binary bytes to a File.
 fn from_bin(bin: &[u8]) -> File {
-    File::try_from_bin(&mut &*bin)
-        .unwrap_or_else(|e| panic!("try_from_bin failed: {e}"))
+    File::try_from_bin(&mut &*bin).unwrap_or_else(|e| panic!("try_from_bin failed: {e}"))
 }
 
 /// Full round-trip: JSON -> binary -> JSON, returned as a serde_json::Value.
@@ -120,8 +118,8 @@ fn float_m_stress_zero() {
         }
     }"#;
     let val = roundtrip(json);
-    let stress = get_path(&val, "base_root.m_Stress")
-        .expect("m_Stress must be present after round-trip");
+    let stress =
+        get_path(&val, "base_root.m_Stress").expect("m_Stress must be present after round-trip");
     assert!(
         looks_like_float(stress),
         "m_Stress=0.0 must round-trip as float; got: {stress}"
@@ -206,11 +204,16 @@ fn intvector_read_page_indexes_basic() {
         }
     }"#;
     let val = roundtrip(json);
-    let pages = get_path(&val, "base_root.read_page_indexes")
-        .expect("read_page_indexes must be present");
-    let arr = pages.as_array().expect("read_page_indexes must be an array");
+    let pages =
+        get_path(&val, "base_root.read_page_indexes").expect("read_page_indexes must be present");
+    let arr = pages
+        .as_array()
+        .expect("read_page_indexes must be an array");
     assert_eq!(arr.len(), 3, "must have 3 elements");
-    let nums: Vec<i64> = arr.iter().map(|v| v.as_i64().expect("must be integer")).collect();
+    let nums: Vec<i64> = arr
+        .iter()
+        .map(|v| v.as_i64().expect("must be integer"))
+        .collect();
     assert_eq!(nums, vec![1, 2, 3]);
 }
 
@@ -224,8 +227,8 @@ fn intvector_read_page_indexes_empty() {
         }
     }"#;
     let val = roundtrip(json);
-    let pages = get_path(&val, "base_root.read_page_indexes")
-        .expect("read_page_indexes must be present");
+    let pages =
+        get_path(&val, "base_root.read_page_indexes").expect("read_page_indexes must be present");
     let arr = pages.as_array().expect("must be an array");
     assert!(arr.is_empty(), "empty IntVector must round-trip to []");
 }
@@ -240,11 +243,14 @@ fn intvector_dungeon_history_negative_values() {
         }
     }"#;
     let val = roundtrip(json);
-    let hist = get_path(&val, "base_root.dungeon_history")
-        .expect("dungeon_history must be present");
+    let hist =
+        get_path(&val, "base_root.dungeon_history").expect("dungeon_history must be present");
     let arr = hist.as_array().expect("must be an array");
     assert_eq!(arr.len(), 3);
-    let nums: Vec<i64> = arr.iter().map(|v| v.as_i64().expect("must be integer")).collect();
+    let nums: Vec<i64> = arr
+        .iter()
+        .map(|v| v.as_i64().expect("must be integer"))
+        .collect();
     assert_eq!(nums, vec![-1, 0, 5]);
 }
 
@@ -299,7 +305,10 @@ fn stringvector_goal_ids_varying_lengths() {
     let ids = get_path(&val, "base_root.goal_ids").expect("goal_ids must be present");
     let arr = ids.as_array().expect("must be an array");
     assert_eq!(arr.len(), 4);
-    let strings: Vec<&str> = arr.iter().map(|v| v.as_str().expect("must be string")).collect();
+    let strings: Vec<&str> = arr
+        .iter()
+        .map(|v| v.as_str().expect("must be string"))
+        .collect();
     assert_eq!(strings, vec!["a", "ab", "abc", "abcd"]);
 }
 
@@ -322,7 +331,11 @@ fn floatarray_map_bounds_basic() {
     let val = roundtrip(json);
     let bounds = get_path(&val, "base_root.map.bounds").expect("bounds must be present");
     let arr = bounds.as_array().expect("bounds must be an array");
-    assert_eq!(arr.len(), 4, "FloatArray must have 4 elements after round-trip");
+    assert_eq!(
+        arr.len(),
+        4,
+        "FloatArray must have 4 elements after round-trip"
+    );
     let expected = [0.0f64, 1.0, 100.0, 200.0];
     for (i, (got, &exp)) in arr.iter().zip(expected.iter()).enumerate() {
         let f = got.as_f64().expect("must be number");
@@ -412,12 +425,15 @@ fn twobool_quest_select_warnings_true_false() {
         }
     }"#;
     let val = roundtrip(json);
-    let qsw = get_path(&val, "base_root.profile_options.values.quest_select_warnings")
-        .expect("quest_select_warnings must be present");
+    let qsw = get_path(
+        &val,
+        "base_root.profile_options.values.quest_select_warnings",
+    )
+    .expect("quest_select_warnings must be present");
     let arr = qsw.as_array().expect("TwoBool must be an array");
     assert_eq!(arr.len(), 2);
-    assert_eq!(arr[0].as_bool().unwrap(), true);
-    assert_eq!(arr[1].as_bool().unwrap(), false);
+    assert!(arr[0].as_bool().unwrap());
+    assert!(!arr[1].as_bool().unwrap());
 }
 
 /// Test 17 - corpses under profile_options > values with [false, false].
@@ -438,8 +454,8 @@ fn twobool_corpses_both_false() {
         .expect("corpses must be present");
     let arr = corpses.as_array().expect("TwoBool must be an array");
     assert_eq!(arr.len(), 2);
-    assert_eq!(arr[0].as_bool().unwrap(), false);
-    assert_eq!(arr[1].as_bool().unwrap(), false);
+    assert!(!arr[0].as_bool().unwrap());
+    assert!(!arr[1].as_bool().unwrap());
 }
 
 /// Test 18 - corpses under profile_options > values with [true, true].
@@ -460,8 +476,8 @@ fn twobool_corpses_both_true() {
         .expect("corpses must be present");
     let arr = corpses.as_array().expect("TwoBool must be an array");
     assert_eq!(arr.len(), 2);
-    assert_eq!(arr[0].as_bool().unwrap(), true);
-    assert_eq!(arr[1].as_bool().unwrap(), true);
+    assert!(arr[0].as_bool().unwrap());
+    assert!(arr[1].as_bool().unwrap());
 }
 
 // ---------------------------------------------------------------------------
@@ -479,8 +495,8 @@ fn char_requirement_code_letter() {
         }
     }"#;
     let val = roundtrip(json);
-    let rc = get_path(&val, "base_root.requirement_code")
-        .expect("requirement_code must be present");
+    let rc =
+        get_path(&val, "base_root.requirement_code").expect("requirement_code must be present");
     let s = rc.as_str().expect("Char must round-trip as a JSON string");
     assert_eq!(s, "A", "requirement_code must round-trip to 'A'");
     assert_eq!(s.len(), 1, "Char must be exactly one character");
@@ -496,8 +512,8 @@ fn char_requirement_code_digit() {
         }
     }"#;
     let val = roundtrip(json);
-    let rc = get_path(&val, "base_root.requirement_code")
-        .expect("requirement_code must be present");
+    let rc =
+        get_path(&val, "base_root.requirement_code").expect("requirement_code must be present");
     let s = rc.as_str().expect("Char must round-trip as a JSON string");
     assert_eq!(s, "0", "requirement_code must round-trip to '0'");
     assert_eq!(s.len(), 1, "Char must be exactly one character");
@@ -558,9 +574,8 @@ fn default_unknown_bool_field() {
     let val = roundtrip(json);
     let f = get_path(&val, "base_root.completely_unknown_bool_xyzzy")
         .expect("unknown bool field must survive round-trip");
-    assert_eq!(
+    assert!(
         f.as_bool().unwrap(),
-        true,
         "unknown field with bool value must default to Bool"
     );
 }
@@ -640,8 +655,8 @@ fn float_amount_correct_and_wrong_path_in_same_file() {
     );
 
     // The wrong-path amount must be Int (no decimal).
-    let int_amount = get_path(&val, "base_root.inventory.slot_1.amount")
-        .expect("slot_1.amount must be present");
+    let int_amount =
+        get_path(&val, "base_root.inventory.slot_1.amount").expect("slot_1.amount must be present");
     assert!(
         !looks_like_float(int_amount),
         "amount under wrong ancestors must be Int; got: {int_amount}"

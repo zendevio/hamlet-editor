@@ -452,7 +452,7 @@ fn decode_fields_bin<R: Read>(
         let len = field.name_length() as usize;
         let field_name = buf.get(off..off + len).ok_or(FromBinError::Eof)?;
         let name = {
-            let cs = CStr::from_bytes_with_nul(&field_name)?.to_string_lossy();
+            let cs = CStr::from_bytes_with_nul(field_name)?.to_string_lossy();
             NameType::from(cs.as_ref())
         };
 

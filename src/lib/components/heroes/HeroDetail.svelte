@@ -382,12 +382,12 @@
 					</div>
 					<Select type="single" value={String(resolveLevel)} onValueChange={(v: string) => handleLevelChange(v)}>
 						<SelectTrigger class="h-6 w-auto text-xs">
-							<span class="truncate">Lv {resolveLevel} — {RESOLVE_LEVEL_NAMES[resolveLevel]}</span>
+							<span class="truncate">Lv {resolveLevel} · {RESOLVE_LEVEL_NAMES[resolveLevel]}</span>
 						</SelectTrigger>
 						<SelectContent>
 							{#each Array(7) as _, i}
 								<SelectItem value={String(i)}>
-									Lv {i} — {RESOLVE_LEVEL_NAMES[i]} (XP: {RESOLVE_XP_THRESHOLDS[i]})
+									Lv {i} · {RESOLVE_LEVEL_NAMES[i]} (XP: {RESOLVE_XP_THRESHOLDS[i]})
 								</SelectItem>
 							{/each}
 						</SelectContent>

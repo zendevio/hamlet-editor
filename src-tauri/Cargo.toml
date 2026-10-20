@@ -1,10 +1,16 @@
+[workspace]
+members = ["crates/ddsavelib"]
+default-members = ["."]
+resolver = "2"
+
 [package]
 name = "hamlet-editor"
 version = "1.0.0"
 description = "Darkest Dungeon save game editor"
-authors = ["Alin Gheorghe"]
-license = ""
-repository = ""
+authors = ["Alin M. Gheorghe"]
+license = "MIT"
+repository = "https://github.com/zendevio/hamlet-editor"
+homepage = "https://github.com/zendevio/hamlet-editor"
 edition = "2021"
 rust-version = "1.95"
 
