@@ -1,7 +1,8 @@
 name: Nexus Mods
 
-# Publishing a GitHub release uploads its installers to the Nexus Mods page as
-# new versions of the existing Windows, macOS and Linux files.
+# Publishing a stable GitHub release uploads its installers to the Nexus Mods page
+# as new versions of the existing Windows, macOS and Linux files.
+# Release events run this file from the tagged commit; use a manual run for older tags.
 on:
   release:
     types: [published]
@@ -11,7 +12,7 @@ on:
         description: Release tag to upload (for example v1.0.1)
         required: true
       dry_run:
-        description: Build the zips without uploading
+        description: Check Nexus and build the zips without uploading
         type: boolean
         default: true
 
@@ -24,8 +25,10 @@ concurrency:
 jobs:
   upload:
     name: Upload to Nexus Mods
+    # Prereleases never go to Nexus; manual runs are checked against the release below.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 75
     permissions:
       contents: read
     env:
@@ -33,27 +36,70 @@ jobs:
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
       HAS_KEY: ${{ secrets.NEXUSMODS_API_KEY != '' }}
     steps:
-      - name: Check configuration
+      - name: Check configuration and release
         id: config
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXUS_MOD_ID: ${{ vars.NEXUS_MOD_ID }}
+          NEXUS_FILE_ID_WINDOWS: ${{ vars.NEXUS_FILE_ID_WINDOWS }}
+          NEXUS_FILE_ID_MACOS: ${{ vars.NEXUS_FILE_ID_MACOS }}
+          NEXUS_FILE_ID_LINUX: ${{ vars.NEXUS_FILE_ID_LINUX }}
         run: |
+          set -euo pipefail
           missing=""
           [ "$HAS_KEY" = "true" ] || missing="$missing NEXUSMODS_API_KEY(secret)"
           for v in NEXUS_MOD_ID NEXUS_FILE_ID_WINDOWS NEXUS_FILE_ID_MACOS NEXUS_FILE_ID_LINUX; do
             [ -n "${!v}" ] || missing="$missing $v"
           done
           if [ -n "$missing" ]; then
+            if [ "$GITHUB_EVENT_NAME" = release ]; then
+              echo "::error::Nexus upload not configured, missing:$missing"; exit 1
+            fi
             echo "::warning::Nexus upload skipped, missing:$missing"
             echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          case "$TAG" in
-            v[0-9]*.[0-9]*.[0-9]*) echo "version=${TAG#v}" >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::Unexpected tag '$TAG'"; exit 1 ;;
-          esac
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Only stable release tags vX.Y.Z are uploaded to Nexus"; exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          # Drafts and prereleases fail here: gh either reports isDraft/isPrerelease or cannot see the draft.
+          state=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft,isPrerelease --jq '"\(.isDraft) \(.isPrerelease)"')
+          if [ "$state" != "false false" ]; then
+            echo "::error::Release is a draft or prerelease (isDraft isPrerelease = $state)"; exit 1
+          fi
+
+      - name: Check Nexus state
+        id: nexus
+        if: steps.config.outputs.skip != 'true'
+        timeout-minutes: 5
         env:
+          NEXUS_API_KEY: ${{ secrets.NEXUSMODS_API_KEY }}
           NEXUS_MOD_ID: ${{ vars.NEXUS_MOD_ID }}
-          NEXUS_FILE_ID_WINDOWS: ${{ vars.NEXUS_FILE_ID_WINDOWS }}
-          NEXUS_FILE_ID_MACOS: ${{ vars.NEXUS_FILE_ID_MACOS }}
-          NEXUS_FILE_ID_LINUX: ${{ vars.NEXUS_FILE_ID_LINUX }}
+          VERSION: ${{ steps.config.outputs.version }}
+          FILE_windows: ${{ vars.NEXUS_FILE_ID_WINDOWS }}
+          FILE_macos: ${{ vars.NEXUS_FILE_ID_MACOS }}
+          FILE_linux: ${{ vars.NEXUS_FILE_ID_LINUX }}
+        run: |
+          set -euo pipefail
+          api() { curl -fsS --retry 3 --max-time 60 -H "apikey: $NEXUS_API_KEY" -H 'User-Agent: zendevio-hamlet-editor-ci' "https://api.nexusmods.com/v3$1"; }
+          unique=$(api /games/darkestdungeon/mods/2312 | jq -r '.data.id')
+          if [ "$unique" != "$NEXUS_MOD_ID" ]; then
+            echo "::error::NEXUS_MOD_ID does not match the unique id of darkestdungeon/2312"; exit 1
+          fi
+          # Re-runs and repeated publishes skip platforms that already have this version.
+          for p in windows macos linux; do
+            var="FILE_$p"; id="${!var}"
+            versions=$(api "/mod-files/$id/versions")
+            jq -r --arg p "$p" '.data.versions[] | "\($p): \(.version) \(.category) primary=\(.is_primary // false)"' <<<"$versions"
+            if jq -e --arg v "$VERSION" 'any(.data.versions[]; .version == $v)' <<<"$versions" >/dev/null; then
+              echo "::notice::$p already has $VERSION on Nexus; its upload will be skipped"
+              echo "${p}_done=true" >> "$GITHUB_OUTPUT"
+            fi
+          done
+          if ! api "/mod-files/$FILE_windows/versions" | jq -e 'any(.data.versions[]; .is_primary == true)' >/dev/null; then
+            echo "::warning::No Windows version is marked primary on Nexus now; the Verify step will fail after a real upload"
+          fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.config.outputs.skip != 'true'
@@ -68,24 +114,43 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.config.outputs.version }}
         run: |
+          set -euo pipefail
           mkdir dl
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" -D dl \
             -p '*.exe' -p '*.msi' -p '*.dmg' -p '*.AppImage' -p '*.deb' -p '*.rpm'
-          ls -l dl
+          for p in '*.exe' '*.msi' '*.dmg' '*.AppImage' '*.deb' '*.rpm'; do
+            n=$(find dl -maxdepth 1 -type f -name "$p" | wc -l)
+            [ "$n" -eq 1 ] || { echo "::error::Expected exactly one $p release asset, found $n"; exit 1; }
+          done
           zip -j "HamletEditor-$VERSION-Windows.zip" dl/*.exe dl/*.msi
           zip -j "HamletEditor-$VERSION-macOS.zip" dl/*.dmg
           zip -j "HamletEditor-$VERSION-Linux.zip" dl/*.AppImage dl/*.deb dl/*.rpm
           ls -l HamletEditor-*.zip
-          # Nexus changelogs take one line per entry: use the bullet points of the curated notes.
+          # The changelog is the bullet points of the curated release notes.
           notes=".github/release-notes/$TAG.md"
-          {
-            echo 'changelog<<NEXUS_EOF'
-            if [ -f "$notes" ]; then grep -E '^- ' "$notes" | sed 's/^- //'; else echo "Release $TAG."; fi
-            echo 'NEXUS_EOF'
-          } >> "$GITHUB_ENV"
+          changelog=""
+          [ -f "$notes" ] && changelog=$( { grep -E '^- ' "$notes" || true; } | sed 's/^- //')
+          [ -n "$changelog" ] || changelog="Release $TAG."
+          printf 'Changelog to post:\n%s\n' "$changelog"
+          delim="NEXUS_EOF_$(openssl rand -hex 16)"
+          { echo "changelog<<$delim"; printf '%s\n' "$changelog"; echo "$delim"; } >> "$GITHUB_ENV"
 
+      - name: Keep dry-run zips for inspection
+        if: steps.config.outputs.skip != 'true' && env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nexus-zips-${{ steps.config.outputs.version }}
+          path: HamletEditor-*.zip
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+          overwrite: true
+
+      # Windows carries the mod version and the changelog. It leaves the primary flag
+      # untouched (Windows stays the page's main download); the check below confirms it.
       - name: Upload Windows
-        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true' && steps.nexus.outputs.windows_done != 'true'
+        timeout-minutes: 20
         uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2 # v1.0.0-beta.11
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
@@ -94,14 +159,15 @@ jobs:
           filename: HamletEditor-${{ steps.config.outputs.version }}-Windows.zip
           version: ${{ steps.config.outputs.version }}
           display_name: Hamlet Editor for Windows
+          description: Windows 10/11 (x64). Contains the installer (.exe, no admin rights needed) and the .msi. Not code-signed, so Windows may warn on first launch; see the description for the steps.
           archive_existing_version: true
-          primary_mod_manager_download: false
           allow_mod_manager_download: false
           update_mod_version: true
           changelog: ${{ env.changelog }}
 
       - name: Upload macOS
-        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true' && steps.nexus.outputs.macos_done != 'true'
+        timeout-minutes: 20
         uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2 # v1.0.0-beta.11
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
@@ -109,11 +175,14 @@ jobs:
           filename: HamletEditor-${{ steps.config.outputs.version }}-macOS.zip
           version: ${{ steps.config.outputs.version }}
           display_name: Hamlet Editor for macOS
+          description: macOS 11 or later, Intel and Apple Silicon. Contains the .dmg; drag Hamlet Editor to Applications. Not notarized, so macOS asks you to allow it once; see the description for the steps.
           archive_existing_version: true
+          primary_mod_manager_download: false
           allow_mod_manager_download: false
 
       - name: Upload Linux
-        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true' && steps.nexus.outputs.linux_done != 'true'
+        timeout-minutes: 20
         uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2 # v1.0.0-beta.11
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
@@ -121,5 +190,27 @@ jobs:
           filename: HamletEditor-${{ steps.config.outputs.version }}-Linux.zip
           version: ${{ steps.config.outputs.version }}
           display_name: Hamlet Editor for Linux
+          description: Linux x86_64. Contains the AppImage, .deb (Debian/Ubuntu) and .rpm (Fedora). Built on Ubuntu 22.04; needs WebKitGTK 4.1. Steam Deck - use the AppImage in Desktop Mode.
           archive_existing_version: true
+          primary_mod_manager_download: false
           allow_mod_manager_download: false
+
+      - name: Verify Windows is still the primary file
+        if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        timeout-minutes: 5
+        env:
+          NEXUS_API_KEY: ${{ secrets.NEXUSMODS_API_KEY }}
+          FILE_ID: ${{ vars.NEXUS_FILE_ID_WINDOWS }}
+          VERSION: ${{ steps.config.outputs.version }}
+        run: |
+          set -euo pipefail
+          # The primary flag on a version created seconds ago may take a moment to settle.
+          for i in 1 2 3 4 5; do
+            if curl -fsS --retry 3 --max-time 60 -H "apikey: $NEXUS_API_KEY" -H 'User-Agent: zendevio-hamlet-editor-ci' \
+                 "https://api.nexusmods.com/v3/mod-files/$FILE_ID/versions" \
+               | jq -e --arg v "$VERSION" 'any(.data.versions[]; .version == $v and .is_primary == true)' >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Windows $VERSION is not the primary file on the mod page"; exit 1
