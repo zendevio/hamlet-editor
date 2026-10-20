@@ -124,8 +124,8 @@ fn add_mod(mod_path: PathBuf, mods: &mut Vec<ModInfo>, seen: &mut HashSet<PathBu
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "(unknown)".to_string());
 
-    let has_heroes = mod_path.join("heroes").is_dir()
-        && has_darkest_files(&mod_path.join("heroes"));
+    let has_heroes =
+        mod_path.join("heroes").is_dir() && has_darkest_files(&mod_path.join("heroes"));
 
     let has_trinkets = mod_path.join("trinkets").is_dir();
 

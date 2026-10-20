@@ -1,18 +1,22 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/badge';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Slider } from '$lib/components/ui/slider';
-	import { Switch } from '$lib/components/ui/switch';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
+	import { commitChangedValue, sliderControl, sliderValueLabel, sliderNumberLabel, hpSliderMax } from '#lib/control-events.js';
+	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
+	import { canPickQuirk, CURSE_STATES } from '#lib/hero-safety.js';
+	import { toast } from 'svelte-sonner';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import { Slider } from '#lib/components/ui/slider/index.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/select/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -20,8 +24,8 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Checkbox } from '$lib/components/ui/checkbox';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
@@ -33,15 +37,15 @@
 	import PencilIcon from 'phosphor-svelte/lib/PencilIcon';
 	import TrashIcon from 'phosphor-svelte/lib/TrashIcon';
 	import DropIcon from 'phosphor-svelte/lib/DropIcon';
-	import GameAssetImage from '$lib/components/GameAssetImage.svelte';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
-	import { getSettings } from '$lib/stores/settings.svelte';
-	import { getPortraitPath } from '$lib/utils';
-	import type { HeroSummary, HeroQuirk } from '$lib/stores/save-data.svelte';
+	import GameAssetImage from '#lib/components/GameAssetImage.svelte';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
+	import { getSettings } from '#lib/stores/settings.svelte.js';
+	import { getPortraitPath } from '#lib/utils.js';
+	import type { HeroSummary, HeroQuirk } from '#lib/stores/save-data.svelte.js';
 	import {
 		getMaxHp,
-		maxGearRank,
 		getHeroRawData,
+		getSavedHeroHp,
 		setHeroHp,
 		setHeroStress,
 		setHeroName,
@@ -51,23 +55,25 @@
 		setHeroAffliction,
 		setHeroDeathsDoor,
 		healHeroToMax,
-		reviveHero,
 		dismissHero,
 		removeHeroQuirk,
 		toggleQuirkLock,
 		addHeroQuirk,
 		revertHero,
-		markDirty,
+		setHeroTrinket,
 		RESOLVE_LEVEL_NAMES,
 		RESOLVE_XP_THRESHOLDS,
-		getDlcFlags
-	} from '$lib/stores/save-data.svelte';
-	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '$lib/data/quirks';
-	import { snakeToTitle } from '$lib/utils';
+		getDlcFlags,
+		getSaveData,
+		getDismissBlockReason,
+		setHeroCurseState
+	} from '#lib/stores/save-data.svelte.js';
+	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '#lib/data/quirks.js';
+	import { snakeToTitle } from '#lib/utils.js';
 	import RevivalWizard from './RevivalWizard.svelte';
 	import TrinketPicker from './TrinketPicker.svelte';
-	import { getAvailableCombatSkills, getAvailableCampingSkills } from '$lib/stores/game-data.svelte';
-	import { toggleCombatSkill, toggleCampingSkill } from '$lib/stores/save-data.svelte';
+	import { getAvailableCombatSkills, getAvailableCampingSkills } from '#lib/stores/game-data.svelte.js';
+	import { toggleCombatSkill, toggleCampingSkill } from '#lib/stores/save-data.svelte.js';
 
 	let {
 		hero,
@@ -77,6 +83,7 @@
 		onDismiss?: () => void;
 	} = $props();
 
+	const saveData = getSaveData();
 	const settings = getSettings();
 	const dlcFlags = getDlcFlags();
 
@@ -88,6 +95,9 @@
 	// ── Name editing ──
 	let editingName = $state(false);
 	let nameValue = $state('');
+	let nameError = $state('');
+	let nameAtStart = '';
+	let nameHeroGuid = '';
 
 	// ── Revival wizard ──
 	let revivalWizardOpen = $state(false);
@@ -96,15 +106,12 @@
 	let dismissDialogOpen = $state(false);
 	let dismissConfirmChecked = $state(false);
 
-	// ── Level change gear confirmation ──
-	let pendingLevel = $state<number | null>(null);
-	let pendingMaxGear = $state(0);
-
 	// ── Derived ──
 	let isDead = $derived(hero.status === 3);
+	let dismissReason = $derived(getDismissBlockReason(hero.guid));
 	let resolveLevel = $derived(hero.resolveLevel);
-	let maxGear = $derived(maxGearRank(resolveLevel));
 	let maxHp = $derived(getMaxHp(hero.heroClass, hero.armourRank));
+	let hpMax = $derived(hpSliderMax(maxHp, hero.currentHp, getSavedHeroHp(hero.guid)));
 
 	let positiveQuirks = $derived(
 		Object.entries(hero.quirks).filter(([id]) => isPositiveQuirk(id))
@@ -121,12 +128,7 @@
 	let canAddNegative = $derived(negativeCount < 5);
 
 	// ── Blood Curse derived ──
-	const VAMPIRE_QUIRK_IDS = [
-		'disease_vampire_passive',
-		'disease_vampire_crave',
-		'disease_vampire_wasting',
-		'disease_vampire_blood_lust'
-	] as const;
+	const VAMPIRE_QUIRK_IDS = CURSE_STATES;
 	const VAMPIRE_STATE_LABELS: Record<string, string> = {
 		disease_vampire_passive: 'Sated',
 		disease_vampire_crave: 'Craving',
@@ -192,7 +194,7 @@
 		const existingIds = new Set(Object.keys(hero.quirks));
 		const q = quirkSearch.trim().toLowerCase();
 		return allQuirks.filter((quirk) => {
-			if (existingIds.has(quirk.id)) return false;
+			if (existingIds.has(quirk.id) || !canPickQuirk(quirk.id)) return false;
 			if (quirkPickerCategory === 'positive' && quirk.category !== 'positive') return false;
 			if (quirkPickerCategory === 'negative' && quirk.category === 'positive') return false;
 			if (q && !quirk.displayName.toLowerCase().includes(q) && !quirk.id.includes(q))
@@ -202,15 +204,30 @@
 	});
 
 	function startEditName() {
+		nameError = '';
 		nameValue = hero.name;
+		nameAtStart = hero.name;
+		nameHeroGuid = hero.guid;
 		editingName = true;
 	}
 
 	function saveName() {
-		if (nameValue.trim()) {
-			setHeroName(hero.guid, nameValue.trim());
+		if (!editingName) return;
+		if (hero.guid !== nameHeroGuid || hero.name !== nameAtStart) {
+			editingName = false;
+			return;
 		}
-		editingName = false;
+		if (nameValue === nameAtStart) {
+			editingName = false;
+			return;
+		}
+		const parsed = validateHeroName(nameValue);
+		nameError = parsed.error ?? '';
+		if (parsed.error !== undefined) return;
+		commitChangedValue(hero.name, parsed.value, (name) => {
+			nameError = setHeroName(hero.guid, name) ?? '';
+		});
+		if (!nameError) editingName = false;
 	}
 
 	function handleNameKeydown(e: KeyboardEvent) {
@@ -220,42 +237,11 @@
 		}
 	}
 
-	// D7: Level change with inline gear confirmation
 	function handleLevelChange(value: string) {
-		const level = parseInt(value);
-		if (isNaN(level)) return;
-
-		setHeroLevel(hero.guid, level);
-
-		const newMaxGear = maxGearRank(level);
-		// Constrain if current ranks exceed the new max
-		if (hero.weaponRank > newMaxGear) setHeroWeaponRank(hero.guid, newMaxGear);
-		if (hero.armourRank > newMaxGear) setHeroArmourRank(hero.guid, newMaxGear);
-
-		// Show inline gear-match prompt if both ranks are below the new max
-		if (hero.weaponRank < newMaxGear || hero.armourRank < newMaxGear) {
-			pendingLevel = level;
-			pendingMaxGear = newMaxGear;
-		}
-	}
-
-	function confirmGearMatch() {
-		if (pendingLevel === null) return;
-		setHeroWeaponRank(hero.guid, pendingMaxGear);
-		setHeroArmourRank(hero.guid, pendingMaxGear);
-		pendingLevel = null;
-	}
-
-	function declineGearMatch() {
-		pendingLevel = null;
-	}
-
-	function handleHpSlider(value: number) {
-		setHeroHp(hero.guid, value);
-	}
-
-	function handleStressSlider(value: number) {
-		setHeroStress(hero.guid, value);
+		if (value === String(resolveLevel)) return;
+		const parsed = parseInteger(value, 0, 6);
+		if (parsed.error !== undefined) return;
+		setHeroLevel(hero.guid, parsed.value);
 	}
 
 	function openQuirkPicker(category: 'positive' | 'negative') {
@@ -279,43 +265,26 @@
 
 	// D2: Blood Curse state change
 	function handleBloodCurseChange(newStateId: string) {
-		if (!vampireQuirkId) return;
-		// Remove old vampire quirk
-		removeHeroQuirk(hero.guid, vampireQuirkId);
-		// Add new vampire quirk
-		const newQuirk: HeroQuirk = {
-			is_locked: false,
-			is_new: false,
-			mission_count: 0,
-			replaces_quirk: 0,
-			replaces_quirk_viewed: false,
-			evolution_duration_remaining: 0
-		};
-		addHeroQuirk(hero.guid, newStateId, newQuirk);
+		commitChangedValue(vampireQuirkId ?? '', newStateId, (id) => setHeroCurseState(hero.guid, id));
 	}
 
-	// D3: Trinket slot equip via TrinketPicker
-	function handleTrinketSelect(slot: '0' | '1', trinketId: string) {
-		const raw = getHeroRawData(hero.guid);
-		if (!raw) return;
-		if (trinketId) {
-			raw.trinkets.items[slot] = { id: trinketId, type: 'trinket', amount: 1 };
-		} else {
-			delete raw.trinkets.items[slot];
-		}
-		markDirty('persist.roster.json');
+	function handleTrinketSelect(slot: '0' | '1', trinketId: string, source: 'inventory' | 'catalogue' = 'catalogue') {
+		const reason = setHeroTrinket(hero.guid, slot, trinketId, source);
+		if (reason) toast.error(reason);
 	}
 
 	// D8: Dismiss confirmation dialog
 	function handleDismissConfirm() {
-		dismissHero(hero.guid);
+		const reason = dismissHero(hero.guid);
+		if (reason) { toast.error(reason); return; }
 		dismissConfirmChecked = false;
 		dismissDialogOpen = false;
 		onDismiss?.();
 	}
 
 	function handleRevert() {
-		revertHero(hero.guid);
+		const reason = revertHero(hero.guid);
+		if (reason) toast.error(reason);
 	}
 </script>
 
@@ -374,11 +343,14 @@
 					{#if editingName}
 						<Input
 							bind:value={nameValue}
+							aria-label="Hero name"
+							aria-invalid={!!nameError}
 							onblur={saveName}
 							onkeydown={handleNameKeydown}
 							class="h-7 text-sm font-medium"
 							autofocus
 						/>
+						{#if nameError}<p role="alert" class="text-xs text-destructive">{nameError}</p>{/if}
 					{:else}
 						<button
 							type="button"
@@ -430,32 +402,6 @@
 				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Vitals</span>
 				<Separator class="flex-1" />
 			</div>
-			<!-- D7: Inline gear match confirmation -->
-			{#if pendingLevel !== null}
-				<div class="rounded-none border border-amber-500/30 bg-amber-500/5 p-2 text-[11px]">
-					<p class="mb-1.5 font-medium text-amber-700 dark:text-amber-400">
-						Update weapon &amp; armour rank to {pendingMaxGear}?
-					</p>
-					<div class="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							class="h-6 flex-1 text-[11px]"
-							onclick={confirmGearMatch}
-						>
-							Yes
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							class="h-6 flex-1 text-[11px]"
-							onclick={declineGearMatch}
-						>
-							No
-						</Button>
-					</div>
-				</div>
-			{/if}
 			<div class="mt-2 space-y-4">
 					<div class="flex gap-4">
 						<!-- HP -->
@@ -477,21 +423,18 @@
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{hero.currentHp} / {maxHp}
+									{sliderValueLabel(hero.currentHp, { min: isDead ? 0 : 1, max: hpMax, step: 1 })} / {sliderNumberLabel(hpMax)}
 								</span>
 							</div>
 							<Slider
-								value={hero.currentHp}
-								max={maxHp}
-								min={0}
-								step={1}
+								{...sliderControl(hero.currentHp, { min: isDead ? 0 : 1, max: hpMax, step: 1 }, (value) => setHeroHp(hero.guid, value))}
 								type="single"
-								onValueChange={(v) => handleHpSlider(v)}
 							/>
 							<Button
 								variant="outline"
 								size="sm"
 								class="mt-1.5 h-6 w-full text-[11px]"
+								title="Heal to the class base maximum; buffs are not included. Existing higher HP is kept."
 								onclick={() => healHeroToMax(hero.guid)}
 								disabled={hero.currentHp >= maxHp}
 							>
@@ -518,16 +461,12 @@
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{hero.stress} / 200
+									{sliderValueLabel(hero.stress, { min: 0, max: 200, step: 1 })} / 200
 								</span>
 							</div>
 							<Slider
-								value={hero.stress}
-								max={200}
-								min={0}
-								step={1}
+								{...sliderControl(hero.stress, { min: 0, max: 200, step: 1 }, (value) => setHeroStress(hero.guid, value))}
 								type="single"
-								onValueChange={(v) => handleStressSlider(v)}
 							/>
 							<Button
 								variant="outline"
@@ -571,7 +510,7 @@
 							<Select
 								type="single"
 								value={hero.virtueTypeId || hero.afflictionTypeId || '_none'}
-								onValueChange={(v: string) => setHeroAffliction(hero.guid, v === '_none' ? '' : v)}
+								onValueChange={(v: string) => commitChangedValue(hero.virtueTypeId || hero.afflictionTypeId || '_none', v, (id) => setHeroAffliction(hero.guid, id === '_none' ? '' : id))}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>{hero.virtueTypeId ? snakeToTitle(hero.virtueTypeId) : hero.afflictionTypeId ? snakeToTitle(hero.afflictionTypeId) : 'None'}</span>
@@ -616,7 +555,7 @@
 								<span class="text-xs text-muted-foreground">{hero.visitedDeathsDoor ? 'Visited' : 'Never'}</span>
 								<Switch
 									checked={hero.visitedDeathsDoor}
-									onCheckedChange={(checked) => setHeroDeathsDoor(hero.guid, checked)}
+									onCheckedChange={(checked) => commitChangedValue(hero.visitedDeathsDoor, checked, (value) => setHeroDeathsDoor(hero.guid, value))}
 								/>
 							</div>
 						</div>
@@ -897,18 +836,18 @@
 						<!-- Weapon Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
-								Weapon (max: {maxGear})
+								Weapon (max: 4)
 							</span>
 							<Select
 								type="single"
 								value={String(hero.weaponRank)}
-								onValueChange={(v: string) => setHeroWeaponRank(hero.guid, parseInt(v))}
+								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) commitChangedValue(hero.weaponRank, parsed.value, (rank) => setHeroWeaponRank(hero.guid, rank)); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>Rank {hero.weaponRank}</span>
 								</SelectTrigger>
 								<SelectContent>
-									{#each Array(maxGear + 1) as _, i}
+									{#each Array(5) as _, i}
 										<SelectItem value={String(i)}>Rank {i}</SelectItem>
 									{/each}
 								</SelectContent>
@@ -918,24 +857,24 @@
 						<!-- Armour Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
-								Armour (max: {maxGear})
+								Armour (max: 4)
 							</span>
 							<Select
 								type="single"
 								value={String(hero.armourRank)}
-								onValueChange={(v: string) => setHeroArmourRank(hero.guid, parseInt(v))}
+								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) commitChangedValue(hero.armourRank, parsed.value, (rank) => setHeroArmourRank(hero.guid, rank)); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
 									<span>Rank {hero.armourRank}</span>
 								</SelectTrigger>
 								<SelectContent>
-									{#each Array(maxGear + 1) as _, i}
+									{#each Array(5) as _, i}
 										<SelectItem value={String(i)}>Rank {i}</SelectItem>
 									{/each}
 								</SelectContent>
 							</Select>
 							<p class="text-muted-foreground mt-1 text-[10px]">
-								Max HP at current armour rank: {maxHp}
+								Base max HP at current armour rank: {maxHp} (buffs not included)
 							</p>
 						</div>
 					</div>
@@ -956,7 +895,10 @@
 								</div>
 								<TrinketPicker
 									value={trinketSlot0?.id ?? ''}
-									onselect={(id) => handleTrinketSelect('0', id)}
+									otherIds={trinketSlot1?.id ? [trinketSlot1.id] : []}
+									heroClass={hero.heroClass}
+									disabled={isDead}
+									onselect={(id, source) => handleTrinketSelect('0', id, source)}
 								/>
 							</div>
 							<!-- Slot 1 -->
@@ -971,10 +913,14 @@
 								</div>
 								<TrinketPicker
 									value={trinketSlot1?.id ?? ''}
-									onselect={(id) => handleTrinketSelect('1', id)}
+									otherIds={trinketSlot0?.id ? [trinketSlot0.id] : []}
+									heroClass={hero.heroClass}
+									disabled={isDead}
+									onselect={(id, source) => handleTrinketSelect('1', id, source)}
 								/>
 							</div>
 						</div>
+						{#if isDead}<p class="text-muted-foreground mt-1 text-[10px]">Revive this hero in town before changing trinkets.</p>{/if}
 					</div>
 			</div>
 		</div>
@@ -1035,7 +981,7 @@
 							Revive Hero
 						</Button>
 						<p class="text-muted-foreground text-[10px]">
-							Opens the Revival Wizard to restore this hero across all required save files.
+							Revive in town when a roster slot is free. Skill upgrades lost at death are not restored.
 						</p>
 					{/if}
 
@@ -1049,11 +995,13 @@
 							variant="destructive"
 							size="sm"
 							class="w-full gap-2 text-xs"
+							disabled={!!dismissReason}
 							onclick={() => (dismissDialogOpen = true)}
 						>
 							<TrashIcon size={14} />
 							Dismiss {hero.name}
 						</Button>
+						{#if dismissReason}<p class="mt-2 text-xs text-destructive">{dismissReason}</p>{/if}
 					</div>
 			</div>
 		</div>
@@ -1091,7 +1039,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!dismissConfirmChecked}
+				disabled={!dismissConfirmChecked || !!dismissReason}
 				onclick={handleDismissConfirm}
 				class="gap-1"
 			>
@@ -1104,5 +1052,5 @@
 
 <!-- Revival Wizard (rendered outside ScrollArea to avoid z-index issues) -->
 {#if isDead}
-	<RevivalWizard {hero} bind:open={revivalWizardOpen} />
+	<RevivalWizard heroes={[hero]} bind:open={revivalWizardOpen} />
 {/if}

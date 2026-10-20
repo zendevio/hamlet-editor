@@ -1,22 +1,23 @@
 <script lang="ts">
+	import { commitChangedValue } from '#lib/control-events.js';
 	import {
 		Card,
 		CardContent,
 		CardDescription,
 		CardHeader,
 		CardTitle
-	} from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Input } from '$lib/components/ui/input';
-	import { Switch } from '$lib/components/ui/switch';
-	import { Separator } from '$lib/components/ui/separator';
+	} from '#lib/components/ui/card/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
+	} from '#lib/components/ui/select/index.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -24,28 +25,40 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import {
 		getSettings,
 		setGamePath,
 		setSavePath,
 		setProfileId,
 		setAutoBackup
-	} from '$lib/stores/settings.svelte';
-	import { loadProfileFromBackend } from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/settings.svelte.js';
+	import { restoreOutcome, runRestore } from '#lib/restore-workflow.js';
+	import { withCurrentProfile } from '#lib/profiles.js';
+	import { getSaveData, loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
 		detectGameInstallations,
 		detectSaveLocations,
 		type GameInstall,
 		type SaveLocation
-	} from '$lib/api/detect';
-	import { createBackup, listBackups, restoreBackup, restoreGameBackup, type BackupEntry } from '$lib/api/backup';
+	} from '#lib/api/detect.js';
+	import {
+		createBackup,
+		listBackups,
+		openBackupFolder,
+		checkRestore,
+		type RestoreCheck,
+		restoreBackup,
+		restoreGameBackup,
+		type BackupEntry
+	} from '#lib/api/backup.js';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
-	import { onMount } from 'svelte';
+	import { onMount, getContext } from 'svelte';
+	import { DATA_CHANGE_CONTEXT, type RequestDataChange } from '#lib/save-workflow.js';
 
 	// Phosphor icons
 	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
@@ -64,11 +77,19 @@
 
 	// ── State ──
 
+	const requestDataChange = getContext<RequestDataChange>(DATA_CHANGE_CONTEXT);
 	const settings = getSettings();
+	const saveData = getSaveData();
 
 	let appVersion = $state('dev');
 
 	onMount(async () => {
+		detectingSaves = true;
+		try {
+			saveLocations = await detectSaveLocations();
+		} finally {
+			detectingSaves = false;
+		}
 		try {
 			const { getVersion } = await import('@tauri-apps/api/app');
 			appVersion = 'v' + await getVersion();
@@ -104,10 +125,13 @@
 
 	// ── Derived ──
 
+	let availableSaveLocations = $derived(
+		withCurrentProfile(saveLocations, settings.savePath, settings.profileId, saveData.gameInRaid)
+	);
 	let profileOptions = $derived.by(() => {
-		return saveLocations.map((loc) => ({
-			id: loc.profile_id,
-			label: loc.profile_id,
+		return availableSaveLocations.map((loc) => ({
+			id: loc.path,
+			label: `${loc.profile_id} · ${loc.steam_user_id ?? loc.path}`,
 			hasRaid: loc.has_active_raid,
 			source: loc.source
 		}));
@@ -123,7 +147,7 @@
 		try {
 			gameInstalls = await detectGameInstallations();
 			if (gameInstalls.length > 0) {
-				setGamePath(gameInstalls[0].path);
+				if (!await changeGamePath(gameInstalls[0].path)) return;
 				gamePathValid = true;
 				toast.success('Game installation detected', {
 					description: gameInstalls[0].path
@@ -148,8 +172,8 @@
 		try {
 			saveLocations = await detectSaveLocations();
 			if (saveLocations.length > 0) {
-				setSavePath(saveLocations[0].path);
-				setProfileId(saveLocations[0].profile_id);
+				const current = saveLocations.find((loc) => loc.path === settings.savePath) ?? saveLocations[0];
+				await handleProfileChange(current.path);
 				savePathValid = true;
 				toast.success('Save files detected', {
 					description: `Found ${saveLocations.length} profile(s).`
@@ -173,12 +197,11 @@
 			const { open } = await import('@tauri-apps/plugin-dialog');
 			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
 			if (selected && typeof selected === 'string') {
-				setGamePath(selected);
+				if (!await changeGamePath(selected)) return;
 				gamePathValid = null;
 			}
-		} catch {
-			// Not in Tauri environment (dev mode in browser), show fallback
-			toast.info('Browse not available in dev mode');
+		} catch (err) {
+			toast.error('Could not load selected game data', { description: String(err) });
 		}
 	}
 
@@ -187,27 +210,41 @@
 			const { open } = await import('@tauri-apps/plugin-dialog');
 			const selected = await open({ directory: true, title: 'Select save file folder' });
 			if (selected && typeof selected === 'string') {
-				setSavePath(selected);
+				if (!await changeProfilePath(selected, selected.split(/[\\/]/).filter(Boolean).at(-1) ?? '')) return;
 				savePathValid = null;
 			}
-		} catch {
-			// Not in Tauri environment (dev mode in browser), show fallback
-			toast.info('Browse not available in dev mode');
+		} catch (err) {
+			toast.error('Could not load selected profile', { description: String(err) });
 		}
 	}
 
+	async function changeGamePath(path: string): Promise<boolean> {
+		if (path === settings.gamePath) return true;
+		return requestDataChange(async () => {
+			setGamePath(path);
+			if (settings.savePath) await loadProfileFromBackend(settings.savePath);
+		});
+	}
+
+	async function changeProfilePath(path: string, profileId: string): Promise<boolean> {
+		if (path === settings.savePath && profileId === settings.profileId) return true;
+		return requestDataChange(async () => {
+			setSavePath(path);
+			setProfileId(profileId);
+			await loadProfileFromBackend(path);
+		});
+	}
+
 	async function handleProfileChange(value: string) {
-		setProfileId(value);
-		const loc = saveLocations.find((l) => l.profile_id === value);
-		if (loc) {
-			setSavePath(loc.path);
-			// Reload profile data from disk whenever the active profile changes
-			try {
-				await loadProfileFromBackend(loc.path);
-				toast.success('Profile loaded', { description: `Switched to profile ${value}` });
-			} catch (err) {
-				toast.error('Failed to load profile', { description: String(err) });
+		if (value === settings.savePath) return;
+		const loc = availableSaveLocations.find((l) => l.path === value);
+		if (!loc) return;
+		try {
+			if (await changeProfilePath(loc.path, loc.profile_id)) {
+				toast.success('Profile loaded', { description: `Switched to profile ${loc.profile_id}` });
 			}
+		} catch (err) {
+			toast.error('Failed to load profile', { description: String(err) });
 		}
 	}
 
@@ -242,25 +279,55 @@
 	}
 
 	async function handleOpenBackupFolder() {
-		if (!settings.savePath) {
-			toast.error('No save path configured');
-			return;
-		}
 		try {
-			const { open } = await import('@tauri-apps/plugin-shell');
-			await open(settings.savePath);
-		} catch {
-			// Not in Tauri environment or shell.open unavailable — show path as fallback.
-			toast.info('Backup folder', {
-				description: settings.savePath
+			await openBackupFolder();
+		} catch (err) {
+			toast.error('Could not open backup folder', {
+				description: String(err)
 			});
 		}
 	}
 
-	function openRestoreDialog(backup: BackupEntry) {
+	let restoreCheck = $state<RestoreCheck | null>(null);
+	let gameRestoreCheck = $state<RestoreCheck | null>(null);
+	let checkingRestore = $state(false);
+
+	async function openRestoreDialog(backup: BackupEntry) {
+		if (checkingRestore) return;
+		checkingRestore = true;
+		try {
+			restoreCheck = await checkRestore(backup.path, settings.savePath);
+		} catch (err) {
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+			return;
+		} finally {
+			checkingRestore = false;
+		}
 		restoreTarget = backup;
 		restoreConfirmChecked = false;
 		restoreDialogOpen = true;
+	}
+
+	/** Re-run the preflight for an open dialog; a result that arrives after Cancel is dropped. */
+	async function recheckRestore(game: boolean) {
+		const backupPath = game ? null : restoreTarget?.path;
+		if (checkingRestore || backupPath === undefined) return;
+		checkingRestore = true;
+		try {
+			const check = await checkRestore(backupPath, settings.savePath);
+			if (game ? !restoreGameBackupDialogOpen : !restoreDialogOpen) return;
+			if (game) {
+				gameRestoreCheck = check;
+				restoreGameBackupConfirmChecked = false;
+			} else {
+				restoreCheck = check;
+				restoreConfirmChecked = false;
+			}
+		} catch (err) {
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+		} finally {
+			checkingRestore = false;
+		}
 	}
 
 	async function handleRestore() {
@@ -268,25 +335,43 @@
 		restoringBackup = restoreTarget.path;
 		restoreDialogOpen = false;
 		try {
-			await restoreBackup(restoreTarget.path, settings.savePath);
+			const target = restoreTarget;
+			const profilePath = settings.savePath;
+			if (!await runRestore({
+				check: () => checkRestore(target.path, profilePath),
+				checked: (check) => { restoreCheck = check; },
+				blocked: () => { restoreDialogOpen = true; },
+				requestDataChange,
+				restore: () => restoreBackup(target.path, profilePath),
+				reload: () => loadProfileFromBackend(profilePath)
+			})) return;
 			toast.success('Backup restored', {
 				description: `Restored from ${formatTimestamp(restoreTarget.timestamp)}.`
 			});
 			await loadBackupList();
-			// Reload the in-memory profile so the UI reflects the restored files
-			await loadProfileFromBackend(settings.savePath);
 		} catch (err) {
 			toast.error('Restore failed', {
+				duration: Infinity, closeButton: true,
 				description: String(err)
 			});
 		} finally {
 			restoringBackup = null;
-			restoreTarget = null;
+			if (!restoreDialogOpen) restoreTarget = null;
 			restoreConfirmChecked = false;
 		}
 	}
 
-	function openRestoreGameBackupDialog() {
+	async function openRestoreGameBackupDialog() {
+		if (checkingRestore) return;
+		checkingRestore = true;
+		try {
+			gameRestoreCheck = await checkRestore(null, settings.savePath);
+		} catch (err) {
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+			return;
+		} finally {
+			checkingRestore = false;
+		}
 		restoreGameBackupConfirmChecked = false;
 		restoreGameBackupDialogOpen = true;
 	}
@@ -296,15 +381,22 @@
 		restoringGameBackup = true;
 		restoreGameBackupDialogOpen = false;
 		try {
-			await restoreGameBackup(settings.savePath);
+			const profilePath = settings.savePath;
+			if (!await runRestore({
+				check: () => checkRestore(null, profilePath),
+				checked: (check) => { gameRestoreCheck = check; },
+				blocked: () => { restoreGameBackupDialogOpen = true; },
+				requestDataChange,
+				restore: () => restoreGameBackup(profilePath),
+				reload: () => loadProfileFromBackend(profilePath)
+			})) return;
 			toast.success('Game backup restored', {
 				description: 'The game\'s own backup has been restored successfully.'
 			});
 			await loadBackupList();
-			// Reload the in-memory profile so the UI reflects the restored files
-			await loadProfileFromBackend(settings.savePath);
 		} catch (err) {
 			toast.error('Restore failed', {
+				duration: Infinity, closeButton: true,
 				description: String(err)
 			});
 		} finally {
@@ -490,7 +582,7 @@
 					{#if profileOptions.length > 0}
 						<Select
 							type="single"
-							value={settings.profileId}
+							value={settings.savePath}
 							onValueChange={(v: string) => handleProfileChange(v)}
 						>
 							<SelectTrigger class="h-8 text-xs">
@@ -537,7 +629,7 @@
 					</div>
 					<Switch
 						checked={settings.autoBackup}
-						onCheckedChange={(checked) => setAutoBackup(checked)}
+						onCheckedChange={(checked) => commitChangedValue(settings.autoBackup, checked, setAutoBackup)}
 					/>
 				</div>
 
@@ -664,7 +756,7 @@
 					</div>
 					<Switch
 						checked={mode.current === 'dark'}
-						onCheckedChange={() => toggleMode()}
+						onCheckedChange={(checked) => commitChangedValue(mode.current === 'dark', checked, () => toggleMode())}
 					/>
 				</div>
 			</CardContent>
@@ -722,8 +814,14 @@
 			</DialogTitle>
 			<DialogDescription>
 				This will replace your current save files with the selected backup.
+				{restoreOutcome(restoreCheck)}
 			</DialogDescription>
 		</DialogHeader>
+
+		{#if restoreCheck?.blocked_reason}
+			<p role="alert" class="text-sm text-destructive">{restoreCheck.blocked_reason}</p>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(false)}>Check again</Button>
+		{/if}
 
 		{#if restoreTarget}
 			<div class="space-y-3">
@@ -756,7 +854,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!restoreConfirmChecked}
+				disabled={checkingRestore || !restoreConfirmChecked || !restoreCheck || !!restoreCheck.blocked_reason}
 				onclick={handleRestore}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
@@ -776,8 +874,14 @@
 			</DialogTitle>
 			<DialogDescription>
 				Restore from the game's own backup/ subdirectory inside the save profile.
+				{restoreOutcome(gameRestoreCheck)}
 			</DialogDescription>
 		</DialogHeader>
+
+		{#if gameRestoreCheck?.blocked_reason}
+			<p role="alert" class="text-sm text-destructive">{gameRestoreCheck.blocked_reason}</p>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(true)}>Check again</Button>
+		{/if}
 
 		<div class="space-y-3">
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
@@ -802,7 +906,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!restoreGameBackupConfirmChecked}
+				disabled={checkingRestore || !restoreGameBackupConfirmChecked || !gameRestoreCheck || !!gameRestoreCheck.blocked_reason}
 				onclick={handleRestoreGameBackup}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />

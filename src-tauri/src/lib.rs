@@ -1,26 +1,40 @@
 mod commands;
 
+pub use commands::{backup, save};
+
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 // ── Managed state ──
 
-/// Shared name table used by save decode commands to un-hash DSON field names.
-pub struct NameTableState(pub Mutex<Vec<String>>);
+/// Upgrade reference names and the provenance of the loaded profile.
+#[derive(Default)]
+pub struct NameTable {
+    pub names: Vec<String>,
+    pub version: u64,
+    pub loaded_profile: Option<PathBuf>,
+    pub loaded_fingerprint: std::collections::BTreeMap<PathBuf, [u8; 32]>,
+    pub loaded_files: std::collections::HashMap<String, commands::save::LoadedSave>,
+}
+
+pub struct NameTableState(pub Mutex<NameTable>);
 
 impl Default for NameTableState {
     fn default() -> Self {
-        Self(Mutex::new(Vec::new()))
+        Self(Mutex::new(NameTable::default()))
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_shell::init())
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .manage(NameTableState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -30,6 +44,29 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            // Optional startup window mode for test runs:
+            // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.
+            // Pass the requested mode to the single visible build. On macOS, tao
+            // still queues maximization after ordering the window front.
+            let config = app
+                .config()
+                .app
+                .windows
+                .first()
+                .ok_or("Missing main window config")?;
+            let mut window = tauri::WebviewWindowBuilder::from_config(app, config)?.visible(true);
+            if let Ok(mode) = std::env::var("HAMLET_WINDOW") {
+                window = match mode.as_str() {
+                    "maximized" => window.maximized(true),
+                    "fullscreen" => window.fullscreen(true),
+                    other => {
+                        log::warn!("Ignoring unknown HAMLET_WINDOW value: {other}");
+                        window
+                    }
+                };
+            }
+            window.build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -44,8 +81,10 @@ pub fn run() {
             commands::detect::list_profiles,
             commands::backup::create_backup,
             commands::backup::list_backups,
+            commands::backup::check_restore,
             commands::backup::restore_backup,
             commands::backup::restore_game_backup,
+            commands::backup::open_backup_folder,
             commands::assets::load_game_asset,
             commands::names::generate_name_table,
             commands::names::load_localization,
@@ -54,6 +93,7 @@ pub fn run() {
             commands::gamedata::load_trinket_library,
             commands::gamedata::load_class_stats,
             commands::gamedata::load_class_skills,
+            commands::gamedata::load_roster_capacity_rules,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

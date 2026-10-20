@@ -34,11 +34,74 @@ pub struct TrinketDef {
     pub id: String,
     pub rarity: Option<String>,
     pub class_restriction: Option<String>,
+    pub limit: Option<u32>,
 }
 
 // ---------------------------------------------------------------------------
 // Tauri commands
 // ---------------------------------------------------------------------------
+
+/// Read mode-specific roster limits and the Shieldbreaker DLC slot bonus.
+#[tauri::command]
+pub fn load_roster_capacity_rules(game_path: String) -> Result<serde_json::Value, String> {
+    let root = resolve_data_root(Path::new(&game_path));
+    read_roster_capacity_rules(&root)
+}
+
+fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> {
+    let relative = "campaign/town/buildings/stage_coach/stage_coach.building.json";
+    let read = |path: &Path| -> Result<serde_json::Value, String> {
+        serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())
+    };
+    let mut by_mode = serde_json::Map::new();
+    for mode in ["base", "radiant", "new_game_plus", "bloodmoon"] {
+        // Bloodmoon ships no mode folder of its own; its mode_settings.json
+        // declares "replaces_default_mode": "new_game_plus".
+        let overlay_mode = if mode == "bloodmoon" {
+            "new_game_plus"
+        } else {
+            mode
+        };
+        let overlay = root.join("modes").join(overlay_mode).join(relative);
+        let path = if mode != "base" && overlay.is_file() {
+            overlay
+        } else {
+            root.join(relative)
+        };
+        let building = read(&path)?;
+        let levels = building
+            .pointer("/data/stores")
+            .and_then(|v| v.as_array())
+            .and_then(|stores| stores.iter().find(|v| v["id"] == "hero_recruit"))
+            .and_then(|v| v.pointer("/data/roster_size_upgrades"))
+            .and_then(|v| v.as_array())
+            .filter(|levels| !levels.is_empty())
+            .ok_or("Missing Stage Coach roster capacity data")?;
+        for level in levels {
+            if !level["amount"]
+                .as_i64()
+                .is_some_and(|n| n > 0 && n <= i32::MAX as i64)
+                || (level.get("upgrade_tree_id").is_some()
+                    && (level["upgrade_tree_id"] != "stage_coach.rostersize"
+                        || level["upgrade_requirement_code"].as_str().is_none()))
+            {
+                return Err("Unsupported Stage Coach roster capacity data".into());
+            }
+        }
+        by_mode.insert(mode.into(), levels.clone().into());
+    }
+    let bonus = read(&root.join(
+        "dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json",
+    ))
+    .ok()
+    .and_then(|v| {
+        v.pointer("/additional/roster_size")
+            .and_then(|n| n.as_i64())
+    })
+    .filter(|n| *n >= 0 && *n <= i32::MAX as i64);
+    Ok(serde_json::json!({ "by_mode": by_mode, "shieldbreaker_bonus": bonus }))
+}
 
 /// Load all quirk definitions from the game's quirk library JSON files.
 ///
@@ -79,32 +142,30 @@ pub fn load_trinket_library(game_path: String) -> Result<Vec<TrinketDef>, String
     let base = data_root.join("trinkets/base.entries.trinkets.json");
     parse_trinket_file(&base, &mut trinkets);
 
-    // DLC trinket files: scan dlc/*/trinkets/*.trinkets.json
-    let dlc_dir = data_root.join("dlc");
-    if dlc_dir.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(&dlc_dir) {
-            for entry in entries.flatten() {
-                let dlc_path = entry.path();
-                if dlc_path.is_dir() {
-                    let trinkets_dir = dlc_path.join("trinkets");
-                    if trinkets_dir.is_dir() {
-                        if let Ok(files) = std::fs::read_dir(&trinkets_dir) {
-                            for file in files.flatten() {
-                                let fp = file.path();
-                                if fp.is_file() {
-                                    if let Some(name) = fp.file_name().and_then(|n| n.to_str()) {
-                                        if name.ends_with(".trinkets.json") {
-                                            parse_trinket_file(&fp, &mut trinkets);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+    // Feature DLCs nest their trinkets below features/<feature>/trinkets/.
+    fn visit(dir: &Path, out: &mut Vec<TrinketDef>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            let mut entries: Vec<_> = entries.flatten().collect();
+            entries.sort_by_key(|entry| entry.path());
+            for entry in entries {
+                let path = entry.path();
+                let Ok(kind) = entry.file_type() else {
+                    continue;
+                };
+                if kind.is_dir() {
+                    visit(&path, out);
+                } else if kind.is_file()
+                    && path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|name| name.ends_with(".entries.trinkets.json"))
+                {
+                    parse_trinket_file(&path, out);
                 }
             }
         }
     }
+    visit(&data_root.join("dlc"), &mut trinkets);
 
     Ok(trinkets)
 }
@@ -232,8 +293,7 @@ pub fn load_class_skills(game_path: String) -> Result<Vec<ClassSkills>, String> 
     // ── 2. Parse combat skills from each .info.darkest file ─────────────────
     let combat_re = Regex::new(r#"combat_skill:\s+\.id\s+"([^"]+)""#).unwrap();
     // Map from class_id -> ClassSkills (combat filled, camping empty for now).
-    let mut map: std::collections::HashMap<String, ClassSkills> =
-        std::collections::HashMap::new();
+    let mut map: std::collections::HashMap<String, ClassSkills> = std::collections::HashMap::new();
 
     for (class_id, path) in &candidates {
         let content = match std::fs::read_to_string(path) {
@@ -310,7 +370,11 @@ fn parse_quirk_library(path: &Path, out: &mut Vec<QuirkDef>) {
             .get("is_disease")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
-        out.push(QuirkDef { id, is_positive, is_disease });
+        out.push(QuirkDef {
+            id,
+            is_positive,
+            is_disease,
+        });
     }
 }
 
@@ -337,7 +401,15 @@ fn parse_trinket_file(path: &Path, out: &mut Vec<TrinketDef>) {
             .and_then(|arr| arr.first())
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
-        out.push(TrinketDef { id, rarity, class_restriction });
+        out.push(TrinketDef {
+            id,
+            rarity,
+            class_restriction,
+            limit: entry
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .and_then(|n| u32::try_from(n).ok()),
+        });
     }
 }
 
@@ -352,7 +424,10 @@ fn parse_darkest_armour_hp(class_id: &str, path: &Path, re: &Regex) -> Option<Cl
     if hp_by_rank.is_empty() {
         return None;
     }
-    Some(ClassStats { class_id: class_id.to_string(), hp_by_rank })
+    Some(ClassStats {
+        class_id: class_id.to_string(),
+        hp_by_rank,
+    })
 }
 
 /// Parse a `*.camping_skills.json` file and append skill IDs to the
@@ -417,4 +492,95 @@ fn read_json(path: &Path) -> serde_json::Value {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or(serde_json::Value::Null)
+}
+
+#[cfg(test)]
+mod roster_capacity_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn trinkets_load_installed_feature_layout_with_class_restrictions_and_limits() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-dlc-trinkets-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/dlc-trinket-definitions.json"
+        ))
+        .unwrap();
+        for (relative, value) in fixture.as_object().unwrap() {
+            let path = root.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, serde_json::to_vec(value).unwrap()).unwrap();
+        }
+        let definitions = load_trinket_library(root.to_string_lossy().into()).unwrap();
+        assert_eq!(definitions.len(), 2);
+        let codex = definitions
+            .iter()
+            .find(|d| d.id == "cc_set_pd_codex_of_plagues")
+            .unwrap();
+        assert_eq!(codex.class_restriction.as_deref(), Some("plague_doctor"));
+        assert_eq!(codex.limit, Some(1));
+        assert!(definitions
+            .iter()
+            .any(|d| d.class_restriction.as_deref() == Some("flagellant")));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn capacity_reads_mode_overrides_and_dlc_bonus_and_rejects_missing_rules() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-roster-rules-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let write = |relative: &str, value: serde_json::Value| {
+            let path = root.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, serde_json::to_vec(&value).unwrap()).unwrap();
+        };
+        let building = |amount| json!({"data":{"stores":[{"id":"hero_recruit","data":{"roster_size_upgrades":[{"amount":9},{"amount":amount,"upgrade_tree_id":"stage_coach.rostersize","upgrade_requirement_code":"e"}]}}]}});
+        write(
+            "campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(28),
+        );
+        write(
+            "modes/radiant/campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(30),
+        );
+        write("dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json", json!({"additional":{"roster_size":1}}));
+        let rules = read_roster_capacity_rules(&root).unwrap();
+        assert_eq!(rules["by_mode"]["base"][1]["amount"], 28);
+        assert_eq!(rules["by_mode"]["radiant"][1]["amount"], 30);
+        assert_eq!(rules["by_mode"]["new_game_plus"][1]["amount"], 28);
+        assert_eq!(rules["shieldbreaker_bonus"], 1);
+        assert_eq!(rules["by_mode"]["bloodmoon"][1]["amount"], 28);
+        write(
+            "modes/new_game_plus/campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(24),
+        );
+        let rules = read_roster_capacity_rules(&root).unwrap();
+        assert_eq!(rules["by_mode"]["new_game_plus"][1]["amount"], 24);
+        assert_eq!(rules["by_mode"]["bloodmoon"][1]["amount"], 24);
+        std::fs::remove_file(root.join("dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json")).unwrap();
+        assert!(read_roster_capacity_rules(&root).unwrap()["shieldbreaker_bonus"].is_null());
+        write(
+            "campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(-1),
+        );
+        assert_eq!(
+            read_roster_capacity_rules(&root).unwrap_err(),
+            "Unsupported Stage Coach roster capacity data"
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+        assert!(read_roster_capacity_rules(&root).is_err());
+    }
 }

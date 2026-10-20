@@ -5,8 +5,8 @@
  * (LazyStore). Falls back gracefully in dev/browser environments.
  */
 
-import type { GameInstall } from '$lib/api/detect';
-import { resetGameData } from '$lib/stores/game-data.svelte';
+import type { GameInstall } from '#lib/api/detect.js';
+import { resetGameData } from '#lib/stores/game-data.svelte.js';
 
 // ── Persistence helpers ──
 

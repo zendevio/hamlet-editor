@@ -21,7 +21,10 @@ impl File {
         let o: Objects = Objects::try_from_bin(reader, &h)?;
         let mut f = Fields::try_from_bin(reader, &h)?;
         let dat = decode_fields_bin(reader, &mut f, &o, &h)?;
-        Ok(File { h, o, f, dat })
+        let file = File { h, o, f, dat };
+        file.validate_values(false)
+            .map_err(FromBinError::InvalidValue)?;
+        Ok(file)
     }
 
     fn calc_bin_size(&self) -> usize {

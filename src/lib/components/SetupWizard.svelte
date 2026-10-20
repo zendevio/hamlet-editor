@@ -6,22 +6,22 @@
 		DialogTitle,
 		DialogDescription,
 		DialogFooter
-	} from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
+	} from '#lib/components/ui/dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 	import {
 		setGamePath,
 		setSavePath,
 		setProfileId,
 		setGameInstall,
 		completeSetup
-	} from '$lib/stores/settings.svelte';
+	} from '#lib/stores/settings.svelte.js';
 	import {
 		detectGameInstallations,
 		detectSaveLocations,
 		type GameInstall,
 		type SaveLocation
-	} from '$lib/api/detect';
+	} from '#lib/api/detect.js';
 	import GameControllerIcon from 'phosphor-svelte/lib/GameControllerIcon';
 	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpenIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
@@ -51,10 +51,6 @@
 
 	let canAdvanceFromStep1 = $derived(selectedGameInstall !== null);
 	let canAdvanceFromStep2 = $derived(selectedSave !== null);
-
-	let isSteamCloudSave = $derived(
-		selectedSave !== null && selectedSave.source === 'Steam'
-	);
 
 	let dlcTags = $derived.by(() => {
 		if (!selectedGameInstall) return [];
@@ -340,6 +336,14 @@
 			</DialogHeader>
 
 			<div class="space-y-3">
+				<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+					<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
+					<p class="wrap-break-word text-amber-700 dark:text-amber-400">
+						If Steam Cloud sync is on for Darkest Dungeon, it can overwrite or conflict with
+						edited saves. Disable it for the game, or close Steam before saving.
+					</p>
+				</div>
+
 				{#if !saveDetectRan}
 					<Button onclick={detectSavePaths} disabled={detecting} class="w-full">
 						{#if detecting}
@@ -379,18 +383,6 @@
 						</Button>
 					</div>
 				{:else}
-					{#if isSteamCloudSave}
-						<div
-							class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs"
-						>
-							<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
-							<p class="wrap-break-word text-amber-700 dark:text-amber-400">
-								Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam
-								before saving to avoid conflicts.
-							</p>
-						</div>
-					{/if}
-
 					<div class="max-h-48 space-y-2 overflow-y-auto">
 						{#each saveLocations as loc}
 							{@const isSelected = selectedSave === loc}

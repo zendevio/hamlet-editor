@@ -19,6 +19,20 @@ Built with Tauri 2 + SvelteKit + Rust.
 - Darkest Dungeon 1 installed (Steam or GOG)
 - The game must be closed before saving changes
 
+## Steam Cloud
+
+If Steam Cloud sync is enabled for Darkest Dungeon, Steam can overwrite your
+edited saves with the cloud copy, or report a sync conflict that leads to a
+corrupted campaign. Before editing, either turn off Steam Cloud for the game
+(in your Steam Library, right-click Darkest Dungeon, choose Properties, then on
+the General tab turn off "Keep game saves in the Steam Cloud") or fully close
+Steam while you edit and save. The editor does not detect cloud sync for you.
+
+**Restoring backups:** For Steam-managed profiles, quit Steam completely before
+restoring a backup that adds or removes save files. The running client caches
+file sizes and can prevent the restored campaign from loading. Overwrite-only
+restores and normal saves are unaffected by this restriction.
+
 ## Development
 
 ```sh

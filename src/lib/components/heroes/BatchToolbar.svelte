@@ -1,27 +1,25 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
-	import { Separator } from '$lib/components/ui/separator';
+	import { parseInteger } from '#lib/input-validation.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/select/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
-	import type { HeroSummary } from '$lib/stores/save-data.svelte';
+	import RevivalWizard from './RevivalWizard.svelte';
+	import type { HeroSummary } from '#lib/stores/save-data.svelte.js';
 	import {
 		healHeroToMax,
 		setHeroStress,
 		setHeroLevel,
-		setHeroWeaponRank,
-		setHeroArmourRank,
-		maxGearRank,
-		reviveHero,
 		RESOLVE_LEVEL_NAMES
-	} from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
 
 	let {
 		selectedHeroes,
@@ -30,6 +28,8 @@
 		selectedHeroes: HeroSummary[];
 		totalCount: number;
 	} = $props();
+
+	let revivalOpen = $state(false);
 
 	let allDead = $derived(
 		selectedHeroes.length > 0 && selectedHeroes.every((h) => h.status === 3)
@@ -50,24 +50,14 @@
 	}
 
 	function handleSetLevel(value: string) {
-		const level = parseInt(value);
-		if (isNaN(level)) return;
+		const parsed = parseInteger(value, 0, 6);
+		if (parsed.error !== undefined) return;
+		const level = parsed.value;
 		for (const hero of selectedHeroes) {
 			setHeroLevel(hero.guid, level);
-			// Also adjust gear to match
-			const gear = maxGearRank(level);
-			if (hero.weaponRank > gear) setHeroWeaponRank(hero.guid, gear);
-			if (hero.armourRank > gear) setHeroArmourRank(hero.guid, gear);
 		}
 	}
 
-	function handleReviveAll() {
-		for (const hero of selectedHeroes) {
-			if (hero.status === 3) {
-				reviveHero(hero.guid);
-			}
-		}
-	}
 </script>
 
 <div class="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
@@ -86,7 +76,7 @@
 					Heal All
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Set HP to class max for each selected hero (skips dead heroes)</TooltipContent>
+			<TooltipContent>Raise HP to the class base max, keeping higher HP (skips dead heroes)</TooltipContent>
 		</Tooltip>
 
 		<!-- Clear Stress -->
@@ -130,14 +120,16 @@
 						variant="outline"
 						size="sm"
 						class="h-7 gap-1.5 text-[11px]"
-						onclick={handleReviveAll}
+						onclick={() => (revivalOpen = true)}
 					>
 						<HeartIcon size={12} class="text-green-500" />
 						Revive
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent>Revive all selected dead heroes</TooltipContent>
+				<TooltipContent>Review town revival and roster capacity</TooltipContent>
 			</Tooltip>
 		{/if}
 	{/if}
 </div>
+
+<RevivalWizard heroes={selectedHeroes} bind:open={revivalOpen} />

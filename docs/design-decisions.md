@@ -15,15 +15,23 @@ The editor should detect if Darkest Dungeon is running and prevent edits. Detect
 - Editing files the game has open can corrupt data
 
 ### Steam Cloud Warning
-If saves are in a Steam userdata path, warn users to:
+The editor does not detect Steam Cloud sync (decided 2026-10-19, to avoid
+maintaining path heuristics). The README and a static note in the setup
+wizard's save-folder step tell users to:
 - Disable Steam Cloud sync for DD, OR
 - Close Steam entirely before editing
 
 ### Mid-Raid Editing
 Allowed, but with prominent warnings:
-- Mid-raid edits: hero revival normally requires 3 files (roster + campaign_log + progression), plus persist.raid.json if mid-dungeon (4 files total)
+- Revival is town-only and changes the roster alone: alive status, full class HP, cleared combat state. Death history is retained and lost skill purchases are not recreated. Installed mode-specific Stage Coach capacity, current upgrades and the Shieldbreaker DLC slot bonus determine the living roster limit. Unknown capacity blocks revival.
 - Incorrect edits during a raid are more likely to corrupt the save
 - Editor should validate cross-file consistency for raid edits
+
+### Expedition Return and Hero Status
+
+Editor abandon is a minimal town return for every active raid, including plot and Courtyard raids. It preserves the raid path and file, clears survivor combat state, retains dead heroes, and returns party inventory trinkets. Supplies and loot are lost. It does not advance the week or reproduce quest, campaign log or quirk processing; the dialog recommends the game's "Regroup in the Hamlet!". Revival and editor abandon await in-game verification in checklist scenarios 11 and 12.
+
+Status 1 means "In party" and is valid in town after the game returns. Status 4 is labeled "Missing". Inactive raid files are ignored for dismissal. Dead heroes retain their graves and cannot be dismissed or have trinkets equipped/unequipped; the final living hero cannot be dismissed.
 
 ### Save Validation
 Round-trip integrity check after editing: encode → decode → compare at the **semantic/JSON level** (not byte-for-byte binary, because bits 1 and 31 of fieldInfo are intentionally stripped during re-encoding). Catches encoding errors before the user loads the save in-game.
@@ -42,6 +50,32 @@ Configurable (boolean setting, off by default):
   - **Linux**: `~/.local/share/hamlet-editor/backups/`
 - Note: `app_data_dir()` maps to `%APPDATA%` (Roaming) on Windows. We use `app_local_data_dir()` instead since backups are machine-local.
 - Timestamped copies with profile identifier
+
+### Backup Restore and Steam
+Both restore commands compute writes and deletions before changing files or
+creating a safety backup. Settings runs the same read-only preflight before
+confirmation, before the unsaved-edits prompt, and after the user chooses Save
+or Discard (after a successful Save, before discarding edits). It shows the actual
+additions and deletions, and disables Restore with the reason when Steam blocks it. Restore
+commands repeat all checks to guard against changes after preflight.
+If the restore adds or removes files in a Steam-managed profile, Steam must be
+fully stopped: its running remote-storage cache retains stale file sizes and
+can stop the game from loading the campaign. Overwrite-only restores remain
+allowed. All restores still require the game to be stopped first. Main client
+process names are matched exactly, ignoring case: `steam_osx` on macOS,
+`steam.exe` on Windows, and `steam` on Linux; helper processes are excluded.
+Steam ownership matches either the supplied or canonical path against the
+`userdata/<numeric account>/262060/remote/<profile>` layout used by discovery.
+This guards both an outside alias pointing into Steam and a Steam-side symlink
+or junction pointing to an outside folder. This is storage ownership, not Cloud
+status.
+GOG, Epic and manual profiles outside that layout do not need Steam to stop.
+Game backup restores exclude stale `persist.raid.json`, `persist.map.json` and
+`persist.loading_screen.json` snapshots; the game removes the loading screen
+file on returning to town. Blocked confirmations offer Check again after Steam
+stops. Restore errors remain visible in persistent toasts with close buttons.
+Normal profile saves only overwrite files decoded at load and never delete files.
+Legacy and game backups remain partial snapshots and do not authorize deletions.
 
 ## Path Detection
 

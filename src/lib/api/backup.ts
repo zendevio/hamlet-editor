@@ -50,3 +50,22 @@ export async function restoreBackup(backupPath: string, profilePath: string): Pr
 export async function restoreGameBackup(profilePath: string): Promise<void> {
 	await invoke<void>('restore_game_backup', { profilePath });
 }
+
+/**
+ * Open the editor's backups directory in the system file manager.
+ * Returns the directory path.
+ */
+export async function openBackupFolder(): Promise<string> {
+	return await invoke<string>('open_backup_folder');
+}
+
+export interface RestoreCheck {
+	adds: number;
+	removes: number;
+	blocked_reason: string | null;
+}
+
+/** Read-only validation. A null backup path selects the game's backup. */
+export async function checkRestore(backupPath: string | null, profilePath: string): Promise<RestoreCheck> {
+	return await invoke<RestoreCheck>('check_restore', { backupPath, profilePath });
+}

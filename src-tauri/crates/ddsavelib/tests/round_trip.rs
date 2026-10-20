@@ -585,48 +585,13 @@ fn edge_deep_nesting() {
     assert_eq!(v2["base_root"]["l1"]["l2"]["l3"]["l4"]["l5_leaf"], 42);
 }
 
-/// Test 26: String with escape sequences survives binary round-trip unchanged.
+/// Test 26: Control strings are rejected before encoding.
 #[test]
-fn edge_string_escapes() {
-    // Tab, newline, and backslash are all escape-worthy characters.
-    // We encode them in JSON notation here; the parser will un-escape them,
-    // the binary stores the raw bytes, and the JSON writer re-escapes them.
-    let json = r#"{
-        "__revision_dont_touch": 1,
-        "base_root": {
-            "path": "C:\\Users\\hero",
-            "note": "line1\nline2",
-            "tab_sep": "a\tb"
-        }
-    }"#;
-    let unhash = Unhasher::<&str>::empty();
-    let file1 = File::try_from_json(json.as_bytes()).unwrap();
-    let mut bin = Vec::new();
-    file1.write_to_bin(&mut bin).unwrap();
-    let file2 = File::try_from_bin(&mut bin.as_slice()).unwrap();
-    let val = file2.to_json_value(&unhash);
-
-    // serde_json will have un-escaped the strings when building the Value
-    let root = val["base_root"].as_object().unwrap();
-    assert_eq!(
-        root["path"].as_str().unwrap(),
-        r"C:\Users\hero",
-        "backslash string must survive"
-    );
-    assert_eq!(
-        root["note"].as_str().unwrap(),
-        "line1\nline2",
-        "newline string must survive"
-    );
-    assert_eq!(
-        root["tab_sep"].as_str().unwrap(),
-        "a\tb",
-        "tab string must survive"
-    );
-
-    // Byte-level binary identity: encode file2 (decoded from bin) → binary.
-    // This stays within the direct binary path (no serde_json Map reordering).
-    let mut bin2 = Vec::new();
-    file2.write_to_bin(&mut bin2).unwrap();
-    assert_eq!(bin, bin2, "binary must be identical after escape round-trip");
+fn edge_string_controls_are_rejected() {
+    let json =
+        r#"{"__revision_dont_touch":1,"base_root":{"note":"line1\nline2","tab_sep":"a\tb"}}"#;
+    assert!(File::try_from_json(json.as_bytes())
+        .unwrap_err()
+        .to_string()
+        .contains("control characters or NUL"));
 }

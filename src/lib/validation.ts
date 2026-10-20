@@ -9,14 +9,13 @@
 import {
 	getSaveData,
 	getHeroes,
-	getHeroRawData,
-	maxGearRank,
+	getTreatmentSlots,
+	releaseHeroFromTreatment,
 	xpToLevel,
 	type HeroSummary
-} from '$lib/stores/save-data.svelte';
-import { loadProfile } from '$lib/api/save';
-import type { GameInstall } from '$lib/api/detect';
-import { getSettings } from '$lib/stores/settings.svelte';
+} from '#lib/stores/save-data.svelte.js';
+import type { GameInstall } from '#lib/api/detect.js';
+import { getSettings } from '#lib/stores/settings.svelte.js';
 
 // ── Types ──
 
@@ -43,7 +42,6 @@ export function runPreSaveValidation(): ValidationIssue[] {
 
 	issues.push(...checkGearRanks());
 	issues.push(...checkTreatmentConsistency());
-	issues.push(...checkDuplicateTrinkets());
 
 	const gameInstall = getSettings().gameInstall;
 	if (gameInstall !== null) {
@@ -57,194 +55,63 @@ export function runPreSaveValidation(): ValidationIssue[] {
 	return issues;
 }
 
-/**
- * Check that no hero's gear rank exceeds their level's maximum.
- * Max gear rank = Math.min(resolveLevel, 4).
- */
+/** Gear ranks are indices into the five weapon/armour definitions, independent of level. */
 function checkGearRanks(): ValidationIssue[] {
 	const issues: ValidationIssue[] = [];
-	const heroes = getHeroes();
-
-	for (const hero of heroes) {
-		// Skip dead heroes
-		if (hero.status === 3) continue;
-
-		const maxRank = maxGearRank(hero.resolveLevel);
-
-		if (hero.weaponRank > maxRank) {
-			const guid = hero.guid;
+	for (const hero of getHeroes()) {
+		for (const [kind, rank] of [['weapon', hero.weaponRank], ['armour', hero.armourRank]] as const) {
+			if (Number.isInteger(rank) && rank >= 0 && rank <= 4) continue;
 			issues.push({
-				severity: 'warning',
+				severity: 'error',
 				category: 'Gear Rank',
-				message: `${hero.name} (${hero.classDisplayName}): weapon rank ${hero.weaponRank} exceeds max ${maxRank} for level ${hero.resolveLevel}.`,
-				fix: () => {
-					const raw = getHeroRawData(guid);
-					if (raw) {
-						raw.weapon_rank = maxRank;
-					}
-				}
-			});
-		}
-
-		if (hero.armourRank > maxRank) {
-			const guid = hero.guid;
-			issues.push({
-				severity: 'warning',
-				category: 'Gear Rank',
-				message: `${hero.name} (${hero.classDisplayName}): armour rank ${hero.armourRank} exceeds max ${maxRank} for level ${hero.resolveLevel}.`,
-				fix: () => {
-					const raw = getHeroRawData(guid);
-					if (raw) {
-						raw.armour_rank = maxRank;
-					}
-				}
+				message: `${hero.name} (${hero.classDisplayName}): ${kind} rank ${rank} must be a whole number from 0 to 4.`
 			});
 		}
 	}
-
 	return issues;
 }
 
-/**
- * Check that heroes in treatment (status=2) have a building_name set.
- */
+/** Town slots are authoritative; roster.building_name may be blank. */
 function checkTreatmentConsistency(): ValidationIssue[] {
 	const issues: ValidationIssue[] = [];
 	const heroes = getHeroes();
-
+	if (!getSaveData().town) {
+		if (heroes.some((hero) => hero.status === 2)) {
+			issues.push({
+				severity: 'error',
+				category: 'Treatment',
+				message: 'Town data is missing. Reload the profile before changing treatment.'
+			});
+		}
+		return issues;
+	}
+	const slots = getTreatmentSlots().filter(({ slot }) => slot.hero !== 0);
 	for (const hero of heroes) {
-		if (hero.status === 2 && !hero.buildingName) {
-			const guid = hero.guid;
+		const assigned = slots.filter(({ slot }) => String(slot.hero) === hero.guid);
+		if (
+			(hero.status === 2 && assigned.length === 0) ||
+			(assigned.length > 0 && hero.status !== 2) || assigned.length > 1
+		) {
 			issues.push({
 				severity: 'warning',
 				category: 'Treatment',
-				message: `${hero.name} (${hero.classDisplayName}): status is "In Treatment" but no building assigned.`,
-				fix: () => {
-					// Fix by setting status back to Available
-					const raw = getHeroRawData(guid);
-					if (raw) {
-						raw['roster.status'] = 0;
-						raw['roster.building_name'] = '';
-					}
-				}
+				message: `${hero.name} (${hero.classDisplayName}): roster treatment status and town slot assignments disagree. Release treatment to clear both.`,
+				fix: () => releaseHeroFromTreatment(hero.guid)
 			});
 		}
 	}
-
+	const knownHeroes = new Set(heroes.map((hero) => hero.guid));
+	for (const { slot, buildingName, activityType, slotIndex } of slots) {
+		const guid = String(slot.hero);
+		if (knownHeroes.has(guid)) continue;
+		issues.push({
+			severity: 'warning',
+			category: 'Treatment',
+			message: `${buildingName} ${activityType} slot ${Number(slotIndex) + 1} references missing hero ${guid}.`,
+			fix: () => releaseHeroFromTreatment(guid)
+		});
+	}
 	return issues;
-}
-
-/**
- * Check for duplicate trinkets between hero equipment and estate storage.
- * In DD1, each trinket instance should appear in exactly one location.
- */
-function checkDuplicateTrinkets(): ValidationIssue[] {
-	const issues: ValidationIssue[] = [];
-	const saveData = getSaveData();
-
-	if (!saveData.roster || !saveData.estate) return issues;
-
-	// Collect trinket IDs from estate storage
-	const estateTrinkets = new Map<string, number>();
-	const estateItems = saveData.estate.base_root.trinkets?.items ?? {};
-	for (const [key, value] of Object.entries(estateItems)) {
-		const id = typeof value === 'object' && value !== null && 'id' in value
-			? String((value as Record<string, unknown>).id)
-			: key;
-		estateTrinkets.set(id, (estateTrinkets.get(id) ?? 0) + 1);
-	}
-
-	// Collect trinket IDs from equipped heroes
-	const equippedTrinkets = new Map<string, string[]>(); // trinket ID -> hero names
-	const heroes = getHeroes();
-	for (const hero of heroes) {
-		const raw = getHeroRawData(hero.guid);
-		if (!raw?.trinkets?.items) continue;
-		for (const [, value] of Object.entries(raw.trinkets.items)) {
-			const id = typeof value === 'object' && value !== null && 'id' in value
-				? String((value as Record<string, unknown>).id)
-				: '';
-			if (id) {
-				const list = equippedTrinkets.get(id) ?? [];
-				list.push(hero.name);
-				equippedTrinkets.set(id, list);
-			}
-		}
-	}
-
-	// Check for trinkets appearing in both estate and equipped
-	for (const [trinketId, heroNames] of equippedTrinkets) {
-		if (estateTrinkets.has(trinketId)) {
-			issues.push({
-				severity: 'warning',
-				category: 'Trinkets',
-				message: `Trinket "${trinketId}" is equipped on ${heroNames.join(', ')} AND in estate storage. This may cause duplication in-game.`
-			});
-		}
-	}
-
-	// Check for trinkets equipped on multiple heroes
-	for (const [trinketId, heroNames] of equippedTrinkets) {
-		if (heroNames.length > 1) {
-			issues.push({
-				severity: 'warning',
-				category: 'Trinkets',
-				message: `Trinket "${trinketId}" is equipped on multiple heroes: ${heroNames.join(', ')}.`
-			});
-		}
-	}
-
-	return issues;
-}
-
-// ── Round-Trip Validation ──
-
-/**
- * Validate that a just-written save file decodes back to the expected data.
- *
- * Re-loads the entire profile via `load_profile` and compares the top-level
- * key count of the specified file's decoded object against the in-memory
- * representation. A key-count mismatch indicates a gross encoding failure
- * (e.g. fields were silently dropped or the file could not be re-decoded).
- *
- * This is a lightweight sanity check — it does NOT guarantee field-level
- * correctness. A full semantic comparison is non-trivial because ddsavelib
- * may reorder fields or normalise numeric representations during encode/decode.
- *
- * @param profilePath  - Absolute path to the profile directory.
- * @param filename     - Name of the specific save file to check (e.g. `persist.roster.json`).
- * @param inMemoryData - The in-memory object that was encoded and written.
- * @returns            - `true` if the top-level key count matches, `false` on mismatch or error.
- */
-export async function validateRoundTrip(
-	profilePath: string,
-	filename: string,
-	inMemoryData: Record<string, unknown>
-): Promise<boolean> {
-	try {
-		const reloaded = await loadProfile(profilePath);
-		const reloadedFile = reloaded[filename];
-
-		if (typeof reloadedFile !== 'object' || reloadedFile === null) {
-			console.warn(`[validateRoundTrip] ${filename}: re-decoded value is not an object`);
-			return false;
-		}
-
-		const inMemoryKeyCount = Object.keys(inMemoryData).length;
-		const reloadedKeyCount = Object.keys(reloadedFile as Record<string, unknown>).length;
-
-		if (inMemoryKeyCount !== reloadedKeyCount) {
-			console.warn(
-				`[validateRoundTrip] ${filename}: key count mismatch — in-memory ${inMemoryKeyCount} vs re-decoded ${reloadedKeyCount}`
-			);
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		console.warn(`[validateRoundTrip] ${filename}: error during re-load — ${err}`);
-		return false;
-	}
 }
 
 // ── DLC Field Injection Guards ──

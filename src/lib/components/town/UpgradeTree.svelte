@@ -1,17 +1,18 @@
 <script lang="ts">
-	import { Switch } from '$lib/components/ui/switch';
+	import { commitChangedValue } from '#lib/control-events.js';
+	import { Switch } from '#lib/components/ui/switch/index.js';
 	import {
 		Tooltip,
 		TooltipContent,
 		TooltipTrigger
-	} from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/tooltip/index.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
-	import { snakeToTitle, stripDsonPrefix } from '$lib/utils';
+	import { snakeToTitle, stripDsonPrefix } from '#lib/utils.js';
 	import {
 		type BuildingUpgradeGroup,
 		type UpgradePurchase,
 		toggleUpgrade
-	} from '$lib/stores/save-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
 
 	let {
 		group
@@ -65,7 +66,7 @@
 						<Switch
 							checked={purchase.is_purchased}
 							size="sm"
-							onCheckedChange={() => handleToggle(purchase)}
+							onCheckedChange={(checked) => commitChangedValue(purchase.is_purchased, checked, () => handleToggle(purchase))}
 						/>
 						<span class="text-xs text-muted-foreground">
 							Tier {purchase.requirement_code}

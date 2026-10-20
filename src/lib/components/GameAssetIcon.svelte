@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { loadGameAsset } from '$lib/api/assets';
+	import { loadGameAsset } from '#lib/api/assets.js';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

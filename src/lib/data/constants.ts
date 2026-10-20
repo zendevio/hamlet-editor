@@ -13,7 +13,7 @@ export type TreatmentBuildingName = (typeof TREATMENT_BUILDINGS)[number];
 export const BUILDING_ACTIVITIES: Record<TreatmentBuildingName, string[]> = {
 	abbey: ['meditation', 'prayer', 'flagellation'],
 	tavern: ['bar', 'gambling', 'brothel'],
-	sanitarium: ['disease_treatment', 'quirk_treatment']
+	sanitarium: ['disease_treatment', 'treatment']
 };
 
 export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
@@ -23,8 +23,7 @@ export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
 	blacksmith: 'Blacksmith',
 	guild: 'Guild',
 	stage_coach: 'Stage Coach',
-	survivalist: 'Survivalist',
-	barracks: 'Barracks',
+	camping_trainer: 'Survivalist',
 	nomad_wagon: 'Nomad Wagon'
 };
 
@@ -36,34 +35,27 @@ export const ACTIVITY_DISPLAY_NAMES: Record<string, string> = {
 	gambling: 'Gambling',
 	brothel: 'Brothel',
 	disease_treatment: 'Disease Treatment',
-	quirk_treatment: 'Quirk Treatment'
+	treatment: 'Quirk Treatment'
 };
 
-/** Known district IDs (Color of Madness DLC). */
-export const DISTRICT_IDS = [
-	'district_bank',
-	'district_granary',
-	'district_inn',
-	'district_puppet_theatre',
-	'district_training_ring',
-	'district_cartographers_camp',
-	'district_sanguine_vintners',
-	'district_abbey_addition',
-	'district_tavern_addition',
-	'district_sanitarium_addition'
-] as const;
-
+/** District keys verified against the Crimson Court districts definitions. */
 export const DISTRICT_DISPLAY_NAMES: Record<string, string> = {
-	district_bank: 'Bank',
-	district_granary: 'Granary',
-	district_inn: 'Inn',
-	district_puppet_theatre: 'Puppet Theatre',
-	district_training_ring: 'Training Ring',
-	district_cartographers_camp: "Cartographer's Camp",
-	district_sanguine_vintners: 'Sanguine Vintners',
-	district_abbey_addition: 'Abbey Addition',
-	district_tavern_addition: 'Tavern Addition',
-	district_sanitarium_addition: 'Sanitarium Addition'
+	the_mill: 'The Mill',
+	geologic_studyhall: 'Geologic Study Hall',
+	tainted_well: 'Tainted Well',
+	miasmal_orchard: 'Miasmal Orchard',
+	spire_of_hope: 'Spire of Hope',
+	bank: 'Bank',
+	illuminators_guild: "Illuminator's Guild",
+	granary: 'Granary',
+	buskers_corner: "Busker's Corner",
+	house_of_the_yellow_hand: 'House of the Yellow Hand',
+	altar_of_light: 'Altar of Light',
+	training_ring: 'Training Ring',
+	library: 'Athenaeum',
+	theater: 'Puppet Theatre',
+	outsiders_bonfire: "Outsider's Bonfire",
+	blood_bank: 'Sanguine Vintners'
 };
 
 /** Known building name prefixes for upgrade tree_ids. */
@@ -74,8 +66,7 @@ export const BUILDING_UPGRADE_PREFIXES = [
 	'blacksmith',
 	'guild',
 	'stage_coach',
-	'survivalist',
-	'barracks',
+	'camping_trainer',
 	'nomad_wagon'
 ] as const;
 
@@ -100,10 +91,10 @@ export const RESOLVE_LEVEL_NAMES = [
 /** Status code labels and colors. */
 export const STATUS_MAP: Record<number, { label: string; color: string; dotClass: string }> = {
 	0: { label: 'Available', color: 'green', dotClass: 'bg-green-500' },
-	1: { label: 'In Squad', color: 'teal', dotClass: 'bg-teal-500' },
+	1: { label: 'In party', color: 'teal', dotClass: 'bg-teal-500' },
 	2: { label: 'In Treatment', color: 'blue', dotClass: 'bg-blue-500' },
 	3: { label: 'Dead', color: 'red', dotClass: 'bg-red-500' },
-	4: { label: 'In Raid', color: 'orange', dotClass: 'bg-orange-500' }
+	4: { label: 'Missing', color: 'orange', dotClass: 'bg-orange-500' }
 };
 
 // ── HP Table ──

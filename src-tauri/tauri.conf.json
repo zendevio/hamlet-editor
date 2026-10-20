@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Hamlet Editor",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "identifier": "com.hamlet-editor.app",
   "build": {
     "frontendDist": "../build",
@@ -13,9 +13,11 @@
     "windows": [
       {
         "title": "Hamlet Editor",
-        "width": 800,
-        "height": 600,
+        "create": false,
+        "width": 1366,
+        "height": 768,
         "resizable": true,
+        "visible": false,
         "fullscreen": false,
         "minWidth": 800,
         "minHeight": 600

@@ -1,12 +1,13 @@
 <script lang="ts">
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '#lib/assets/favicon.svg';
 	import { ModeWatcher } from 'mode-watcher';
-	import { Toaster } from '$lib/components/ui/sonner';
+	import { Toaster } from '#lib/components/ui/sonner/index.js';
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
+	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, createWindowCloseGuard, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
 		Sidebar,
@@ -21,11 +22,11 @@
 		SidebarRail,
 		SidebarTrigger,
 		SidebarInset
-	} from '$lib/components/ui/sidebar';
-	import { Button } from '$lib/components/ui/button';
-	import { Separator } from '$lib/components/ui/separator';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+	} from '#lib/components/ui/sidebar/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Separator } from '#lib/components/ui/separator/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Tooltip, TooltipContent, TooltipTrigger } from '#lib/components/ui/tooltip/index.js';
 	import { toggleMode } from 'mode-watcher';
 	import UsersThreeIcon from 'phosphor-svelte/lib/UsersThreeIcon';
 	import BankIcon from 'phosphor-svelte/lib/BankIcon';
@@ -39,44 +40,46 @@
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotchIcon';
 	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
-	import SetupWizard from '$lib/components/SetupWizard.svelte';
-	import ValidationDialog from '$lib/components/ValidationDialog.svelte';
-	import UnsavedChangesDialog from '$lib/components/UnsavedChangesDialog.svelte';
-	import DiscardConfirmDialog from '$lib/components/DiscardConfirmDialog.svelte';
+	import SetupWizard from '#lib/components/SetupWizard.svelte';
+	import ValidationDialog from '#lib/components/ValidationDialog.svelte';
+	import UnsavedChangesDialog from '#lib/components/UnsavedChangesDialog.svelte';
+	import DiscardConfirmDialog from '#lib/components/DiscardConfirmDialog.svelte';
 	import {
 		Dialog,
 		DialogContent,
 		DialogHeader,
 		DialogTitle,
 		DialogDescription
-	} from '$lib/components/ui/dialog';
-	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
-	import { getSettings, setSavePath, setProfileId } from '$lib/stores/settings.svelte';
+	} from '#lib/components/ui/dialog/index.js';
+	import LoadingScreen from '#lib/components/LoadingScreen.svelte';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
+	import { getSettings, setSavePath, setProfileId } from '#lib/stores/settings.svelte.js';
 	import {
 		getSaveData,
 		hasDirtyFiles,
 		getDirtyData,
 		clearAllDirty,
+		markProfileStale,
+		getUnknownUpgrades,
 		discardAllChanges,
 		loadProfileFromBackend,
 		getHeroes,
 		CLASS_DISPLAY_NAMES
-	} from '$lib/stores/save-data.svelte';
-	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills } from '$lib/stores/game-data.svelte';
+	} from '#lib/stores/save-data.svelte.js';
+	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills, setRosterCapacityRules } from '#lib/stores/game-data.svelte.js';
 	import {
 		Select,
 		SelectContent,
 		SelectItem,
 		SelectTrigger
-	} from '$lib/components/ui/select';
-	import { isGameRunning, detectSaveLocations, type SaveLocation } from '$lib/api/detect';
-	import { saveProfile } from '$lib/api/save';
-	import { createBackup } from '$lib/api/backup';
-	import { generateNameTable, loadLocalization, setNameTableOnBackend } from '$lib/api/names';
-	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills } from '$lib/api/gamedata';
-	import { scanModDirectories } from '$lib/api/mods';
-	import { runPreSaveValidation, validateRoundTrip, type ValidationIssue } from '$lib/validation';
+	} from '#lib/components/ui/select/index.js';
+	import { isGameRunning, detectSaveLocations, type SaveLocation } from '#lib/api/detect.js';
+	import { saveProfile } from '#lib/api/save.js';
+	import { createBackup } from '#lib/api/backup.js';
+	import { ensureNameTable, loadLocalization } from '#lib/api/names.js';
+	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills, loadRosterCapacityRules } from '#lib/api/gamedata.js';
+	import { scanModDirectories } from '#lib/api/mods.js';
+	import { runPreSaveValidation, type ValidationIssue } from '#lib/validation.js';
 
 	let { children } = $props();
 
@@ -92,6 +95,7 @@
 	let gameDetectionUncertain = $state(false);
 	let isSaving = $state(false);
 	let isProfileLoading = $state(false);
+	let attemptedProfile = $state('');
 	let modCount = $state<number | null>(null);
 
 	// ── Profile Selector ──
@@ -100,27 +104,29 @@
 	let sidebarSaveLocations = $state<SaveLocation[]>([]);
 
 	/** Switch to a different profile from the sidebar selector. */
-	async function handleSidebarProfileChange(newProfileId: string) {
-		if (newProfileId === settings.profileId || isProfileLoading) return;
-		const loc = sidebarSaveLocations.find((l) => l.profile_id === newProfileId);
+	async function handleSidebarProfileChange(newProfilePath: string) {
+		if (newProfilePath === settings.savePath || isProfileLoading) return;
+		const loc = sidebarSaveLocations.find((l) => l.path === newProfilePath);
 		if (!loc) return;
 
-		setSavePath(loc.path);
-		setProfileId(newProfileId);
+		await requestDataChange(async () => {
+			setSavePath(loc.path);
+			setProfileId(loc.profile_id);
 
-		isProfileLoading = true;
-		try {
-			await loadProfileFromBackend(loc.path);
-			if (settings.gamePath) {
-				await initGameData(settings.gamePath);
+			isProfileLoading = true;
+			try {
+				await loadProfileFromBackend(loc.path);
+				if (settings.gamePath) {
+					await initGameData(settings.gamePath);
+				}
+				toast.success('Profile loaded', { description: `Switched to ${loc.profile_id}` });
+			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
+				toast.error(`Failed to switch profile: ${message}`);
+			} finally {
+				isProfileLoading = false;
 			}
-			toast.success('Profile loaded', { description: `Switched to ${newProfileId}` });
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Failed to switch profile: ${message}`);
-		} finally {
-			isProfileLoading = false;
-		}
+		});
 	}
 
 	// ── Profile Loading ──
@@ -129,24 +135,25 @@
 
 	async function initGameData(gamePath: string) {
 		// 1. Generate name table from game files and push to Rust state.
-		const names = await generateNameTable(gamePath);
-		await setNameTableOnBackend(names);
+		await ensureNameTable(gamePath);
 
 		// 2. Load localization strings and store in the frontend game-data store.
 		const locData = await loadLocalization(gamePath);
 		setNameTable(locData);
 
 		// 3. Load quirk, trinket, class stats, and class skills definitions from game files.
-		const [quirkDefs, trinketDefs, statsDefs, skillsDefs] = await Promise.all([
+		const [quirkDefs, trinketDefs, statsDefs, skillsDefs, capacityRules] = await Promise.all([
 			loadQuirkLibrary(gamePath),
 			loadTrinketLibrary(gamePath),
 			loadClassStats(gamePath),
-			loadClassSkills(gamePath)
+			loadClassSkills(gamePath),
+			loadRosterCapacityRules(gamePath)
 		]);
 		setQuirks(quirkDefs);
 		setTrinkets(trinketDefs);
 		setClassStats(statsDefs);
 		setClassSkills(skillsDefs);
+		setRosterCapacityRules(capacityRules, gamePath);
 
 		// 4. Scan mod directories and surface the count.
 		const mods = await scanModDirectories(gamePath);
@@ -157,10 +164,16 @@
 	}
 
 	// When setup completes (or was already complete on startup), load the profile,
-	// then initialise the name table, localization, and mod scan.
+	// with the shared name-table barrier, then load localization and game libraries.
 	// Also detect save locations to populate the sidebar profile selector.
 	$effect(() => {
-		if (settings.isSetupComplete && !saveData.isLoaded && !isProfileLoading) {
+		const profileKey = `${settings.savePath}\0${settings.gamePath}`;
+		if (!settings.isSetupComplete) attemptedProfile = '';
+		if (
+			settings.isSetupComplete && !saveData.isLoaded && !saveData.isLoading &&
+			!isProfileLoading && attemptedProfile !== profileKey
+		) {
+			attemptedProfile = profileKey;
 			isProfileLoading = true;
 			// Detect all available save locations so the sidebar selector is populated.
 			detectSaveLocations()
@@ -190,12 +203,14 @@
 	// Poll game running status every 5 seconds
 	$effect(() => {
 		let cancelled = false;
+		const observeGameStatus = createGameStoppedObserver(markProfileStale);
 
 		async function poll() {
 			if (cancelled) return;
 			try {
 				const result = await isGameRunning();
 				if (!cancelled) {
+					observeGameStatus(result);
 					gameRunning = result.running;
 					gameDetectionUncertain = result.uncertain;
 				}
@@ -220,31 +235,35 @@
 
 	let isDirty = $derived(hasDirtyFiles());
 	let isGameBlocking = $derived(gameRunning || gameDetectionUncertain);
-	let saveDisabled = $derived(!saveData.isLoaded || isGameBlocking || !isDirty || isSaving);
-
-	// C1: Steam Cloud warning (handles both Unix and Windows path separators)
-	let isSteamCloud = $derived(
-		settings.savePath.includes('/userdata/') || settings.savePath.includes('\\userdata\\')
+	let saveDisabled = $derived(
+		!saveData.isLoaded || saveData.isLoading ||
+		saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath ||
+		isGameBlocking || saveData.isStale || !isDirty || isSaving
 	);
 
 	// C2: Modded content detection
 	let hasModdedContent = $derived.by(() => {
 		if (!saveData.isLoaded) return false;
 		const heroes = getHeroes();
-		return heroes.some((h) => !(h.heroClass in CLASS_DISPLAY_NAMES));
+		return getUnknownUpgrades().length > 0 || heroes.some((h) => !(h.heroClass in CLASS_DISPLAY_NAMES));
 	});
 
 	// C3: Raid status badges
 	let raidActive = $derived(saveData.raid !== null && saveData.gameInRaid);
 	let raidInconsistent = $derived(
-		(saveData.raid !== null) !== saveData.gameInRaid
+		saveData.gameInRaid && saveData.raid === null
 	);
 
 	// C7: Last backup timestamp
 	let lastBackupTime = $state<Date | null>(null);
 
 	let saveTooltip = $derived.by(() => {
+		if (saveData.isLoading) return 'Loading profile...';
 		if (!saveData.isLoaded) return 'No profile loaded';
+		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) {
+			return 'Paths changed. Reload the profile before saving.';
+		}
+		if (saveData.isStale) return 'Save files may have changed. Reload the profile before saving.';
 		if (gameRunning) return 'DD Running. Close the game before saving.';
 		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
 		if (isSaving) return 'Saving...';
@@ -264,6 +283,7 @@
 	// ── Unsaved Changes on Close Dialog ──
 
 	let showCloseDialog = $state(false);
+	const windowClose = createWindowCloseGuard(hasDirtyFiles);
 
 	// ── Window Close Handler ──
 
@@ -280,7 +300,7 @@
 				const { getCurrentWindow } = await import('@tauri-apps/api/window');
 				const currentWindow = getCurrentWindow();
 				unlisten = await currentWindow.onCloseRequested(async (event) => {
-					if (hasDirtyFiles()) {
+					if (windowClose.shouldConfirm()) {
 						event.preventDefault();
 						showCloseDialog = true;
 						// Wait for user decision via the dialog callbacks
@@ -337,7 +357,7 @@
 		// Ctrl/Cmd+D: Navigate to /raid (only if raid is available)
 		if (mod && e.key === 'd') {
 			e.preventDefault();
-			if (saveData.raid !== null) {
+			if (saveData.gameInRaid) {
 				goto('/raid');
 			}
 		}
@@ -357,90 +377,95 @@
 
 	// ── Save Flow ──
 
-	async function handleSave() {
-		if (saveDisabled) return;
+	function saveBlockReason(): string | null {
+		return profileSaveBlockReason(saveData, settings, {
+			isProfileLoading, gameRunning, gameDetectionUncertain, hasChanges: hasDirtyFiles()
+		});
+	}
 
-		// Run pre-save validation
-		const issues = runPreSaveValidation();
-		if (issues.length > 0) {
+	let resolveValidation: ((choice: ValidationChoice) => void) | null = null;
+	const saveChanges = createSaveWorkflow({
+		blocked: saveBlockReason,
+		validate: runPreSaveValidation,
+		confirm: (issues: ValidationIssue[]) => new Promise<ValidationChoice>((resolve) => {
 			validationIssues = issues;
+			resolveValidation = resolve;
 			showValidation = true;
-			return;
-		}
-
-		await executeSave();
-	}
-
-	async function executeSave() {
-		isSaving = true;
-		try {
-			// C6: Auto-backup before saving if enabled
-			if (settings.autoBackup && settings.savePath) {
-				try {
-					await createBackup(settings.savePath);
-					lastBackupTime = new Date();
-				} catch (err) {
-					const message = err instanceof Error ? err.message : String(err);
-					toast.error(`Auto-backup failed: ${message}`);
-					// Don't abort the save — backup failure is non-fatal
-				}
+		}),
+		backup: async () => {
+			if (settings.autoBackup) {
+				await createBackup(settings.savePath);
+				lastBackupTime = new Date();
 			}
-			const dirtyData = getDirtyData();
-			await saveProfile(settings.savePath, dirtyData);
+		},
+		write: async () => {
+			await saveProfile(settings.savePath, getDirtyData(), saveData.nameTableVersion);
+		},
+		saved: () => { clearAllDirty(); toast.success('Saved successfully'); },
+		failed: (error) => {
+			if (String(error).includes('Save files changed on disk')) markProfileStale();
+			toast.error(`Save failed: ${String(error)}`);
+		},
+		busy: (value) => { isSaving = value; }
+	});
 
-			// Round-trip validation: re-read the roster file and check key count.
-			// Non-blocking — a mismatch only surfaces a warning toast.
-			const rosterInMemory = saveData.roster;
-			if (rosterInMemory) {
-				const ok = await validateRoundTrip(
-					settings.savePath,
-					'persist.roster.json',
-					rosterInMemory as unknown as Record<string, unknown>
-				);
-				if (!ok) {
-					toast.warning(
-						'Round-trip validation warning: saved file may differ from expected. Check your save.'
-					);
-				}
-			}
-
-			clearAllDirty();
-			toast.success('Saved successfully');
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Save failed: ${message}`);
-		} finally {
-			isSaving = false;
-		}
+	async function handleSave() {
+		if (!saveDisabled) await saveChanges();
 	}
 
-	function handleValidationFixAll() {
-		for (const issue of validationIssues) {
-			if (issue.fix) issue.fix();
-		}
+	function finishValidation(choice: ValidationChoice) {
+		const resolve = resolveValidation;
+		resolveValidation = null;
 		showValidation = false;
-		// Re-run validation after fixes
-		const remaining = runPreSaveValidation();
-		if (remaining.length > 0) {
-			validationIssues = remaining;
-			showValidation = true;
-		} else {
-			executeSave();
-		}
+		resolve?.(choice);
 	}
 
-	function handleValidationSaveAnyway() {
-		showValidation = false;
-		executeSave();
+	// Dismissal via Escape or the dialog close button is also Cancel.
+	$effect(() => {
+		if (!showValidation && resolveValidation) finishValidation('cancel');
+	});
+
+	let showChangeDialog = $state(false);
+	let changeCanSave = $state(true);
+	let resolveUnsaved: ((choice: UnsavedChoice) => void) | null = null;
+	const guardChanges = createUnsavedGuard({
+		hasChanges: hasDirtyFiles,
+		canSave: () => !saveData.isStale,
+		choose: (canSave) => new Promise<UnsavedChoice>((resolve) => {
+			changeCanSave = canSave;
+			resolveUnsaved = resolve;
+			showChangeDialog = true;
+		}),
+		save: saveChanges,
+		discard: discardAllChanges
+	});
+	const requestDataChange: RequestDataChange = async (action, preflight) => {
+		if (isSaving || saveData.isLoading || isProfileLoading) return false;
+		return guardChanges(action, preflight);
+	};
+	setContext(DATA_CHANGE_CONTEXT, requestDataChange);
+
+	const reloadProfile = createProfileReload({
+		requestDataChange, profilePath: () => settings.savePath,
+		load: loadProfileFromBackend,
+		failed: (error) => toast.error(`Reload failed: ${String(error)}`)
+	});
+
+	function finishUnsaved(choice: UnsavedChoice) {
+		const resolve = resolveUnsaved;
+		resolveUnsaved = null;
+		showChangeDialog = false;
+		resolve?.(choice);
 	}
 
-	function handleValidationCancel() {
-		showValidation = false;
-	}
+	$effect(() => {
+		if (!showChangeDialog && resolveUnsaved) finishUnsaved('cancel');
+	});
 
 	// ── Discard Flow ──
 
 	function handleDiscard() {
+		if (isSaving) return;
 		discardAllChanges();
 		showDiscardDialog = false;
 		toast.info('All changes discarded');
@@ -450,44 +475,29 @@
 
 	async function handleSaveAndClose() {
 		showCloseDialog = false;
-		// Run validation on close — log warnings but don't block the close
-		const closeIssues = runPreSaveValidation();
-		if (closeIssues.length > 0) {
-			console.warn(
-				'[hamlet] Pre-save validation issues on close:',
-				closeIssues.map((i) => `[${i.severity}] ${i.category}: ${i.message}`)
-			);
-		}
-		isSaving = true;
 		try {
-			const dirtyData = getDirtyData();
-			await saveProfile(settings.savePath, dirtyData);
-			clearAllDirty();
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Save failed: ${message}`);
-			isSaving = false;
-			return;
-		}
-		isSaving = false;
-		// Now close the window
-		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window');
-			await getCurrentWindow().close();
+			await windowClose.closeAfter(saveChanges, closeWindow);
 		} catch {
 			// Not in Tauri environment
 		}
 	}
 
 	async function handleDiscardAndClose() {
+		if (isSaving) return;
 		showCloseDialog = false;
-		discardAllChanges();
 		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window');
-			await getCurrentWindow().close();
+			await windowClose.closeAfter(() => {
+				discardAllChanges();
+				return true;
+			}, closeWindow);
 		} catch {
 			// Not in Tauri environment
 		}
+	}
+
+	async function closeWindow() {
+		const { getCurrentWindow } = await import('@tauri-apps/api/window');
+		await getCurrentWindow().close();
 	}
 
 	function handleCancelClose() {
@@ -544,15 +554,25 @@
 <ValidationDialog
 	bind:open={showValidation}
 	issues={validationIssues}
-	onFixAll={handleValidationFixAll}
-	onSaveAnyway={handleValidationSaveAnyway}
-	onCancel={handleValidationCancel}
+	onFixAll={() => finishValidation('fix')}
+	onSaveAnyway={() => finishValidation('save')}
+	onCancel={() => finishValidation('cancel')}
 />
 <UnsavedChangesDialog
 	bind:open={showCloseDialog}
+	allowSave={!saveData.isStale}
 	onSaveAndClose={handleSaveAndClose}
 	onDiscardAndClose={handleDiscardAndClose}
 	onCancel={handleCancelClose}
+/>
+<UnsavedChangesDialog
+	bind:open={showChangeDialog}
+	allowSave={changeCanSave && !saveData.isStale}
+	saveLabel="Save"
+	discardLabel="Discard"
+	onSaveAndClose={() => finishUnsaved('save')}
+	onDiscardAndClose={() => finishUnsaved('discard')}
+	onCancel={() => finishUnsaved('cancel')}
 />
 <DiscardConfirmDialog
 	bind:open={showDiscardDialog}
@@ -594,7 +614,7 @@
 					{#if sidebarSaveLocations.length > 1}
 						<Select
 							type="single"
-							value={settings.profileId}
+							value={settings.savePath}
 							disabled={isProfileLoading}
 							onValueChange={handleSidebarProfileChange}
 						>
@@ -602,8 +622,8 @@
 								<span class="text-xs">Profile: {settings.profileId}</span>
 							</SelectTrigger>
 							<SelectContent>
-								{#each sidebarSaveLocations as loc (loc.profile_id)}
-									<SelectItem value={loc.profile_id}>{loc.profile_id}</SelectItem>
+								{#each sidebarSaveLocations as loc (loc.path)}
+									<SelectItem value={loc.path}>{loc.profile_id} · {loc.steam_user_id ?? loc.path}</SelectItem>
 								{/each}
 							</SelectContent>
 						</Select>
@@ -627,10 +647,10 @@
 									<!-- C4: Raid nav with conditional indicator/dim -->
 									<SidebarMenuButton
 										isActive={currentPath === item.href}
-										class={saveData.raid === null ? 'opacity-50' : ''}
+										class={!saveData.gameInRaid ? 'opacity-50' : ''}
 									>
 										{#snippet child({ props })}
-											<a href={item.href} {...props} class:pointer-events-none={saveData.raid === null}>
+											<a href={item.href} {...props} class:pointer-events-none={!saveData.gameInRaid} aria-disabled={!saveData.gameInRaid} tabindex={saveData.gameInRaid ? undefined : -1}>
 												<span class="relative inline-flex">
 													<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={item.label} class="size-10">
 														{#snippet fallback()}<item.icon class="size-10" />{/snippet}
@@ -720,12 +740,9 @@
 					</Badge>
 				{/if}
 
-				<!-- C1: Steam Cloud warning -->
-				{#if isSteamCloud}
-					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
-						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
-						Steam Cloud Active
-					</Badge>
+				{#if saveData.isStale}
+					<Badge variant="outline">Profile stale: Reload required</Badge>
+					<Button variant="outline" size="sm" disabled={isSaving || saveData.isLoading || isGameBlocking} onclick={reloadProfile}>Reload</Button>
 				{/if}
 
 				<!-- C2: Modded content -->
@@ -763,6 +780,7 @@
 							<Button
 								variant="ghost"
 								size="sm"
+								disabled={isSaving}
 								onclick={() => (showDiscardDialog = true)}
 							>
 								<ArrowCounterClockwiseIcon size={16} class="mr-1" />
@@ -821,7 +839,7 @@
 			</div>
 		</header>
 
-		<main class="min-h-0 flex-1 overflow-hidden p-4">
+		<main inert={isSaving} class="min-h-0 flex-1 overflow-hidden p-4">
 			{@render children()}
 		</main>
 	</SidebarInset>

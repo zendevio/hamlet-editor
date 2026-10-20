@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
+	import { Popover, PopoverContent, PopoverTrigger } from '#lib/components/ui/popover/index.js';
 	import {
 		Command,
 		CommandEmpty,
@@ -7,11 +7,13 @@
 		CommandInput,
 		CommandItem,
 		CommandList
-	} from '$lib/components/ui/command';
-	import { Button } from '$lib/components/ui/button';
+	} from '#lib/components/ui/command/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
-	import { snakeToTitle } from '$lib/utils';
-	import { getGameData, localize } from '$lib/stores/game-data.svelte';
+	import { snakeToTitle } from '#lib/utils.js';
+	import { trinketEquipBlockReason, inventoryTrinkets, type TrinketSource } from '#lib/trinkets.js';
+	import { getSaveData } from '#lib/stores/save-data.svelte.js';
+	import { getGameData, localize } from '#lib/stores/game-data.svelte.js';
 
 	// ── Static trinket list (from docs/game-data.md) — fallback only ──
 
@@ -53,36 +55,51 @@
 
 	let {
 		value = '',
+		heroClass = '',
+		otherIds = [],
+		disabled = false,
 		placeholder = 'Select trinket...',
 		onselect
 	}: {
 		value?: string;
+		heroClass?: string;
+		otherIds?: string[];
+		disabled?: boolean;
 		placeholder?: string;
-		onselect?: (trinketId: string) => void;
+		onselect?: (trinketId: string, source: TrinketSource) => void;
 	} = $props();
 
 	let open = $state(false);
 
 	const gameData = getGameData();
 
-	let gameDataLoaded = $derived(gameData.trinkets.length > 0);
+	const saveData = getSaveData();
 
 	function trinketDisplayName(id: string): string {
-		return localize(`str_inventory_title_trinket${id}`) || snakeToTitle(id);
+		const key = `str_inventory_title_trinket${id}`;
+		const name = localize(key);
+		return name === snakeToTitle(key) ? snakeToTitle(id) : name;
 	}
 
-	let sortedTrinkets = $derived(
-		[...gameData.trinkets].sort((a, b) => trinketDisplayName(a.id).localeCompare(trinketDisplayName(b.id)))
-	);
+	function blockedReason(id: string) {
+		return !heroClass || id === value ? null : trinketEquipBlockReason(id, heroClass, gameData.trinkets, otherIds);
+	}
 
-	function handleSelect(id: string) {
+	let inventory = $derived(inventoryTrinkets(saveData.estate)
+		.sort((a, b) => trinketDisplayName(a.id).localeCompare(trinketDisplayName(b.id))));
+	let catalogue = $derived((gameData.trinkets.length > 0
+		? gameData.trinkets.map((entry) => entry.id)
+		: [...ANCESTOR_TRINKETS, ...BOSS_DROP_TRINKETS, ...CORE_STACKABLE_TRINKETS])
+		.sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))));
+
+	function handleSelect(id: string, source: TrinketSource) {
 		open = false;
-		onselect?.(id);
+		if (!disabled && (!id || !blockedReason(id))) onselect?.(id, source);
 	}
 </script>
 
 <Popover bind:open>
-	<PopoverTrigger>
+	<PopoverTrigger {disabled}>
 		{#snippet child({ props })}
 			<Button
 				variant="outline"
@@ -90,9 +107,10 @@
 				aria-expanded={open}
 				class="h-8 w-full justify-between text-xs font-normal"
 				{...props}
+				{disabled}
 			>
 				<span class="truncate {value ? '' : 'text-muted-foreground'}">
-					{value ? localize(`str_inventory_title_trinket${value}`) || snakeToTitle(value) : placeholder}
+					{value ? trinketDisplayName(value) : placeholder}
 				</span>
 				<CaretUpDownIcon size={14} class="ml-2 shrink-0 text-muted-foreground" />
 			</Button>
@@ -104,39 +122,29 @@
 			<CommandList class="max-h-64">
 				<CommandEmpty>No trinket found.</CommandEmpty>
 
-				{#if gameDataLoaded}
-					<CommandGroup heading="All Trinkets">
-						{#each sortedTrinkets as trinket (trinket.id)}
-							<CommandItem value={trinket.id} onSelect={() => handleSelect(trinket.id)} class="text-xs">
-								{trinketDisplayName(trinket.id)}
+				{#if heroClass}
+					{#if value}
+						<CommandGroup>
+							<CommandItem value="unequip" onSelect={() => handleSelect('', 'inventory')} class="text-xs">
+								Unequip to inventory
 							</CommandItem>
-						{/each}
-					</CommandGroup>
-				{:else}
-					<CommandGroup heading="Ancestor Trinkets">
-						{#each [...ANCESTOR_TRINKETS].sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))) as id (id)}
-							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-								{trinketDisplayName(id)}
-							</CommandItem>
-						{/each}
-					</CommandGroup>
-
-					<CommandGroup heading="Boss Drops">
-						{#each [...BOSS_DROP_TRINKETS].sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))) as id (id)}
-							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-								{trinketDisplayName(id)}
-							</CommandItem>
-						{/each}
-					</CommandGroup>
-
-					<CommandGroup heading="Core Stackable">
-						{#each [...CORE_STACKABLE_TRINKETS].sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))) as id (id)}
-							<CommandItem value={id} onSelect={() => handleSelect(id)} class="text-xs">
-								{trinketDisplayName(id)}
+						</CommandGroup>
+					{/if}
+					<CommandGroup heading="In your inventory">
+						{#each inventory as trinket (trinket.id)}
+							<CommandItem value={`inventory ${trinket.id} ${trinketDisplayName(trinket.id)}`} disabled={!!blockedReason(trinket.id)} onSelect={() => handleSelect(trinket.id, 'inventory')} class="text-xs">
+								<span>{trinketDisplayName(trinket.id)}{trinket.amount > 1 ? ` (${trinket.amount})` : ''}{#if blockedReason(trinket.id)}<small class="block">{blockedReason(trinket.id)}</small>{/if}</span>
 							</CommandItem>
 						{/each}
 					</CommandGroup>
 				{/if}
+				<CommandGroup heading="Add new from catalogue">
+					{#each catalogue as id (id)}
+						<CommandItem value={`catalogue ${id} ${trinketDisplayName(id)}`} disabled={!!blockedReason(id)} onSelect={() => handleSelect(id, 'catalogue')} class="text-xs">
+							<span>{trinketDisplayName(id)}{#if blockedReason(id)}<small class="block">{blockedReason(id)}</small>{/if}</span>
+						</CommandItem>
+					{/each}
+				</CommandGroup>
 			</CommandList>
 		</Command>
 	</PopoverContent>

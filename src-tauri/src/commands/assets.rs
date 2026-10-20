@@ -15,18 +15,15 @@ use std::path::{Path, PathBuf};
 /// transparently probes `_osx/Darkest.app/Contents/Resources/data/` under
 /// the same root before giving up.
 #[tauri::command]
-pub fn load_game_asset(
-    game_path: String,
-    asset_relative_path: String,
-) -> Result<Vec<u8>, String> {
+pub fn load_game_asset(game_path: String, asset_relative_path: String) -> Result<Vec<u8>, String> {
     let base = PathBuf::from(&game_path);
     let relative = Path::new(&asset_relative_path);
 
     // Primary probe: game_path is already the data root.
     let primary_path = base.join(relative);
     if primary_path.is_file() {
-        let resolved = std::fs::canonicalize(&primary_path)
-            .map_err(|e| format!("Asset not found: {e}"))?;
+        let resolved =
+            std::fs::canonicalize(&primary_path).map_err(|e| format!("Asset not found: {e}"))?;
         let base_canon =
             std::fs::canonicalize(&base).map_err(|e| format!("Invalid game path: {e}"))?;
         if !resolved.starts_with(&base_canon) {
@@ -50,9 +47,8 @@ pub fn load_game_asset(
             if !resolved.starts_with(&base_canon) {
                 return Err("Invalid asset path: path traversal detected".to_string());
             }
-            return std::fs::read(&resolved).map_err(|e| {
-                format!("Failed to read asset '{}': {}", resolved.display(), e)
-            });
+            return std::fs::read(&resolved)
+                .map_err(|e| format!("Failed to read asset '{}': {}", resolved.display(), e));
         }
     }
 

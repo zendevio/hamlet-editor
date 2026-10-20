@@ -1,6 +1,5 @@
 use serde::Serialize;
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use super::save::decode_save_file;
@@ -167,20 +166,68 @@ pub fn detect_game_installations() -> Result<Vec<GameInstall>, String> {
 
 /// Check if Darkest Dungeon is currently running.
 ///
-/// Uses `sysinfo` to scan for a process named `Darkest.exe` (Windows)
-/// or `Darkest` (macOS/Linux).
+/// Covers Windows, macOS and Linux, including Linux's 15-byte comm name.
 #[tauri::command]
 pub fn is_game_running() -> Result<bool, String> {
-    let target: &OsStr = if cfg!(target_os = "windows") {
-        OsStr::new("Darkest.exe")
-    } else {
-        OsStr::new("Darkest")
-    };
-
     let mut sys = sysinfo::System::new();
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-    let found = sys.processes().values().any(|p| p.name() == target);
-    Ok(found)
+    Ok(sys
+        .processes()
+        .values()
+        .any(|p| is_game_process(&p.name().to_string_lossy())))
+}
+
+fn is_game_process(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "darkest" | "darkest.exe" | "darkest.bin.x86_64" | "darkest.bin.x86_" | "darkest.bin.x86"
+    )
+}
+
+pub(crate) fn ensure_game_stopped(
+    detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<(), String> {
+    if detector()? {
+        return Err(
+            "Darkest Dungeon is running. Close the game before changing save files.".into(),
+        );
+    }
+    Ok(())
+}
+
+/// Steam's main client names: steam_osx (macOS), steam.exe (Windows),
+/// steam (Linux). Helpers such as steamwebhelper do not own the storage cache.
+pub fn is_steam_running() -> Result<bool, String> {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    Ok(sys
+        .processes()
+        .values()
+        .any(|p| is_steam_process(&p.name().to_string_lossy())))
+}
+
+fn is_steam_process(name: &str) -> bool {
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "steam_osx" | "steam.exe" | "steam"
+    )
+}
+
+/// The DD1 Steam layout, also used by save-location discovery.
+/// This identifies storage ownership, not whether Cloud sync is enabled.
+/// Callers check both the supplied and the canonical path, so symlinked
+/// profiles are recognised from either side.
+pub(crate) fn is_steam_profile(path: &Path) -> bool {
+    let parts: Vec<_> = path.components().collect();
+    parts.windows(5).any(|parts| {
+        parts[0].as_os_str() == "userdata"
+            && parts[1]
+                .as_os_str()
+                .to_str()
+                .is_some_and(|id| !id.is_empty() && id.bytes().all(|c| c.is_ascii_digit()))
+            && parts[2].as_os_str() == DD1_APP_ID.to_string().as_str()
+            && parts[3].as_os_str() == "remote"
+    })
 }
 
 /// Validate that a user-chosen directory looks like a valid DD1 save profile.
@@ -258,7 +305,7 @@ fn decode_game_json(profile_dir: &Path) -> (Option<String>, Option<String>) {
         return (None, None);
     }
 
-    let value = match decode_save_file(path.to_string_lossy().to_string(), &[]) {
+    let value = match decode_save_file(path.to_string_lossy().to_string()) {
         Ok(v) => v,
         Err(_) => return (None, None),
     };
@@ -278,7 +325,7 @@ fn decode_campaign_log_json(profile_dir: &Path) -> Option<u32> {
         return None;
     }
 
-    let value = decode_save_file(path.to_string_lossy().to_string(), &[]).ok()?;
+    let value = decode_save_file(path.to_string_lossy().to_string()).ok()?;
     find_u32_field(&value, "total_weeks")
 }
 
@@ -375,7 +422,16 @@ fn collect_profiles(
             continue;
         }
 
-        let has_active_raid = profile_dir.join("persist.raid.json").exists();
+        let has_active_raid = decode_save_file(
+            profile_dir
+                .join("persist.game.json")
+                .to_string_lossy()
+                .into_owned(),
+        )
+        .ok()
+        .filter(|game| game.pointer("/base_root/inraid").and_then(|v| v.as_bool()) == Some(true))
+        .and_then(|game| super::save::raid_relative_path(&game).ok())
+        .is_some_and(|relative| profile_dir.join(relative).is_file());
 
         locations.push(SaveLocation {
             path: profile_dir.to_string_lossy().to_string(),
@@ -537,5 +593,105 @@ fn build_game_install(path: String, source: &str) -> GameInstall {
         has_color_of_madness,
         has_musketeer,
         has_mods,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn detects_active_raid_from_raid_save_and_ignores_stale_root_files() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-detect-{}",
+            super::super::transaction::unique_suffix()
+        ));
+        let profile = root.join("profile_0");
+        std::fs::create_dir_all(profile.join("plot_crimson_court_1")).unwrap();
+        std::fs::write(profile.join("persist.roster.json"), b"roster").unwrap();
+        std::fs::write(profile.join("persist.raid.json"), b"stale root raid").unwrap();
+        std::fs::write(
+            profile.join("plot_crimson_court_1/persist.raid.json"),
+            b"active raid",
+        )
+        .unwrap();
+        let game_path = profile
+            .join("persist.game.json")
+            .to_string_lossy()
+            .into_owned();
+        let mut game = json!({"__revision_dont_touch": 1, "base_root": {"inraid": true, "raid_save": "plot_crimson_court_1/"}});
+        let scan = || {
+            let mut locations = Vec::new();
+            collect_profiles(&root, "Manual", &None, &mut locations, &mut HashSet::new());
+            assert_eq!(locations.len(), 1);
+            locations[0].has_active_raid
+        };
+        super::super::save::encode_save_file(game_path.clone(), &game).unwrap();
+        assert!(scan());
+        std::fs::remove_file(profile.join("plot_crimson_court_1/persist.raid.json")).unwrap();
+        assert!(!scan());
+        game["base_root"]["raid_save"] = json!("");
+        super::super::save::encode_save_file(game_path.clone(), &game).unwrap();
+        assert!(scan());
+        game["base_root"]["inraid"] = json!(false);
+        super::super::save::encode_save_file(game_path, &game).unwrap();
+        assert!(!scan());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod process_name_tests {
+    #[test]
+    fn steam_profile_layout_requires_numeric_account_and_remote_descendant() {
+        for path in [
+            "/Steam/userdata/123/262060/remote/profile_0",
+            "/x/userdata/0/262060/remote/nested/profile_0",
+        ] {
+            assert!(super::is_steam_profile(std::path::Path::new(path)));
+        }
+        for path in [
+            "/saves/profile_0",
+            "/Steam/userdata/abc/262060/remote/profile_0",
+            "/Steam/userdata/123/42/remote/profile_0",
+            "/Steam/userdata/123/262060/local/profile_0",
+            "/Steam/userdata/123/262060/remote",
+        ] {
+            assert!(!super::is_steam_profile(std::path::Path::new(path)));
+        }
+    }
+
+    #[test]
+    fn matches_only_main_steam_clients() {
+        for name in ["steam_osx", "Steam_OSX", "STEAM.EXE", "steam"] {
+            assert!(super::is_steam_process(name), "{name}");
+        }
+        for name in [
+            "steam.sh",
+            "steamwebhelper",
+            "steamservice.exe",
+            "steam-helper",
+            "Darkest",
+            "steam_osx_helper",
+        ] {
+            assert!(!super::is_steam_process(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn matches_platform_names_and_linux_truncation() {
+        for name in [
+            "Darkest",
+            "DARKEST.EXE",
+            "darkest.bin.x86_64",
+            "darkest.bin.x86_",
+            "darkest.bin.x86",
+        ] {
+            assert!(super::is_game_process(name), "{name}");
+        }
+        for name in ["steam", "darkest-helper", "other.exe"] {
+            assert!(!super::is_game_process(name));
+        }
     }
 }

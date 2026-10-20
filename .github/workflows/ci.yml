@@ -33,6 +33,9 @@ jobs:
       - name: Build frontend
         run: pnpm build
 
+      - name: Frontend tests
+        run: pnpm test
+
   rust:
     name: Rust checks
     runs-on: ubuntu-22.04
@@ -63,3 +66,6 @@ jobs:
 
       - name: Tests
         run: cargo test --all-features
+
+      - name: Save codec tests
+        run: cargo test -p ddsavelib

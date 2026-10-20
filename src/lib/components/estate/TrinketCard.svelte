@@ -1,11 +1,11 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
 	import XIcon from 'phosphor-svelte/lib/XIcon';
-	import { snakeToTitle, getTrinketIconPath } from '$lib/utils';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
-	import { localize } from '$lib/stores/game-data.svelte';
+	import { snakeToTitle, getTrinketIconPath } from '#lib/utils.js';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
+	import { localize } from '#lib/stores/game-data.svelte.js';
 
 	let {
 		id,

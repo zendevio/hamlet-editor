@@ -1,18 +1,24 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 
 	let {
 		open = $bindable(false),
 		onSaveAndClose,
 		onDiscardAndClose,
-		onCancel
+		onCancel,
+		saveLabel = 'Save and Close',
+		discardLabel = 'Discard and Close',
+		allowSave = true
 	}: {
 		open?: boolean;
 		onSaveAndClose: () => void;
 		onDiscardAndClose: () => void;
 		onCancel: () => void;
+		saveLabel?: string;
+		discardLabel?: string;
+		allowSave?: boolean;
 	} = $props();
 </script>
 
@@ -31,11 +37,13 @@
 		<Dialog.Footer class="flex-col gap-2 sm:flex-row">
 			<Button variant="ghost" onclick={onCancel}>Cancel</Button>
 			<Button variant="destructive" onclick={onDiscardAndClose}>
-				Discard and Close
+				{discardLabel}
 			</Button>
-			<Button onclick={onSaveAndClose}>
-				Save and Close
-			</Button>
+			{#if allowSave}
+				<Button onclick={onSaveAndClose}>
+					{saveLabel}
+				</Button>
+			{/if}
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>

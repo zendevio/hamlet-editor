@@ -1,34 +1,38 @@
 <script lang="ts">
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import PartySlot from '$lib/components/raid/PartySlot.svelte';
-	import RaidInfoCard from '$lib/components/raid/RaidInfoCard.svelte';
-	import * as Alert from '$lib/components/ui/alert/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { Slider } from '$lib/components/ui/slider/index.js';
+	import { sliderControl, sliderValueLabel } from '#lib/control-events.js';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import PartySlot from '#lib/components/raid/PartySlot.svelte';
+	import RaidInfoCard from '#lib/components/raid/RaidInfoCard.svelte';
+	import * as Alert from '#lib/components/ui/alert/index.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Badge } from '#lib/components/ui/badge/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
+	import IntegerInput from '#lib/components/IntegerInput.svelte';
+	import { Slider } from '#lib/components/ui/slider/index.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 	import BackpackIcon from 'phosphor-svelte/lib/BackpackIcon';
 	import {
 		getSaveData,
 		getHeroes,
 		CLASS_DISPLAY_NAMES,
-		markDirty,
+		setRaidTorchlight,
+		setRaidHungerBuffer,
+		setRaidItemAmount,
 		abandonRaid,
 		swapPartyPositions
-	} from '$lib/stores/save-data.svelte';
-	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { stripDsonPrefix } from '$lib/utils';
-	import type { RaidData, InventoryItem } from '$lib/types/save-data';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
-	import { Checkbox } from '$lib/components/ui/checkbox/index.js';
+	} from '#lib/stores/save-data.svelte.js';
+	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
+	import { abandonRaidBlockReason, abandonRaidInventory, raidItemLabel } from '#lib/raid.js';
+	import { stripDsonPrefix } from '#lib/utils.js';
+	import type { RaidData, InventoryItem } from '#lib/types/save-data.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.js';
+	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
 	import ArrowDownIcon from 'phosphor-svelte/lib/ArrowDownIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
 	import { toast } from 'svelte-sonner';
-	import { createBackup } from '$lib/api/backup';
-	import { getSettings } from '$lib/stores/settings.svelte';
+	import { createBackup } from '#lib/api/backup.js';
+	import { getSettings } from '#lib/stores/settings.svelte.js';
 
 	// ── Constants ──
 
@@ -64,6 +68,7 @@
 
 	/** Raid data from persist.raid.json — sourced from the shared save-data store. */
 	let raidData = $derived(saveData.raid as RaidData | null);
+	let abandonBlockedReason = $derived(abandonRaidBlockReason(saveData.game, raidData, saveData.roster, saveData.estate));
 
 	/** Whether persist.game.json reports inraid: true — sourced from the shared save-data store. */
 	let gameInRaid = $derived(saveData.gameInRaid);
@@ -71,8 +76,8 @@
 	// ── Derived ──
 
 	let raidFileExists = $derived(raidData !== null);
-	let hasActiveRaid = $derived(raidFileExists && gameInRaid);
-	let isInconsistent = $derived(raidFileExists !== gameInRaid);
+	let isInconsistent = $derived(gameInRaid && !raidFileExists);
+	let abandonInventory = $derived(abandonRaidInventory(raidData));
 
 	let raidInstance = $derived(raidData?.base_root.raid_instance ?? null);
 	let party = $derived(raidData?.base_root.party ?? null);
@@ -99,15 +104,10 @@
 	let locationDisplay = $derived(raidData?.base_root.in_area ?? '');
 	let inBattle = $derived(raidData?.base_root.inbattle ?? false);
 
-	/**
-	 * Torchlight value for the slider binding.
-	 * IMPORTANT: Torchlight is a Float in DSON (IEEE 754 4-byte float).
-	 * Always write as a float value (e.g., 75.0), never as an integer.
-	 */
-	let torchlightValue = $derived(party?.torchlight ?? 0);
+	/** Root torchlight is decoded as a float by the codec. */
+	let torchlightValue = $derived(raidData?.base_root.torchlight ?? 0);
 
-	let scoutChanceValue = $derived(party?.scoutChance_all ?? 0);
-	let hungerBufferValue = $derived(party?.inventory.hunger_room_buffer ?? 0);
+	let hungerBufferValue = $derived(party?.hunger_room_buffer ?? 0);
 
 	/** Map hero GUIDs from party order to HeroSummary for display. */
 	let partyHeroes = $derived.by(() => {
@@ -137,46 +137,6 @@
 
 	// ── Handlers ──
 
-	function handleTorchlightChange(value: number[]) {
-		if (!saveData.raid || !value.length) return;
-		// IMPORTANT: Store as float — DSON requires IEEE 754 float encoding
-		saveData.raid.base_root.party.torchlight = value[0];
-		markDirty('persist.raid.json');
-	}
-
-	function handleScoutChanceChange(e: Event) {
-		if (!saveData.raid) return;
-		const target = e.target as HTMLInputElement;
-		const parsed = parseFloat(target.value);
-		if (!isNaN(parsed)) {
-			saveData.raid.base_root.party.scoutChance_all = parsed;
-			markDirty('persist.raid.json');
-		}
-	}
-
-	function handleHungerBufferChange(e: Event) {
-		if (!saveData.raid) return;
-		const target = e.target as HTMLInputElement;
-		const parsed = parseInt(target.value, 10);
-		if (!isNaN(parsed) && parsed >= 0) {
-			saveData.raid.base_root.party.inventory.hunger_room_buffer = parsed;
-			markDirty('persist.raid.json');
-		}
-	}
-
-	function handleItemAmountChange(itemKey: string, e: Event) {
-		if (!saveData.raid) return;
-		const target = e.target as HTMLInputElement;
-		const parsed = parseInt(target.value, 10);
-		if (!isNaN(parsed) && parsed >= 0) {
-			const item = saveData.raid.base_root.party.inventory.items[itemKey] as InventoryItem | undefined;
-			if (item) {
-				item.amount = parsed;
-				markDirty('persist.raid.json');
-			}
-		}
-	}
-
 	async function handleCreateBackup() {
 		const settings = getSettings();
 		if (!settings.savePath) return;
@@ -194,16 +154,17 @@
 	}
 
 	function handleAbandonRaid() {
-		abandonRaid();
+		const reason = abandonRaid();
+		if (reason) { toast.error(reason); return; }
 		abandonDialogOpen = false;
 		toast.success('Raid abandoned', {
-			description: 'inraid set to false. Save to apply changes.'
+			description: 'Party returned to town. Save to apply changes, or Discard to restore the expedition.'
 		});
 	}
 </script>
 
 <!-- No raid, no inconsistency — show empty state -->
-{#if !raidFileExists && !gameInRaid}
+{#if !gameInRaid}
 	<EmptyState
 		title="No active raid"
 		description="Start a dungeon in-game to see raid data here. Raid editing is available only during an active expedition."
@@ -218,13 +179,8 @@
 				Raid State Inconsistent
 			</Alert.Title>
 			<Alert.Description class="text-amber-600 dark:text-amber-400/80">
-				{#if raidFileExists && !gameInRaid}
-					persist.raid.json exists but <code class="text-xs">inraid</code> is
-					<code class="text-xs">false</code> in persist.game.json.
-				{:else}
-					persist.game.json reports <code class="text-xs">inraid: true</code> but
-					persist.raid.json was not found.
-				{/if}
+				persist.game.json reports <code class="text-xs">inraid: true</code> but
+				persist.raid.json was not found.
 				Backup recommended before editing.
 			</Alert.Description>
 			<Alert.Action>
@@ -262,17 +218,18 @@
 				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 					Raid Info
 				</h2>
-				<Button variant="destructive" size="sm" class="gap-1.5 text-xs" onclick={openAbandonDialog}>
+				<Button variant="destructive" size="sm" class="gap-1.5 text-xs" disabled={!!abandonBlockedReason} onclick={openAbandonDialog}>
 					<SkullIcon size={14} />
 					Abandon Raid
 				</Button>
 			</div>
+			{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{abandonBlockedReason}</p>{/if}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 				<RaidInfoCard label="Dungeon" value={dungeonLabel || 'Unknown'} />
 				<RaidInfoCard label="Difficulty" value={difficultyLabel || 'Unknown'} />
 				<RaidInfoCard label="Length" value={lengthLabel || 'Unknown'} />
 				<RaidInfoCard label="Quest Type" value={raidInstance?.type ?? 'Unknown'} />
-				<RaidInfoCard label="Location" value={locationDisplay || 'Unknown'} />
+				<RaidInfoCard label="Location" value={String(locationDisplay || 'Unknown')} />
 				<RaidInfoCard label="In Battle" value={inBattle ? 'Yes' : 'No'} />
 			</div>
 			{#if goalDisplay}
@@ -353,7 +310,7 @@
 			</h2>
 			<Card.Root>
 				<Card.Content class="pt-0">
-					<div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
+					<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
 						<!-- Torchlight Slider -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
@@ -361,44 +318,15 @@
 									Torchlight
 								</label>
 								<span class="text-xs tabular-nums text-muted-foreground">
-									{torchlightValue.toFixed(1)}
+									{sliderValueLabel(torchlightValue, { min: 0, max: 100, step: 0.5 })}
 								</span>
 							</div>
-							<!--
-								IMPORTANT: Torchlight is a Float field in DSON (IEEE 754 4-byte float).
-								The slider value must always be written as a float (e.g. 75.0, not 75).
-								The DSON encoder must produce a 4-byte IEEE 754 float for this field.
-							-->
 							<Slider
 								type="single"
-								value={torchlightValue}
-								min={0}
-								max={100}
-								step={0.5}
-								onValueChange={(v) => handleTorchlightChange([v])}
+								{...sliderControl(torchlightValue, { min: 0, max: 100, step: 0.5 }, setRaidTorchlight)}
 							/>
 							<p class="text-[10px] text-muted-foreground/70">
-								0.0-100.0 (float). Written as IEEE 754 float in DSON.
-							</p>
-						</div>
-
-						<!-- Scout Chance -->
-						<div class="space-y-2">
-							<label for="scout-chance" class="text-xs font-medium">
-								Scout Chance
-							</label>
-							<Input
-								id="scout-chance"
-								type="number"
-								min="0"
-								max="1"
-								step="0.01"
-								value={String(scoutChanceValue)}
-								onchange={handleScoutChanceChange}
-								class="h-8 tabular-nums"
-							/>
-							<p class="text-[10px] text-muted-foreground/70">
-								Float (0.0-1.0). Only scoutChance_all is editable; scoutModifier_all is preserved.
+								Light level from 0 to 100.
 							</p>
 						</div>
 
@@ -407,15 +335,8 @@
 							<label for="hunger-buffer" class="text-xs font-medium">
 								Hunger Room Buffer
 							</label>
-							<Input
-								id="hunger-buffer"
-								type="number"
-								min="0"
-								step="1"
-								value={String(hungerBufferValue)}
-								onchange={handleHungerBufferChange}
-								class="h-8 tabular-nums"
-							/>
+							<IntegerInput id="hunger-buffer" label="Hunger room buffer" value={hungerBufferValue}
+								onchange={setRaidHungerBuffer} class="h-8 tabular-nums" />
 							<p class="text-[10px] text-muted-foreground/70">
 								Integer. Rooms until next hunger check.
 							</p>
@@ -446,7 +367,8 @@
 					</Card.Content>
 				</Card.Root>
 			{:else}
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+				{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{abandonBlockedReason}</p>{/if}
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 					{#each inventoryItems as item (item.key)}
 						<Card.Root class="gap-2 p-3">
 							<div class="flex items-center gap-2">
@@ -457,14 +379,8 @@
 								<Badge variant="outline" class="text-[10px] font-normal">
 									{item.type}
 								</Badge>
-								<Input
-									type="number"
-									min="0"
-									step="1"
-									value={String(item.amount)}
-									onchange={(e) => handleItemAmountChange(item.key, e)}
-									class="h-6 w-16 text-xs tabular-nums"
-								/>
+								<IntegerInput label={`${item.id} amount`} value={item.amount}
+									onchange={(value) => setRaidItemAmount(item.key, value)} class="h-6 w-24 text-xs tabular-nums" />
 							</div>
 						</Card.Root>
 					{/each}
@@ -484,7 +400,7 @@
 				Abandon Raid
 			</Dialog.Title>
 			<Dialog.Description>
-				This will set inraid to false and clear the raid data in memory. You must save to persist this change.
+				This returns surviving party heroes to town and keeps the raid save and its path. Discard restores the expedition before saving.
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -492,11 +408,18 @@
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-					Abandoning a raid will remove the party from the dungeon. Heroes in the raid
-					party may have their status reset. Create a backup before proceeding.
+					The week will not advance. Quest results, campaign logging and post-expedition quirk processing will not happen. Use “Regroup in the Hamlet!” in the game for the complete return process.
 				</p>
 			</div>
 
+			<p class="text-xs">{abandonInventory.returnedTrinkets} party inventory trinket(s) will return to estate storage. Other supplies and loot will be lost:</p>
+			<ul class="list-disc pl-5 text-xs">
+				{#each abandonInventory.lost as item}
+					<li>{raidItemLabel(item)}: {item.amount}</li>
+				{:else}
+					<li>No supplies or loot.</li>
+				{/each}
+			</ul>
 			<label class="flex items-center gap-2">
 				<Checkbox bind:checked={abandonConfirmChecked} />
 				<span class="text-[11px]">I understand this will abandon the active raid</span>
@@ -510,7 +433,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!abandonConfirmChecked}
+				disabled={!abandonConfirmChecked || !!abandonBlockedReason}
 				onclick={handleAbandonRaid}
 			>
 				<SkullIcon size={14} class="mr-1" />

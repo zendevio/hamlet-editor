@@ -1,16 +1,16 @@
 <script lang="ts">
-	import EmptyState from '$lib/components/EmptyState.svelte';
-	import HeroList from '$lib/components/heroes/HeroList.svelte';
-	import HeroDetail from '$lib/components/heroes/HeroDetail.svelte';
-	import BatchToolbar from '$lib/components/heroes/BatchToolbar.svelte';
-	import { ResizablePane, ResizablePaneGroup, ResizableHandle } from '$lib/components/ui/resizable';
+	import EmptyState from '#lib/components/EmptyState.svelte';
+	import HeroList from '#lib/components/heroes/HeroList.svelte';
+	import HeroDetail from '#lib/components/heroes/HeroDetail.svelte';
+	import BatchToolbar from '#lib/components/heroes/BatchToolbar.svelte';
+	import { ResizablePane, ResizablePaneGroup, ResizableHandle } from '#lib/components/ui/resizable/index.js';
 	import {
 		getSaveData,
 		getHeroes,
 		loadMockData,
 		type HeroSummary
-	} from '$lib/stores/save-data.svelte';
-	import { Button } from '$lib/components/ui/button';
+	} from '#lib/stores/save-data.svelte.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 
 	const saveData = getSaveData();
 

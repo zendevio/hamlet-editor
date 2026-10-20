@@ -1,7 +1,10 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import GameAssetIcon from '$lib/components/GameAssetIcon.svelte';
+	import { commitChangedValue } from '#lib/control-events.js';
+	import { parseInteger } from '#lib/input-validation.js';
+	import { WALLET_MAX } from '#lib/estate.js';
+	import * as Card from '#lib/components/ui/card/index.js';
+	import { Input } from '#lib/components/ui/input/index.js';
+	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
 	import type { Component } from 'svelte';
 
 	let {
@@ -20,13 +23,17 @@
 		onchange?: (value: number) => void;
 	} = $props();
 
+	let error = $state('');
 	let editing = $state(false);
 	let editValue = $state('');
+	let valueAtStart = 0;
 	let inputRef = $state<HTMLInputElement | null>(null);
 
 	function startEdit() {
+		error = '';
 		editing = true;
 		editValue = String(value);
+		valueAtStart = value;
 		// Focus input on next tick after it renders
 		queueMicrotask(() => {
 			inputRef?.focus();
@@ -35,12 +42,16 @@
 	}
 
 	function confirmEdit() {
-		const parsed = parseInt(editValue, 10);
-		if (!isNaN(parsed) && parsed >= 0) {
-			value = parsed;
-			onchange?.(parsed);
+		if (!editing) return;
+		if (value !== valueAtStart) {
+			editing = false;
+			return;
 		}
+		const parsed = parseInteger(editValue, 0, WALLET_MAX);
+		error = parsed.error ?? '';
+		if (parsed.error !== undefined) return;
 		editing = false;
+		commitChangedValue(value, parsed.value, (next) => onchange?.(next));
 	}
 
 	function cancelEdit() {
@@ -94,6 +105,10 @@
 				bind:ref={inputRef}
 				type="number"
 				min="0"
+				max={WALLET_MAX}
+				step="1"
+				aria-label={name}
+				aria-invalid={!!error}
 				value={editValue}
 				oninput={(e) => {
 					editValue = (e.target as HTMLInputElement).value;
@@ -102,6 +117,7 @@
 				onkeydown={handleKeydown}
 				class="h-8 text-lg font-bold tabular-nums"
 			/>
+			{#if error}<p role="alert" class="text-xs text-destructive">{error}</p>{/if}
 		{:else}
 			<button
 				type="button"

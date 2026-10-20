@@ -11,8 +11,8 @@ import type {
 	EstateData,
 	TownData,
 	UpgradesData
-} from '$lib/types/save-data';
-import { RESOLVE_XP_THRESHOLDS } from '$lib/data/constants';
+} from '#lib/types/save-data.js';
+import { RESOLVE_XP_THRESHOLDS } from '#lib/data/constants.js';
 
 export function createMockHero(
 	name: string,
@@ -66,6 +66,9 @@ export function createMockHero(
 						colour_variation: 0,
 						stunned: 0,
 						combat_ready: false,
+						performing_turn: 0,
+						check_round_ranks: 0,
+						rounds_in_ranks: 0,
 						damage_source_data: '###none',
 						buff_group: {},
 						buff_group_next_guid: 0,

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
+	import { canPickQuirk } from '#lib/hero-safety.js';
+	import { Popover, PopoverContent, PopoverTrigger } from '#lib/components/ui/popover/index.js';
 	import {
 		Command,
 		CommandEmpty,
@@ -7,12 +8,12 @@
 		CommandInput,
 		CommandItem,
 		CommandList
-	} from '$lib/components/ui/command';
-	import { Button } from '$lib/components/ui/button';
+	} from '#lib/components/ui/command/index.js';
+	import { Button } from '#lib/components/ui/button/index.js';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
-	import { getAllQuirks, type QuirkInfo } from '$lib/data/quirks';
-	import { snakeToTitle } from '$lib/utils';
-	import { getGameData } from '$lib/stores/game-data.svelte';
+	import { getAllQuirks, type QuirkInfo } from '#lib/data/quirks.js';
+	import { snakeToTitle } from '#lib/utils.js';
+	import { getGameData } from '#lib/stores/game-data.svelte.js';
 
 	let {
 		exclude = new Set<string>(),
@@ -39,16 +40,17 @@
 	});
 
 	let positiveQuirks = $derived(
-		allQuirks.filter((q) => q.category === 'positive' && !exclude.has(q.id))
+		allQuirks.filter((q) => canPickQuirk(q.id) && q.category === 'positive' && !exclude.has(q.id))
 	);
 	let negativeQuirks = $derived(
-		allQuirks.filter((q) => q.category === 'negative' && !exclude.has(q.id))
+		allQuirks.filter((q) => canPickQuirk(q.id) && q.category === 'negative' && !exclude.has(q.id))
 	);
 	let diseaseQuirks = $derived(
-		allQuirks.filter((q) => q.category === 'disease' && !exclude.has(q.id))
+		allQuirks.filter((q) => canPickQuirk(q.id) && q.category === 'disease' && !exclude.has(q.id))
 	);
 
 	function handleSelect(id: string) {
+		if (!canPickQuirk(id)) return;
 		open = false;
 		onselect?.(id);
 	}

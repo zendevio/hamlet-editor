@@ -50,7 +50,7 @@ Contents top-to-bottom:
    - **Heroes** (ph:users-four) — Default landing page.
    - **Estate** (ph:bank) — Wallet, trinket storage, estate currencies.
    - **Town** (ph:buildings) — Building upgrades, treatment slots.
-   - **Raid** (ph:compass) — Visible only when BOTH `persist.raid.json` exists AND `inraid: true` in `persist.game.json`. If only one condition is true (inconsistent state), the nav item is visible with an amber warning icon and tooltip: "Raid state is inconsistent between persist.raid.json and persist.game.json. Backup recommended before editing."
+   - **Raid** (ph:compass): Enabled when `inraid: true` in `persist.game.json`, dimmed and disabled in town. Active raid data resolves through game.json `raid_save` (or the profile root when empty). When inraid is true but the raid file is missing, the nav item stays enabled; the header badge "Raid State Inconsistent" and the raid page show the warning.
    - **Settings** (ph:gear) — Paths, backups, preferences.
 4. **Sidebar footer**:
    - Backup status indicator (last backup timestamp or "No backup").
@@ -69,8 +69,7 @@ Horizontal bar across the top of the main content area.
 | Badge | Condition | Color | Text |
 |-------|-----------|-------|------|
 | Game running | `is_game_running()` returns true | Red | "DD Running — Save Blocked" |
-| Steam Cloud | Saves are in a Steam `userdata` path | Amber | "Steam Cloud Active" |
-| Raid active | `persist.raid.json` exists AND `inraid: true` in game.json. If only one condition is true, show amber "Raid State Inconsistent" warning instead. | Amber | "Raid Active" |
+| Raid active | `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in game.json. If inraid is true but the raid file is missing, show amber "Raid State Inconsistent" warning instead. An inactive retained raid file is normal town state; Raid navigation and its shortcut are disabled. | Amber | "Raid Active" |
 | Mod content | Modded class/trinket/quirk IDs detected | Amber | "Modded Content" |
 | Unsaved changes | Any in-memory edit differs from on-disk state | Orange dot on Save button + ARIA label "Unsaved changes" | Tooltip: "Unsaved changes" (accessible to screen readers) |
 
@@ -104,7 +103,7 @@ A non-dismissable modal dialog sequence. Reappears whenever persisted paths beco
 **Step 2 — Save File Location**
 - Calls `detect_save_locations()` (source: `path-detection.md`).
 - Lists discovered profiles with metadata: profile ID, save name, week number, game mode, source (Steam/GOG/Epic/Manual).
-- If the save path is inside a Steam `userdata` directory, an inline amber callout warns: "Steam Cloud sync detected. Disable cloud sync for Darkest Dungeon or close Steam before saving to avoid conflicts."
+- A static amber note warns that Steam Cloud sync can overwrite or conflict with edited saves, and to disable it for the game or close Steam before saving. There is no automatic cloud detection.
 - "Browse manually..." as fallback. On selection, calls `validate_save_directory(path)`.
 
 **Step 3 — Confirmation**
@@ -147,10 +146,10 @@ A scrollable, virtualized list of all heroes in `persist.roster.json`. Each row 
 | Status Code | Name | Dot Color | Label |
 |-------------|------|-----------|-------|
 | 0 | AVAILABLE | Green | "Available" |
-| 1 | SQUAD | Teal | "In Squad" |
+| 1 | IN_PARTY | Teal | "In party" |
 | 2 | STAFFED | Blue | "In Treatment" |
 | 3 | DEAD | Red | "Dead" |
-| 4 | GONE | Orange | "In Raid" |
+| 4 | MISSING | Orange | "Missing" |
 
 All five status codes are mapped (source: `save-files.md` Roster Status Codes).
 
@@ -169,10 +168,10 @@ Always visible above the hero list. Buttons become active when one or more heroe
 
 | Button | Action | Notes |
 |--------|--------|-------|
-| Heal All | Set `current_hp` to class max for each selected hero's current `armour_rank` | HP-only. Uses the HP table from `game-data.md`. Does NOT touch stress. No confirmation dialog (non-destructive, reversible via Discard). |
+| Heal All | Raise `current_hp` below the class base max for each selected hero's current `armour_rank`; retain existing higher HP and its saved fraction | HP-only. Uses the HP table from `game-data.md`, which excludes buffs. Does NOT touch stress. No confirmation dialog (non-destructive, reversible via Discard). |
 | Clear Stress | Set `m_Stress` to 0 for each selected hero | Stress only. Does NOT clear affliction or virtue (these are independent fields). |
-| Set Level | Dropdown (0-6). Adjusts `resolveXp` to the threshold value. Offers to match `weapon_rank`/`armour_rank` to the level's max gear rank (`maxGearRank = Math.min(level, 4)` for levels 4-6). Also creates/updates entries in `persist.upgrades.json`. | Sub-confirmation with gear rank details. |
-| Revive | Enabled only when ALL selected heroes have status = 3 (DEAD). Runs the full revival procedure (section 4.5). | Multi-hero revival is a batch of individual revival operations. |
+| Set Level | Dropdown (0-6). Adjusts `resolveXp` to the selected level threshold. Gear ranks and purchases are unchanged. | Applies to each selected hero. |
+| Revive | Enabled only when ALL selected heroes have status = 3 (DEAD). Runs the full revival procedure (section 4.5). | The whole selection is validated before any revival, including enough free living roster slots. |
 | Selection count | "3 of 12 selected" | Informational. |
 
 #### 3.2.3 Hero Detail Panel
@@ -185,12 +184,12 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - Large portrait (~128 px, from game assets).
 - Hero name — editable `Input` field. Pencil icon visible on hover.
 - Class — read-only display with class icon. Raw ID as tooltip for modded.
-- Resolve level — `Select` dropdown (0-6) showing level title. Changing level auto-updates `resolveXp` and prompts to match gear ranks (`maxGearRank = Math.min(level, 4)` for levels 4-6). Creates/updates `persist.upgrades.json` entries for skill and gear unlocks.
+- Resolve level — `Select` dropdown (0-6) showing level title. Changing level sets `resolveXp` to the selected level threshold. Gear ranks and upgrade purchases are unchanged.
 - **"Reset this hero"** button — reverts all in-memory changes for this specific hero to the on-disk snapshot. Confirmation: "Revert all unsaved changes to [HeroName]?"
 
 **Vitals Section**
-- **HP** — `Slider` (0 to class max for current armour_rank) + numeric `Input`. "Heal to Max" quick button. Max HP is derived from the HP table in `game-data.md` and displayed inline (e.g., "26 / 38").
-- **Stress** — `Slider` (0-200) + numeric `Input`. "Clear" quick button (sets `m_Stress` to 0). Stress and affliction are independent fields; clearing stress does NOT auto-clear an active affliction or virtue.
+- **HP**: `Slider` from 1 for living heroes (0 for dead heroes) through the larger of class base max, on-disk HP and current HP. The inline display shows the snapped step and a saved-value hint when they differ, formatting fractions to one decimal; a step above the real maximum is shown as the saved value instead. The maximum also uses one decimal when fractional; saved fractions survive unchanged slider clicks and drags back to the starting step. Slider endpoints expand to the step grid, and thumbs use exact track positions so pointer input matches their rendered positions. Changed commits use the nearest step inside the real bounds, including fractional maxima (67.1 permits an integer commit of 67). No-op checks compare those adjusted steps so unchanged saved fractions remain intact. After each commit, the shared slider wrapper restores the step representing the stored value within the real bounds. This corrects adjusted or ignored endpoint commits without a store write or remount, retaining keyboard focus. "Heal to Max" raises HP below the class base max and retains higher HP. The class HP table in `game-data.md` excludes buffs.
+- **Stress** — `Slider` (0-200) with a snapped-step label and saved-value hint. "Clear" quick button (sets `m_Stress` to 0). Stress and affliction are independent fields; clearing stress does NOT auto-clear an active affliction or virtue.
 - **Affliction / Virtue** — `Select` dropdown: None, or known affliction/virtue IDs from game data. "Clear" button. Clearing zeroes `affliction_type_id`, `affliction_severity`, and `virtue_type_id`. This is a separate control from stress editing.
 - **Deaths Door** — `Switch` for `visited_deaths_door`. Shown in an "Advanced" sub-section with tooltip: "Historical flag indicating this hero has previously reached Death's Door. Does not directly affect current gameplay state."
 
@@ -208,12 +207,12 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **Camping Skills** — same pattern. Icons from `raid/camping/skill_icons/camp_skill_<skillname>.png`.
 
 **Equipment Section** (collapsed by default)
-- **Weapon Rank** — `Select` dropdown (0-4), constrained by resolve level max gear rank (`maxGearRank = Math.min(level, 4)`).
-- **Armour Rank** — `Select` dropdown (0-4), constrained by resolve level. Changing armour rank updates the displayed max HP.
+- **Weapon Rank** — `Select` dropdown (0-4), independent of resolve level. Changes update the roster rank index.
+- **Armour Rank** — `Select` dropdown (0-4), independent of resolve level. Changes update the roster rank index and displayed max HP.
 - Gear icons: `heroes/<class>/icons_equip/eqp_weapon_<rank>.png` and `eqp_armour_<rank>.png` (note: British spelling `armour`).
 - **Trinkets** — two trinket slots. Each shows trinket icon (`panels/icons_equip/trinket/inv_trinket+<id>.png`) + localized name. Click to open `TrinketPicker` popover.
-  - TrinketPicker shows all trinkets in estate storage (not equipped on other heroes). Search by name. Class-restricted trinkets marked with a class icon. Rarity color border (from `trinkets/*.rarities.trinkets.json`).
-  - Equipping a trinket removes it from estate storage; unequipping returns it. Cross-file consistency (roster <-> estate) is maintained automatically.
+  - TrinketPicker lists "In your inventory" first, aggregating counts greater than one, then "Add new from catalogue" for explicit creation. Both groups search by localized name or ID. Definitions load from base trinkets and recursively from DLC, including Crimson Court and Flagellant feature directories. Both groups disable incompatible classes, unknown inventory IDs when definitions are loaded, and equips that exceed a positive per-hero limit across both slots, with a reason shown. A limit of zero is unlimited. If definitions are unavailable, the existing static catalogue remains available and class restrictions cannot be checked.
+  - Equipping from inventory consumes one item, decrementing its amount or deleting its numbered entry. Catalogue creation leaves inventory untouched. Replacing or choosing "Unequip to inventory" returns the complete previous item using the same append helper as dismissal and raid abandonment. Item metadata is cloned on transfers; new catalogue items use the existing estate schema with empty metadata, or id/type/amount when no template exists. Selecting the equipped ID does nothing. Dead heroes cannot equip or unequip trinkets. Moves needing storage are blocked with a message if the estate file is missing or unsupported. Roster and estate become dirty as needed; Discard All restores both. Single-hero Revert asks for Discard All if equipment differs, preventing a partial revert from duplicating trinkets.
 
 **Blood Curse Section** (conditional: visible only if the hero has any `disease_vampire_*` quirk AND Crimson Court DLC is installed (`dlc.crimsonCourt` from game installation detection))
 - Current state displayed with localized description:
@@ -228,7 +227,7 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 
 **Actions Section**
 - **Revive Hero** — shown only for DEAD heroes (status = 3). Opens the Revival Wizard (section 4.5).
-- **Dismiss Hero** — destructive action. Uses the full destructive `AlertDialog` pattern with required checkbox ("I understand this hero will be permanently removed from the roster"). On confirm: deletes the hero entry from `persist.roster.json` (removes the entire hero object from the `heroes` map), increments `dismissed_hero_count` in the roster root, and removes the hero from active party/treatment references if applicable. See cross-file operations table (section 13).
+- **Dismiss Hero**: dead heroes cannot be dismissed because their roster record preserves the grave. The last living hero cannot be dismissed. Status 1 is an in-party state and only implies an active raid when `inraid` is true. Stale raid files do not block town dismissal. This is a destructive action. Uses the full destructive `AlertDialog` pattern with required checkbox ("I understand this hero will be permanently removed from the roster"). On confirm: deletes the hero entry from `persist.roster.json` (removes the entire hero object from the `heroes` map), increments `dismissed_hero_count` in the roster root, and removes the hero from active party/treatment references if applicable. See cross-file operations table (section 13).
 
 ### 3.3 Estate View
 
@@ -253,7 +252,7 @@ Single-pane layout with stacked sections.
 ```
 
 **Estate Name**
-- Editable `Input` field. The byte-length constraint (source: `save-files.md` Estate Name Constraint) is handled transparently: the DSON encoder updates the binary length field on save. A character counter is displayed ("24 / ~64 bytes") with a soft warning above ~64 bytes (reasonable max for the game's UI display, though the binary format allows more).
+- Editable `Input` field using the same 32-character editor limit and name validation as hero names. Enter or blur commits; Escape restores the saved name and blurs so focusing again starts a new edit. The DSON encoder updates the binary byte length on save.
 
 **Wallet Section**
 - Grid of `CurrencyCard` components, one per type.
@@ -328,7 +327,7 @@ Provides editing for `persist.town.json` and the building-related entries in `pe
 
 ### 3.5 Raid View
 
-Only accessible when `persist.raid.json` exists AND `inraid: true` in `persist.game.json`. If conditions are inconsistent (one true, one false), show a warning state instead of the normal raid view: "Raid state is inconsistent. persist.raid.json exists but inraid flag disagrees. Backup recommended before editing." with a "Create Backup Now" button. If neither condition is true: empty state "No active raid. Start a dungeon in-game to see raid data here."
+Only accessible when `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in `persist.game.json`. If conditions are inconsistent (one true, one false), show a warning state instead of the normal raid view: "Raid state is inconsistent. persist.raid.json exists but inraid flag disagrees. Backup recommended before editing." with a "Create Backup Now" button. If neither condition is true: empty state "No active raid. Start a dungeon in-game to see raid data here."
 
 ```
 +--- SIDEBAR ---+------------ MAIN CONTENT ----------------------------+
@@ -376,10 +375,13 @@ Only accessible when `persist.raid.json` exists AND `inraid: true` in `persist.g
 - `hunger_room_buffer` — editable numeric. Rooms until next hunger check.
 - `scoutChance_all` — editable float. Base scouting chance. **Note**: both `scoutChance_all` and `scoutModifier_all` exist in the raid file (source: `save-files.md`). Their exact relationship is undefined. Only `scoutChance_all` is exposed for editing; `scoutModifier_all` is preserved as-is on save.
 
-**Abandon Raid** (action button at bottom):
-- Deletes `persist.raid.json`, sets `inraid: false` in `persist.game.json`.
-- Confirmation dialog: "Abandon the current raid? Heroes will return to the Hamlet with their pre-dungeon state. All in-dungeon loot, XP, and quirks earned this run will be lost."
-- Source: `save-files.md` "Abandoning a Raid via File Deletion."
+**Abandon Raid**:
+
+- Available for active regular, plot and Courtyard raids with complete raid/roster references. The dialog lists lost supply and loot amounts, and the number of party inventory trinkets returned to estate storage.
+- Sets `inraid` false and `raiddungeon` to `none`, preserving `raid_save` and the raid file. Survivors in the active party get status 0, before-town status 1 and cleared combat state. HP and stress are retained. Dead former party members keep status 3 and get before-town status 3. Last-party slots retain surviving current members only; other slots become -1.
+- Party inventory trinkets move through the shared return helper to estate storage, removing their raid inventory entries. Other supplies and loot remain only in the stale raid file and are lost to the campaign. No invitation refund.
+- No week advance, quest results, campaign logging or post-expedition quirk processing. The dialog recommends the game's "Regroup in the Hamlet!" for the complete return process. Discard restores all files before Save.
+- Editor abandon is pending in-game verification (checklist scenario 12).
 
 ### 3.6 Settings View
 
@@ -418,7 +420,7 @@ Sectioned form layout.
 1. App opens. No saved config found.
 2. Setup Wizard modal appears (non-dismissable).
 3. Step 1: `detect_game_installations()` runs. If found, path is pre-filled with DLC tags. User accepts or overrides.
-4. Step 2: `detect_save_locations()` runs. Profiles listed with metadata. User selects one. Steam Cloud callout shown if applicable.
+4. Step 2: `detect_save_locations()` runs. Profiles listed with metadata. User selects one. The static Steam Cloud note is always shown.
 5. Step 3: Summary. "Open Profile" loads data and closes wizard.
 6. LoadingScreen is shown during profile load with status text ("Decoding save files...", "Loading game data...", "Scanning mods...").
 7. Heroes view renders with the roster populated.
@@ -428,47 +430,41 @@ Sectioned form layout.
 1. App opens. Persisted paths re-validated.
 2. Last-used profile loaded automatically with LoadingScreen overlay.
 3. If `is_game_running()` returns true: red "DD Running — Save Blocked" badge. Save button disabled. All fields remain viewable. Toast: "Save is disabled while Darkest Dungeon is running."
-4. If `persist.raid.json` exists AND `inraid: true`: Raid nav item appears, amber "Raid Active" badge shown.
+4. If `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true`: Raid nav item appears, amber "Raid Active" badge shown.
 5. If modded content detected in the roster: amber "Modded Content" badge shown.
 6. Heroes view loads as default.
 
 ### 4.3 Editing a Hero
 
 1. User clicks a hero in the list. Detail panel populates.
-2. **Editing HP**: Click the HP number or use the slider. "Heal to Max" snaps to class max for current armour_rank (from HP table in `game-data.md`). Unsaved changes dot appears.
+2. **Editing HP**: Use the slider to commit a different step. Clicking the current step or dragging back to it preserves saved fractional HP without marking changes. "Heal to Max" raises HP below the class base max for current armour_rank (from `game-data.md`) and retains existing higher HP. A real change adds the unsaved changes dot.
 3. **Editing stress**: Adjust the slider or click "Clear." Stress is set to 0. Affliction/virtue state is NOT affected (they are independent fields).
-4. **Editing level**: Open the resolve level dropdown, select "4 — Champion." Sub-dialog: "Set weapon rank to 4 and armour rank to 4 to match? (Current: 2/2). Note: gear rank caps at 4 for levels 4-6." Accepting also creates the appropriate entries in `persist.upgrades.json` for skill and gear unlocks at that level.
+4. **Editing level**: Open the resolve level dropdown and select a level. This sets resolve XP to the selected level threshold; gear ranks and upgrade purchases are unchanged.
 5. **Adding a quirk**: Click "Add Quirk" under the positive column. Combobox opens. Type "quick" — autocomplete shows "Quick Reflexes (quick_reflexes)." Select it. Chip appears. If the column already has 5 quirks, the button is disabled.
 6. **Locking a quirk**: Click the lock/unlock icon on a quirk chip. Toggles `is_locked`.
-7. **Equipping a trinket**: Click an empty trinket slot. TrinketPicker opens showing estate storage trinkets. Search, select. Trinket moves from estate to hero (both roster and estate updated in memory).
-8. **Save**: Click Save (or `Ctrl/Cmd+S`). Pre-save validation runs. If auto-backup is on, backup is created. Files written. Round-trip validation runs. Toast: "Saved successfully."
+7. **Equipping a trinket**: Open a hero trinket picker. Select from "In your inventory" to move one item from estate to hero, or explicitly choose "Add new from catalogue" to create one. Replacement returns the old item to estate. Discard All restores both files.
+8. **Save**: Click Save (or `Ctrl/Cmd+S`). Pre-save validation runs. If auto-backup is on, backup is created. The backend validates and encodes every dirty file in memory, then commits writes transactionally. Toast: "Saved successfully."
 
 ### 4.4 Batch Operations
 
 1. User checks checkboxes on multiple heroes.
 2. Batch toolbar updates: "5 of 12 selected."
 3. Detail panel replaced with batch summary (selected hero names/portraits, available actions).
-4. User clicks "Heal All." All selected heroes have HP set to their respective class maximums. No confirmation dialog (non-destructive; reversible via Discard).
+4. User clicks "Heal All." Selected heroes below their class base maximum are raised to it; existing higher HP and its saved fraction are retained. No confirmation dialog (non-destructive; reversible via Discard).
 5. Changes applied in memory. List reflects changes. Unsaved changes dot activates.
 6. User clicks Save.
 
 ### 4.5 Reviving a Dead Hero
 
-The full revival is a multi-file operation (source: `community-research.md` and `save-files.md`):
+Town revival is a roster-only edit based on the captured dead hero Bonel (run7 snap-4). Game acceptance of editor revival is pending in-game verification (checklist scenario 11).
 
-1. User selects a DEAD hero. Clicks "Revive Hero" in the Actions section.
-2. **Revival Wizard Dialog** appears:
-   - Title: "Revive [HeroName] the [ClassName]?"
-   - Explanation of what will be modified:
-     - `persist.roster.json`: Set `roster.status` to 0, `roster.before_on_start_town_visit_status` to 0, `current_hp` to 1, `m_Stress` to 0.
-     - `persist.campaign_log.json`: Clear `died` flag in the MissionEvent entry for this hero's GUID.
-     - `persist.progression.json`: Clear graveyard achievement flag if present.
-   - If raid is active: additional line: "Raid is active. The hero can optionally be added back to the raid party if party size is below 4 and the hero was previously a member." Offer a checkbox: "Add hero back to raid party" (disabled if party already has 4 members).
-   - Warning: "The revived hero will retain their resolve level and quirks but will have lost their equipped trinkets (stripped on death). You can re-equip trinkets afterward."
-   - Required checkbox: "I understand this is a multi-file operation."
-   - "Revive" (primary) and "Cancel" buttons.
-3. On confirm: all files updated in memory. Hero reappears with status 0, HP 1, stress 0.
-4. User can then heal/equip/save.
+Roster capacity refuses campaigns with non-empty `persistent_ugcs`: enabled mod overrides are not loaded. Revival names mods in its block message and refuses unknown class maximum HP. Bloodmoon has no mode folder of its own (its mode_settings.json declares `"replaces_default_mode": "new_game_plus"`), so it uses the new_game_plus Stage Coach overlay, then base. The current install has no Stage Coach overlay for either mode.
+
+1. Select a dead hero and click "Revive Hero", or select only dead heroes and click batch "Revive". Both open the same confirmation dialog.
+2. Revival requires `game.base_root.inraid: false` and enough free living roster slots. Capacity comes from installed mode-specific Stage Coach data, current roster-size purchases and the enabled Shieldbreaker DLC bonus. Missing or unsupported capacity data blocks revival with an explanation. Status 3 heroes do not count toward capacity.
+3. Confirm sets status and before-town status to 0, HP to the same class maximum used by the HP slider, clears combat buffs and turn/rank state, and clears `visited_deaths_door`. Only `persist.roster.json` becomes dirty.
+4. Stress, quirks, skills, existing equipment, upgrades and campaign/progression history stay as saved. The dialog states that skill upgrades lost at death are not restored. In-raid revival remains blocked. Generic status changes cannot enter or leave status 3.
+5. Save applies the edit. Discard restores the dead hero. Batch revival checks every selected hero and all required slots before writing.
 
 ### 4.6 Estate Editing
 
@@ -526,7 +522,6 @@ App
 │   ├── GlobalSearchTrigger
 │   ├── StatusBadges
 │   │   ├── GameRunningBadge (Badge variant=destructive)
-│   │   ├── SteamCloudBadge (Badge variant=outline, custom amber styling)
 │   │   ├── RaidActiveBadge (Badge variant=outline, custom amber styling)
 │   │   ├── ModContentBadge (Badge variant=outline, custom amber styling)
 │   │   └── UnsavedChangesDot
@@ -573,8 +568,8 @@ HeroesView
 │   │   ├── ClassDisplay
 │   │   └── ResolveLevelEditor (Select)
 │   ├── HeroVitals (Collapsible Card)
-│   │   ├── HPEditor (Slider + Input + HealToMaxButton)
-│   │   ├── StressEditor (Slider + Input + ClearButton)
+│   │   ├── HPEditor (Slider + ValueLabel + HealToMaxButton)
+│   │   ├── StressEditor (Slider + ValueLabel + ClearButton)
 │   │   ├── AfflictionEditor (Select + ClearButton)
 │   │   └── DeathsDoorSwitch (Switch, in Advanced sub-section with Tooltip)
 │   ├── HeroQuirks (Collapsible Card)
@@ -692,7 +687,7 @@ RaidView
 
 | Component | shadcn Base | Purpose |
 |-----------|------------|---------|
-| `TrinketPicker` | `Combobox` (Command + Popover) | Search trinkets by name/ID, shows icon + rarity + class restriction |
+| `TrinketPicker` | `Combobox` (Command + Popover) | Search by name/ID, inventory counts before explicit catalogue creation, filter loaded class restrictions |
 | `QuirkPicker` | `Combobox` (Command + Popover) | Search quirks, grouped by category (positive/negative/disease) |
 | `GameAssetImage` | Custom | Loads PNG from game installation via `load_game_asset()`. Shows placeholder silhouette on failure. Caches loaded assets in memory (LRU). |
 | `ConfirmDialog` | `AlertDialog` | Standardized confirmation modal. Cancel always left/default. Destructive operations require checkbox. |
@@ -980,7 +975,6 @@ Enforced via Tauri window config: **800 x 600**. The app does not resize below t
 
 | Condition | Location | Message |
 |-----------|----------|---------|
-| Steam Cloud active | Header badge (persistent) | "Saves in Steam Cloud folder. Disable sync or close Steam before saving." |
 | Mid-raid editing | Raid view banner (non-dismissable) | "Raid editing is high-risk. Backup recommended." + "Create Backup Now" button |
 | Unsaved changes on exit | Modal | "Save before closing?" with Save/Discard/Cancel |
 | Level/gear mismatch | Hero detail inline | "Weapon rank (2) below max for this level (4). Update?" |
@@ -1004,7 +998,7 @@ When the editor encounters a corrupt file (source: `save-files.md` Save Corrupti
 2. Offer recovery options in priority order:
    a. **"Restore from Editor Backup"** — if the editor has a previous backup.
    b. **"Restore from Game Backup"** — reads from `profile_#/backup/` (the game's own session backup).
-   c. **"Delete Raid File"** — if the corrupt file is `persist.raid.json`, offer to delete it and set `inraid: false` (escape crash loop).
+   c. An unreadable active raid blocks abandon. Restore a backup or return in the game; the editor has no save-file deletion action.
    d. **"Re-encode File"** — attempt decode-then-re-encode to fix binary structural corruption.
    e. **"Open Backup Folder"** — system file manager.
 
@@ -1012,7 +1006,7 @@ When the editor encounters a corrupt file (source: `save-files.md` Save Corrupti
 
 **On-input:**
 - Numeric fields reject non-numeric input. Range constraints shown as min/max hints.
-- Dropdowns constrained to valid values (e.g., gear rank cannot exceed level's max: `maxGearRank = Math.min(level, 4)`).
+- Dropdowns constrained to valid values (e.g., weapon and armour ranks are whole indices from 0 to 4, independent of resolve level).
 - Quirk count enforced (max 5 per column; diseases count toward the negative cap).
 
 **Pre-save (when Save is clicked):**
@@ -1020,14 +1014,13 @@ When the editor encounters a corrupt file (source: `save-files.md` Save Corrupti
    - Trinkets equipped on heroes do not also appear in estate storage.
    - Hero GUIDs in raid party exist in roster.
    - Heroes with status STAFFED (2) have matching `roster.building_name` and are present in `persist.town.json` building slots.
-   - Gear ranks do not exceed resolve level's max (`maxGearRank = Math.min(level, 4)` for levels 4-6).
-   - `weapon_rank`/`armour_rank` match corresponding entries in `persist.upgrades.json`.
+   - Gear ranks are whole indices from 0 to 4, independent of resolve level.
 2. **DLC field guards:** Verify no DLC-specific fields (Crimson Curse quirks, shard wallet entry, districts) exist in saves where the corresponding DLC is not enabled.
 3. If inconsistencies found: warning dialog listing them, with "Fix Automatically" and "Save Anyway" options.
 
-**Post-save (round-trip validation):**
-- After writing binary DSON, immediately re-decode and compare at the JSON/semantic level (not byte-for-byte; bits 1 and 31 in fieldInfo are intentionally stripped).
-- Mismatch = abort and show error with a "Restore from Backup" button. Files are not left in a partial write state (write to temp file, then atomic rename).
+**Backend validation and commit:**
+- Before any disk mutation, check load provenance and disk freshness, merge edited deltas onto the ordered decoded snapshots, and validate and encode every dirty file in memory. Equality compares numbers by numeric value recursively through objects and arrays, so JavaScript converting `63.0` to `63` does not count as an edit. Untouched earlier duplicate values and keys survive; a genuinely edited visible field is updated in every duplicate copy.
+- Encoding failures abort before files change. Profile writes use a transaction with rollback; backup restore may also remove files transactionally. Binary round-trip regression tests run in the test suite; there is no post-save round-trip validation step in the application.
 
 ### 9.4 Graceful Degradation for Mod Content
 
@@ -1137,8 +1130,10 @@ Command names are authoritative from `path-detection.md` and this document.
 | Command | Signature | Purpose |
 |---------|-----------|---------|
 | `list_profiles` | `(save_root: String) -> Result<Vec<ProfileMeta>, String>` | List profiles with metadata (name, week, game mode, DLCs) |
-| `load_profile` | `(profile_path: String) -> Result<ProfileData, String>` | Decode all DSON save files (including `novelty_tracker.json` as opaque blob), return as JSON |
-| `save_profile` | `(profile_path: String, data: ProfileData) -> Result<SaveResult, String>` | Encode and write modified files (including `novelty_tracker.json` passthrough) with round-trip validation |
+| `load_profile` | `(profile_path: String) -> Result<LoadedProfile, String>` | Decode supported saves and return editable data and name-table version |
+| `save_profile` | `(profile_path: String, data: ProfileData, name_table_version: u64) -> Result<(), String>` | Validate provenance and freshness, merge edits and transactionally encode/write modified files |
+
+`LoadedProfile` contains `data` and `name_table_version`. `load_roster_capacity_rules(game_path)` reads installed Stage Coach rules for each supported mode and an optional Shieldbreaker slot bonus. Capacity rules carry their game-install path in frontend state: same-install Reload retains them and switching installs blocks revival until matching rules load. Inactive raid files are ignored when `inraid` is false, including unreadable stale files; they are absent from editable data and do not block dismissal. Active raids still resolve through `raid_save`, falling back to the top-level raid when the pointer is empty. Active decode errors remain fatal. Unsupported files remain fingerprinted and cannot be overwritten.
 
 **`ProfileMeta` struct** (returned by `list_profiles`):
 ```rust
@@ -1187,13 +1182,13 @@ These operations modify multiple save files and require careful coordination. Th
 |-----------|---------------|-------|
 | Equip trinket on hero | roster + estate | Remove from estate storage, add to hero trinket slot |
 | Unequip trinket | roster + estate | Reverse of equip |
-| Revive hero | roster + campaign_log + progression (+ raid if mid-dungeon) | Full revival procedure; see section 4.5. Sets `m_Stress` to 0 in addition to `roster.status`, `current_hp`, etc. |
-| Set hero level | roster + upgrades | Update resolveXp, optionally gear ranks (`maxGearRank = Math.min(level, 4)`), create upgrade entries |
+| Revive hero | roster | Town only, known capacity with free living slots; full class HP and cleared combat state. History and stress retained. See section 4.5. |
+| Set hero level | roster | Set resolve XP to the selected level threshold; leave gear ranks and purchases unchanged |
 | Release from treatment | roster + town | Clear `roster.building_name`, set `roster.status` to 0, clear `roster.before_on_start_town_visit_status` to 0, remove from town slot |
 | Assign to treatment | roster + town | Set status=2, building_name, add to town slot |
-| Abandon raid | raid (delete) + game | Delete persist.raid.json, set inraid=false |
+| Abandon raid | game + roster (+ estate and raid if returning trinkets) | Preserve raid_save and raid file; minimal town return, no week or results processing. |
 | Mid-raid HP edit | roster + raid | Both files store hero HP during raids |
-| Dismiss hero | roster (delete hero entry + increment `dismissed_hero_count`) + town (if in treatment) + raid (if in party) | Permanently removes hero from roster. Uses destructive AlertDialog with required checkbox. |
+| Dismiss hero | roster + upgrades (+ estate when equipped) | Keep four last-party slots using `-1`, compact remaining purchase keys, return equipped trinkets to numbered estate storage entries, and retain campaign/progression history. Block treatment, active raids, dead heroes and the final living hero. Uses destructive AlertDialog with required checkbox. |
 | Rename estate | game | Single file but byte-length constraint: DSON encoder auto-updates string length field |
 
 ---
