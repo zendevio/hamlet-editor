@@ -290,7 +290,7 @@
 	onMount(() => {
 		import('@tauri-apps/api/core').then(({ invoke }) =>
 			invoke<string | null>('take_migration_notice').then((message) => {
-				if (message) toast.error('Previous version import failed', { description: message, duration: Infinity });
+				if (message) toast.warning('Previous version import needs attention', { description: message, duration: Infinity, closeButton: true });
 			})
 		).catch(() => { /* Browser preview has no migration state. */ });
 

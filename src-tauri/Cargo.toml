@@ -1,3 +1,8 @@
+[workspace]
+members = ["crates/ddsavelib"]
+default-members = ["."]
+resolver = "2"
+
 [package]
 name = "hamlet-editor"
 version = "1.0.0"
