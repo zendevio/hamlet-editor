@@ -48,6 +48,8 @@
 		createBackup,
 		listBackups,
 		openBackupFolder,
+		checkRestore,
+		type RestoreCheck,
 		restoreBackup,
 		restoreGameBackup,
 		type BackupEntry
@@ -285,7 +287,23 @@
 		}
 	}
 
-	function openRestoreDialog(backup: BackupEntry) {
+	let restoreCheck = $state<RestoreCheck | null>(null);
+	let gameRestoreCheck = $state<RestoreCheck | null>(null);
+
+	function restoreOutcome(check: RestoreCheck | null): string {
+		if (!check) return '';
+		return check.adds === 0 && check.removes === 0
+			? 'This restore is overwrite-only.'
+			: `This restore adds ${check.adds} and removes ${check.removes} files.`;
+	}
+
+	async function openRestoreDialog(backup: BackupEntry) {
+		try {
+			restoreCheck = await checkRestore(backup.path, settings.savePath);
+		} catch (err) {
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity });
+			return;
+		}
 		restoreTarget = backup;
 		restoreConfirmChecked = false;
 		restoreDialogOpen = true;
@@ -297,6 +315,11 @@
 		restoreDialogOpen = false;
 		try {
 			const target = restoreTarget;
+			restoreCheck = await checkRestore(target.path, settings.savePath);
+			if (restoreCheck.blocked_reason) {
+				restoreDialogOpen = true;
+				return;
+			}
 			if (!await requestDataChange(async () => {
 				await restoreBackup(target.path, settings.savePath);
 				await loadProfileFromBackend(settings.savePath);
@@ -307,16 +330,23 @@
 			await loadBackupList();
 		} catch (err) {
 			toast.error('Restore failed', {
+				duration: Infinity,
 				description: String(err)
 			});
 		} finally {
 			restoringBackup = null;
-			restoreTarget = null;
+			if (!restoreDialogOpen) restoreTarget = null;
 			restoreConfirmChecked = false;
 		}
 	}
 
-	function openRestoreGameBackupDialog() {
+	async function openRestoreGameBackupDialog() {
+		try {
+			gameRestoreCheck = await checkRestore(null, settings.savePath);
+		} catch (err) {
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity });
+			return;
+		}
 		restoreGameBackupConfirmChecked = false;
 		restoreGameBackupDialogOpen = true;
 	}
@@ -326,6 +356,11 @@
 		restoringGameBackup = true;
 		restoreGameBackupDialogOpen = false;
 		try {
+			gameRestoreCheck = await checkRestore(null, settings.savePath);
+			if (gameRestoreCheck.blocked_reason) {
+				restoreGameBackupDialogOpen = true;
+				return;
+			}
 			if (!await requestDataChange(async () => {
 				await restoreGameBackup(settings.savePath);
 				await loadProfileFromBackend(settings.savePath);
@@ -336,6 +371,7 @@
 			await loadBackupList();
 		} catch (err) {
 			toast.error('Restore failed', {
+				duration: Infinity,
 				description: String(err)
 			});
 		} finally {
@@ -753,9 +789,13 @@
 			</DialogTitle>
 			<DialogDescription>
 				This will replace your current save files with the selected backup.
-				If this restore adds or removes files, quit Steam first.
+				{restoreOutcome(restoreCheck)}
 			</DialogDescription>
 		</DialogHeader>
+
+		{#if restoreCheck?.blocked_reason}
+			<p role="alert" class="text-sm text-destructive">{restoreCheck.blocked_reason}</p>
+		{/if}
 
 		{#if restoreTarget}
 			<div class="space-y-3">
@@ -788,7 +828,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!restoreConfirmChecked}
+				disabled={!restoreConfirmChecked || !restoreCheck || !!restoreCheck.blocked_reason}
 				onclick={handleRestore}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
@@ -808,9 +848,13 @@
 			</DialogTitle>
 			<DialogDescription>
 				Restore from the game's own backup/ subdirectory inside the save profile.
-				If this restore adds or removes files, quit Steam first.
+				{restoreOutcome(gameRestoreCheck)}
 			</DialogDescription>
 		</DialogHeader>
+
+		{#if gameRestoreCheck?.blocked_reason}
+			<p role="alert" class="text-sm text-destructive">{gameRestoreCheck.blocked_reason}</p>
+		{/if}
 
 		<div class="space-y-3">
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
@@ -835,7 +879,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!restoreGameBackupConfirmChecked}
+				disabled={!restoreGameBackupConfirmChecked || !gameRestoreCheck || !!gameRestoreCheck.blocked_reason}
 				onclick={handleRestoreGameBackup}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />

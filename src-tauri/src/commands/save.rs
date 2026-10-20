@@ -325,7 +325,7 @@ pub fn save_profile_with_detector(
     let obj = data
         .as_object()
         .ok_or("Expected a JSON object for profile data")?;
-    let relative_for = |name: &str| -> Result<PathBuf, String> {
+    let loaded_for = |name: &str| -> Result<&LoadedSave, String> {
         if !super::is_save_file(name)
             || name.contains('/')
             || name.contains('\\')
@@ -334,7 +334,7 @@ pub fn save_profile_with_detector(
             return Err(format!("Invalid save filename: {name}"));
         }
         if let Some(loaded) = table.loaded_files.get(name) {
-            return Ok(loaded.relative_path.clone());
+            return Ok(loaded);
         }
         // An existing file omitted at load may be undecodable. Never overwrite it.
         if canonical.join(name).exists() || name == "persist.raid.json" {
@@ -350,8 +350,9 @@ pub fn save_profile_with_detector(
     let mut updated = HashMap::new();
     // Validate and encode every file in memory before creating any temp files.
     for (name, value) in obj {
-        let relative_path = relative_for(name)?;
-        let file = table.loaded_files[name]
+        let loaded = loaded_for(name)?;
+        let relative_path = loaded.relative_path.clone();
+        let file = loaded
             .file
             .merge_json_value(value)
             .map_err(|e| format!("Failed to encode {name}: {e}"))?;

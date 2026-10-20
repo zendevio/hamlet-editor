@@ -160,6 +160,56 @@ pub fn restore_backup(
     )
 }
 
+const STEAM_RESTORE_REASON: &str = "Quit Steam completely before restoring this backup. It adds or removes save files, and the running Steam client would keep stale file sizes, which stops the game from loading the campaign. Overwrite-only restores and normal saves are not affected.";
+
+#[derive(Serialize, Debug)]
+pub struct RestoreCheck {
+    pub adds: usize,
+    pub removes: usize,
+    pub blocked_reason: Option<String>,
+}
+
+struct RestorePlan {
+    source: PathBuf,
+    files: BTreeMap<PathBuf, Vec<u8>>,
+    deletes: BTreeSet<PathBuf>,
+    check: RestoreCheck,
+}
+
+impl RestorePlan {
+    fn apply(self, root: &Path) -> Result<(), String> {
+        if let Some(reason) = self.check.blocked_reason {
+            return Err(reason);
+        }
+        create_backup_at(&self.source, root)?;
+        super::transaction::apply_changes(&self.source, &self.files, &self.deletes)
+    }
+}
+
+#[tauri::command]
+pub fn check_restore(
+    backup_path: Option<String>,
+    profile_path: String,
+) -> Result<RestoreCheck, String> {
+    check_restore_with_detectors(
+        backup_path.as_deref().map(Path::new),
+        Path::new(&profile_path),
+        super::detect::is_game_running,
+        super::detect::is_steam_running,
+    )
+}
+
+/// None selects the game's partial backup. This shares every validation and
+/// guard with restore, but creates neither a safety backup nor staged files.
+pub fn check_restore_with_detectors(
+    backup: Option<&Path>,
+    profile: &Path,
+    detector: impl FnOnce() -> Result<bool, String>,
+    steam_detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<RestoreCheck, String> {
+    Ok(prepare_restore(backup, profile, detector, steam_detector)?.check)
+}
+
 /// Guard and filesystem core shared by the command and integration tests.
 pub fn restore_backup_with_detectors(
     backup: &Path,
@@ -168,10 +218,35 @@ pub fn restore_backup_with_detectors(
     detector: impl FnOnce() -> Result<bool, String>,
     steam_detector: impl FnOnce() -> Result<bool, String>,
 ) -> Result<(), String> {
+    prepare_restore(Some(backup), profile, detector, steam_detector)?.apply(root)
+}
+
+fn prepare_restore(
+    backup: Option<&Path>,
+    profile: &Path,
+    detector: impl FnOnce() -> Result<bool, String>,
+    steam_detector: impl FnOnce() -> Result<bool, String>,
+) -> Result<RestorePlan, String> {
     super::detect::ensure_game_stopped(detector)?;
     let source = profile
         .canonicalize()
         .map_err(|e| format!("Invalid profile: {e}"))?;
+    let Some(backup) = backup else {
+        let mut files = read_save_tree(&source.join("backup"))?;
+        // Transient snapshots are stale after returning to town. Never transplant
+        // them into the root or the active raid_save directory.
+        for name in [
+            "persist.raid.json",
+            "persist.map.json",
+            "persist.loading_screen.json",
+        ] {
+            files.remove(Path::new(name));
+        }
+        if files.is_empty() {
+            return Err("No save files found in game backup".into());
+        }
+        return restore_plan(source, files, BTreeSet::new(), steam_detector);
+    };
     let manifest = read_manifest(backup)?;
     if let Some(manifest) = &manifest {
         if manifest.source_profile != source {
@@ -208,9 +283,7 @@ pub fn restore_backup_with_detectors(
     if files.is_empty() {
         return Err("No save files found in backup".into());
     }
-    ensure_restore_safe(&source, &files, &deletes, steam_detector)?;
-    create_backup_at(&source, root)?;
-    super::transaction::apply_changes(&source, &files, &deletes)
+    restore_plan(source, files, deletes, steam_detector)
 }
 
 #[tauri::command]
@@ -232,33 +305,43 @@ pub fn restore_game_backup_with_detectors(
     detector: impl FnOnce() -> Result<bool, String>,
     steam_detector: impl FnOnce() -> Result<bool, String>,
 ) -> Result<(), String> {
-    super::detect::ensure_game_stopped(detector)?;
-    let mut files = read_save_tree(&profile.join("backup"))?;
-    // These top-level files in the game's backup are stale snapshots, not the
-    // active raid_save directory. Never transplant them into the profile root.
-    files.remove(Path::new("persist.raid.json"));
-    files.remove(Path::new("persist.map.json"));
-    if files.is_empty() {
-        return Err("No save files found in game backup".into());
-    }
-    ensure_restore_safe(profile, &files, &BTreeSet::new(), steam_detector)?;
-    create_backup_at(profile, root)?;
-    // The game's partial backup is not a complete profile snapshot, so it does
-    // not authorize deleting files from the active profile.
-    super::transaction::apply_changes(profile, &files, &BTreeSet::new())
+    prepare_restore(None, profile, detector, steam_detector)?.apply(root)
 }
 
-/// Check the complete change set before creating a safety backup or staging writes.
-fn ensure_restore_safe(
-    profile: &Path,
-    writes: &BTreeMap<PathBuf, Vec<u8>>,
-    deletes: &BTreeSet<PathBuf>,
+fn restore_plan(
+    source: PathBuf,
+    files: BTreeMap<PathBuf, Vec<u8>>,
+    deletes: BTreeSet<PathBuf>,
     steam_detector: impl FnOnce() -> Result<bool, String>,
-) -> Result<(), String> {
-    if !deletes.is_empty() || writes.keys().any(|path| !profile.join(path).exists()) {
-        super::detect::ensure_steam_stopped(steam_detector)?;
+) -> Result<RestorePlan, String> {
+    super::transaction::validate_changes(&source, &files, &deletes)?;
+    // Match the safety backup's read-only validation before any discard prompt.
+    if read_save_tree(&source)?.is_empty() {
+        return Err("No save files found to back up".into());
     }
-    Ok(())
+    let adds = files
+        .keys()
+        .filter(|path| !source.join(path).exists())
+        .count();
+    let removes = deletes.len();
+    let blocked_reason = if (adds > 0 || removes > 0)
+        && super::detect::is_steam_profile(&source)
+        && steam_detector()?
+    {
+        Some(STEAM_RESTORE_REASON.to_owned())
+    } else {
+        None
+    };
+    Ok(RestorePlan {
+        source,
+        files,
+        deletes,
+        check: RestoreCheck {
+            adds,
+            removes,
+            blocked_reason,
+        },
+    })
 }
 
 /// Open the editor's backups directory in the system file manager.

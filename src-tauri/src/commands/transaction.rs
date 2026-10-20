@@ -84,6 +84,21 @@ pub(crate) fn apply_changes(
     apply_changes_with_hook(root, writes, deletes, &mut |_| Ok(()))
 }
 
+/// Read-only destination validation, also used by restore preflight.
+pub(crate) fn validate_changes(
+    root: &Path,
+    writes: &BTreeMap<PathBuf, Vec<u8>>,
+    deletes: &BTreeSet<PathBuf>,
+) -> Result<(), String> {
+    for relative in writes.keys().chain(deletes) {
+        validate_target(root, relative)?;
+        if writes.contains_key(relative) && deletes.contains(relative) {
+            return Err(format!("Cannot write and delete {}", relative.display()));
+        }
+    }
+    Ok(())
+}
+
 /// Stage and sync every replacement before touching targets. Originals stay in
 /// the same filesystem until all replacements and deletions have succeeded.
 pub(crate) fn apply_changes_with_hook(
@@ -95,12 +110,7 @@ pub(crate) fn apply_changes_with_hook(
     let root = root
         .canonicalize()
         .map_err(|e| format!("Invalid profile: {e}"))?;
-    for relative in writes.keys().chain(deletes) {
-        validate_target(&root, relative)?;
-        if writes.contains_key(relative) && deletes.contains(relative) {
-            return Err(format!("Cannot write and delete {}", relative.display()));
-        }
-    }
+    validate_changes(&root, writes, deletes)?;
     if writes.is_empty() && deletes.is_empty() {
         return Ok(());
     }

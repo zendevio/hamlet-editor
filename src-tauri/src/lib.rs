@@ -81,6 +81,7 @@ pub fn run() {
             commands::detect::list_profiles,
             commands::backup::create_backup,
             commands::backup::list_backups,
+            commands::backup::check_restore,
             commands::backup::restore_backup,
             commands::backup::restore_game_backup,
             commands::backup::open_backup_folder,

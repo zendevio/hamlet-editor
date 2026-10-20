@@ -23,7 +23,18 @@ impl Sandbox {
         copy_tree(&fixture, &path.join("profile_0"));
         Self(path)
     }
+    fn steam() -> Self {
+        let sandbox = Self::new();
+        let remote = sandbox.0.join("userdata/123/262060/remote");
+        fs::create_dir_all(&remote).unwrap();
+        fs::rename(sandbox.profile(), remote.join("profile_0")).unwrap();
+        sandbox
+    }
     fn profile(&self) -> PathBuf {
+        let steam = self.0.join("userdata/123/262060/remote/profile_0");
+        if steam.is_dir() {
+            return steam;
+        }
         self.0.join("profile_0")
     }
     fn backups(&self) -> PathBuf {
@@ -462,6 +473,10 @@ fn game_backup_restore_does_not_transplant_stale_raid_or_map_to_root() {
     .unwrap();
     assert!(!sandbox.profile().join("persist.raid.json").exists());
     assert!(!sandbox.profile().join("persist.map.json").exists());
+    assert!(!sandbox
+        .profile()
+        .join("persist.loading_screen.json")
+        .exists());
     assert_eq!(
         fs::read(
             sandbox
@@ -862,14 +877,17 @@ fn backup_listing_uses_manifest_counts_and_skips_invalid_entries() {
 
 #[test]
 fn editor_restore_checks_steam_before_safety_backup_or_mutation() {
-    for change in ["create", "delete", "overwrite"] {
+    for change in ["create", "nested-create", "delete", "overwrite"] {
         for steam_running in [false, true] {
-            let sandbox = Sandbox::new();
+            let sandbox = Sandbox::steam();
             let original = tree(&sandbox.profile());
             let backup_root = sandbox.0.join("source-backups");
             let snapshot = backup::create_backup_at(&sandbox.profile(), &backup_root).unwrap();
             match change {
                 "create" => fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap(),
+                "nested-create" => {
+                    fs::remove_dir_all(sandbox.profile().join("plot_crimson_court_1")).unwrap()
+                }
                 "delete" => {
                     fs::write(sandbox.profile().join("persist.raid.json"), b"new raid").unwrap()
                 }
@@ -880,12 +898,44 @@ fn editor_restore_checks_steam_before_safety_backup_or_mutation() {
                 .unwrap(),
             }
             let before = tree(&sandbox.profile());
+            let check = backup::check_restore_with_detectors(
+                Some(&snapshot),
+                &sandbox.profile(),
+                || Ok(false),
+                || {
+                    if change == "overwrite" {
+                        panic!("overwrite preflight detection");
+                    }
+                    Ok(steam_running)
+                },
+            )
+            .unwrap();
+            let expected_adds = match change {
+                "create" => 1,
+                "nested-create" => 2,
+                _ => 0,
+            };
+            assert_eq!(
+                (check.adds, check.removes),
+                (expected_adds, usize::from(change == "delete"))
+            );
+            assert_eq!(
+                check.blocked_reason.is_some(),
+                steam_running && change != "overwrite"
+            );
+            assert_eq!(tree(&sandbox.profile()), before);
+            assert!(!sandbox.backups().exists());
             let result = backup::restore_backup_with_detectors(
                 &snapshot,
                 &sandbox.profile(),
                 &sandbox.backups(),
                 || Ok(false),
-                || Ok(steam_running),
+                || {
+                    if change == "overwrite" {
+                        panic!("overwrite must skip Steam detection");
+                    }
+                    Ok(steam_running)
+                },
             );
             if steam_running && change != "overwrite" {
                 assert!(result.unwrap_err().starts_with("Quit Steam completely"));
@@ -904,11 +954,18 @@ fn editor_restore_checks_steam_before_safety_backup_or_mutation() {
 fn game_restore_checks_creates_but_allows_overwrites_and_preserves_extra_files() {
     for creates in [false, true] {
         for steam_running in [false, true] {
-            let sandbox = Sandbox::new();
+            let sandbox = Sandbox::steam();
             // The fixture's game backup includes files absent from the profile.
             // Populate its restore targets so only the roster controls creation.
             for (path, bytes) in tree(&sandbox.profile().join("backup")) {
-                if path != Path::new("persist.raid.json") && path != Path::new("persist.map.json") {
+                if ![
+                    "persist.raid.json",
+                    "persist.map.json",
+                    "persist.loading_screen.json",
+                ]
+                .iter()
+                .any(|name| path == Path::new(name))
+                {
                     fs::write(sandbox.profile().join(path), bytes).unwrap();
                 }
             }
@@ -927,7 +984,12 @@ fn game_restore_checks_creates_but_allows_overwrites_and_preserves_extra_files()
                 &sandbox.profile(),
                 &sandbox.backups(),
                 || Ok(false),
-                || Ok(steam_running),
+                || {
+                    if !creates {
+                        panic!("overwrite must skip Steam detection");
+                    }
+                    Ok(steam_running)
+                },
             );
             if creates && steam_running {
                 assert!(result.unwrap_err().starts_with("Quit Steam completely"));
@@ -959,4 +1021,251 @@ fn normal_save_refuses_missing_files_before_writing_anything() {
     let error = sandbox.save(&mut table, data).unwrap_err();
     assert!(error.starts_with("Cannot create save file persist.new_optional.json."));
     assert_eq!(tree(&sandbox.profile()), before);
+}
+
+#[test]
+fn preflight_and_restore_share_checks_without_preflight_writes() {
+    for game_backup in [false, true] {
+        let sandbox = Sandbox::steam();
+        let snapshot =
+            backup::create_backup_at(&sandbox.profile(), &sandbox.0.join("source")).unwrap();
+        let selected = if game_backup {
+            None
+        } else {
+            Some(snapshot.as_path())
+        };
+        let original = tree(&sandbox.profile());
+        let check = backup::check_restore_with_detectors(
+            selected,
+            &sandbox.profile(),
+            || Ok(false),
+            || panic!("overwrite detection"),
+        )
+        .unwrap();
+        assert_eq!((check.adds, check.removes), (0, 0));
+        assert!(check.blocked_reason.is_none());
+        assert_eq!(tree(&sandbox.profile()), original);
+        assert!(!sandbox.backups().exists());
+        fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+        let before = tree(&sandbox.profile());
+        let check = backup::check_restore_with_detectors(
+            selected,
+            &sandbox.profile(),
+            || Ok(false),
+            || Ok(true),
+        )
+        .unwrap();
+        assert_eq!((check.adds, check.removes), (1, 0));
+        assert!(check
+            .blocked_reason
+            .unwrap()
+            .starts_with("Quit Steam completely"));
+        let stopped = backup::check_restore_with_detectors(
+            selected,
+            &sandbox.profile(),
+            || Ok(false),
+            || Ok(false),
+        )
+        .unwrap();
+        assert!(stopped.blocked_reason.is_none());
+        assert_eq!(tree(&sandbox.profile()), before);
+        assert!(!sandbox.backups().exists());
+        for preflight in [true, false] {
+            let result = if preflight {
+                backup::check_restore_with_detectors(
+                    selected,
+                    &sandbox.profile(),
+                    || Ok(false),
+                    || Err("Steam detector failed".into()),
+                )
+                .map(|_| ())
+            } else if game_backup {
+                backup::restore_game_backup_with_detectors(
+                    &sandbox.profile(),
+                    &sandbox.backups(),
+                    || Ok(false),
+                    || Err("Steam detector failed".into()),
+                )
+            } else {
+                backup::restore_backup_with_detectors(
+                    &snapshot,
+                    &sandbox.profile(),
+                    &sandbox.backups(),
+                    || Ok(false),
+                    || Err("Steam detector failed".into()),
+                )
+            };
+            assert_eq!(result.unwrap_err(), "Steam detector failed");
+            assert_eq!(tree(&sandbox.profile()), before);
+            assert!(!sandbox.backups().exists());
+        }
+        let error = backup::check_restore_with_detectors(
+            selected,
+            &sandbox.profile(),
+            || Ok(true),
+            || panic!("game guard first"),
+        )
+        .unwrap_err();
+        assert!(error.starts_with("Darkest Dungeon is running"));
+        if !game_backup {
+            fs::remove_file(snapshot.join("persist.roster.json")).unwrap();
+            assert_eq!(
+                backup::check_restore_with_detectors(
+                    selected,
+                    &sandbox.profile(),
+                    || Ok(false),
+                    || panic!("validation first")
+                )
+                .unwrap_err(),
+                "Backup files do not match the manifest. Restore was not started."
+            );
+        }
+        assert_eq!(tree(&sandbox.profile()), before);
+        assert!(!sandbox.backups().exists());
+    }
+}
+
+#[test]
+fn non_steam_profiles_skip_steam_guard_for_set_changes() {
+    let sandbox = Sandbox::new();
+    fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+    let check = backup::check_restore_with_detectors(
+        None,
+        &sandbox.profile(),
+        || Ok(false),
+        || panic!("manual profile must skip Steam"),
+    )
+    .unwrap();
+    assert_eq!(check.adds, 1);
+    assert!(check.blocked_reason.is_none());
+    backup::restore_game_backup_with_detectors(
+        &sandbox.profile(),
+        &sandbox.backups(),
+        || Ok(false),
+        || panic!("manual profile must skip Steam"),
+    )
+    .unwrap();
+}
+
+#[test]
+fn untouched_game_fixture_excludes_transient_snapshots() {
+    for steam_running in [false, true] {
+        let sandbox = Sandbox::steam();
+        let before = tree(&sandbox.profile());
+        let check = backup::check_restore_with_detectors(
+            None,
+            &sandbox.profile(),
+            || Ok(false),
+            || Ok(steam_running),
+        )
+        .unwrap();
+        assert_eq!((check.adds, check.removes), (0, 0));
+        assert!(check.blocked_reason.is_none());
+        backup::restore_game_backup_with_detectors(
+            &sandbox.profile(),
+            &sandbox.backups(),
+            || Ok(false),
+            || Ok(steam_running),
+        )
+        .unwrap();
+        assert_eq!(
+            tree(&sandbox.profile()).keys().collect::<Vec<_>>(),
+            before.keys().collect::<Vec<_>>()
+        );
+        for name in [
+            "persist.raid.json",
+            "persist.map.json",
+            "persist.loading_screen.json",
+        ] {
+            assert!(!sandbox.profile().join(name).exists());
+        }
+    }
+}
+
+#[test]
+fn unfiltered_game_fixture_requires_steam_stopped_when_restored_as_legacy_snapshot() {
+    for steam_running in [false, true] {
+        let sandbox = Sandbox::steam();
+        let snapshot = sandbox.0.join("profile_0__legacy");
+        copy_tree(&sandbox.profile().join("backup"), &snapshot);
+        let before = tree(&sandbox.profile());
+        let result = backup::restore_backup_with_detectors(
+            &snapshot,
+            &sandbox.profile(),
+            &sandbox.backups(),
+            || Ok(false),
+            || Ok(steam_running),
+        );
+        if steam_running {
+            assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+            assert_eq!(tree(&sandbox.profile()), before);
+            assert!(!sandbox.backups().exists());
+        } else {
+            result.unwrap();
+            assert!(sandbox
+                .profile()
+                .join("persist.loading_screen.json")
+                .exists());
+        }
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn steam_guard_uses_canonical_destination_through_manual_alias() {
+    let sandbox = Sandbox::steam();
+    let alias = sandbox.0.join("manual-profile");
+    std::os::unix::fs::symlink(sandbox.profile(), &alias).unwrap();
+    fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+    let before = tree(&sandbox.profile());
+    let check =
+        backup::check_restore_with_detectors(None, &alias, || Ok(false), || Ok(true)).unwrap();
+    assert_eq!(check.adds, 1);
+    assert!(check.blocked_reason.is_some());
+    assert_eq!(tree(&sandbox.profile()), before);
+    assert!(!sandbox.backups().exists());
+}
+
+#[test]
+fn preflight_validates_transaction_targets_before_safety_backup() {
+    for game_backup in [false, true] {
+        let sandbox = Sandbox::steam();
+        let snapshot =
+            backup::create_backup_at(&sandbox.profile(), &sandbox.0.join("source")).unwrap();
+        fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+        fs::create_dir(sandbox.profile().join("persist.roster.json")).unwrap();
+        let before = tree(&sandbox.profile());
+        let selected = if game_backup {
+            None
+        } else {
+            Some(snapshot.as_path())
+        };
+        let error = backup::check_restore_with_detectors(
+            selected,
+            &sandbox.profile(),
+            || Ok(false),
+            || panic!("validation precedes Steam"),
+        )
+        .unwrap_err();
+        assert!(error.starts_with("Save target is not a file:"), "{error}");
+        let result = if game_backup {
+            backup::restore_game_backup_with_detectors(
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || panic!("validation precedes Steam"),
+            )
+        } else {
+            backup::restore_backup_with_detectors(
+                &snapshot,
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || panic!("validation precedes Steam"),
+            )
+        };
+        assert_eq!(result.unwrap_err(), error);
+        assert_eq!(tree(&sandbox.profile()), before);
+        assert!(!sandbox.backups().exists());
+    }
 }

@@ -213,13 +213,19 @@ fn is_steam_process(name: &str) -> bool {
     )
 }
 
-pub(crate) fn ensure_steam_stopped(
-    detector: impl FnOnce() -> Result<bool, String>,
-) -> Result<(), String> {
-    if detector()? {
-        return Err("Quit Steam completely before restoring this backup. It adds or removes save files, and the running Steam client would keep stale file sizes, which stops the game from loading the campaign. Overwrite-only restores and normal saves are not affected.".into());
-    }
-    Ok(())
+/// The canonical DD1 Steam layout, also used by save-location discovery.
+/// This identifies storage ownership, not whether Cloud sync is enabled.
+pub(crate) fn is_steam_profile(canonical: &Path) -> bool {
+    let parts: Vec<_> = canonical.components().collect();
+    parts.windows(5).any(|parts| {
+        parts[0].as_os_str() == "userdata"
+            && parts[1]
+                .as_os_str()
+                .to_str()
+                .is_some_and(|id| !id.is_empty() && id.bytes().all(|c| c.is_ascii_digit()))
+            && parts[2].as_os_str() == DD1_APP_ID.to_string().as_str()
+            && parts[3].as_os_str() == "remote"
+    })
 }
 
 /// Validate that a user-chosen directory looks like a valid DD1 save profile.
@@ -636,11 +642,31 @@ mod tests {
 #[cfg(test)]
 mod process_name_tests {
     #[test]
+    fn steam_profile_layout_requires_numeric_account_and_remote_descendant() {
+        for path in [
+            "/Steam/userdata/123/262060/remote/profile_0",
+            "/x/userdata/0/262060/remote/nested/profile_0",
+        ] {
+            assert!(super::is_steam_profile(std::path::Path::new(path)));
+        }
+        for path in [
+            "/saves/profile_0",
+            "/Steam/userdata/abc/262060/remote/profile_0",
+            "/Steam/userdata/123/42/remote/profile_0",
+            "/Steam/userdata/123/262060/local/profile_0",
+            "/Steam/userdata/123/262060/remote",
+        ] {
+            assert!(!super::is_steam_profile(std::path::Path::new(path)));
+        }
+    }
+
+    #[test]
     fn matches_only_main_steam_clients() {
-        for name in ["steam_osx", "STEAM.EXE", "steam"] {
+        for name in ["steam_osx", "Steam_OSX", "STEAM.EXE", "steam"] {
             assert!(super::is_steam_process(name), "{name}");
         }
         for name in [
+            "steam.sh",
             "steamwebhelper",
             "steamservice.exe",
             "steam-helper",
