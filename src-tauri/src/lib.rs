@@ -1,5 +1,4 @@
 mod commands;
-mod migration;
 
 pub use commands::{backup, save};
 
@@ -37,7 +36,6 @@ pub fn run() {
                 .build(),
         )
         .manage(NameTableState::default())
-        .manage(migration::MigrationNotice::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -46,8 +44,6 @@ pub fn run() {
                         .build(),
                 )?;
             }
-
-            migration::migrate_legacy_data(app.handle());
 
             // Optional startup window mode for test runs:
             // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.
@@ -74,7 +70,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            migration::take_migration_notice,
             commands::names::set_name_table,
             commands::save::load_profile,
             commands::save::save_profile,

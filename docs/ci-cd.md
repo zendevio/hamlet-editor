@@ -51,19 +51,15 @@ These names follow the pinned action's documented placeholders and architecture 
 
 GitHub shows SHA-256 digests for release assets. Build provenance attestations are not configured for 1.0.0; do not claim attestation verification is available.
 
-## Existing pre-release data
+## Application data
 
-The application identifier is now `io.github.zendevio.hamlet-editor`.
-
-Before the first window opens, startup copies `settings.json` from the legacy `com.hamlet-editor.app` app data directory and `backups/` from its local data directory, only if neither resource exists in the new locations. It never moves originals or overwrites existing data, rejects symlinks, and displays failures as a persistent startup toast. Both resources are staged before publication; interrupted copies are cleaned and retried on the next start. An import journal lets startup finish an interruption between the two publications. Successful migration makes later starts a no-op. Webview data is not copied, so the light/dark theme choice resets once. The copy runs before window creation so settings are ready for the frontend. It compares staged file sizes and directory entries with the legacy sources before publication and recopies mismatches. It uses no per-file fsync, syncs the journal, and syncs target directories on a best-effort basis, since the originals remain intact.
+The application identifier for the first public release is `io.github.zendevio.hamlet-editor`.
 
 | OS | Settings and backups |
 | --- | --- |
 | macOS | `~/Library/Application Support/io.github.zendevio.hamlet-editor/` |
 | Windows | Settings: `%APPDATA%\io.github.zendevio.hamlet-editor\settings.json`; backups: `%LOCALAPPDATA%\io.github.zendevio.hamlet-editor\backups\` |
 | Linux | `${XDG_DATA_HOME:-~/.local/share}/io.github.zendevio.hamlet-editor/` |
-
-If migration fails, the toast gives the cause and the legacy files remain intact. Quit the editor, resolve the cause and restart to retry. Publication retries permission-denied errors briefly. If new settings or backups were created by normal use after a failed import, recovery discards only the conflicting staged copy, preserves current data, publishes the remaining resource and clears the journal. A one-time notice names the legacy path for manual recovery without overwriting current files. Settings publication cannot replace an existing file.
 
 ## Caching and local builds
 

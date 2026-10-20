@@ -18,14 +18,23 @@ TEXTS = Path(__file__).resolve().parent / 'license-texts'
 # 0.37.0 (MPL-2.0), unicode-ident 1.0.27 (Unicode-3.0), tinyvec 1.13.3
 # (Zlib), @fontsource-variable/jetbrains-mono 5.3.0 (OFL-1.1).
 PREFIXES = ('license', 'licence', 'copying', 'copyright', 'notice', 'unlicense')
+# License names can contain dots that are not file extensions (LICENSE.MIT,
+# LICENSE-APACHE-2.0). Exclude code and SPDX metadata, not unknown suffixes.
+NON_NOTICE_SUFFIXES = {
+    '.rs', '.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx',
+    '.svelte', '.vue', '.py', '.c', '.h', '.cc', '.cpp', '.hpp', '.go',
+    '.json', '.toml', '.yaml', '.yml', '.css', '.scss', '.map', '.spdx',
+    '.svg', '.png', '.jpg', '.woff', '.woff2', '.ttf', '.wasm',
+}
+EXCLUDED_DIRECTORIES = {'node_modules', 'target', '.git', 'vendor', 'test', 'tests'}
 
 
 def notices(directory):
     return [p for p in sorted(directory.rglob('*'))
             if p.is_file() and not p.is_symlink()
             and p.name.lower().startswith(PREFIXES)
-            and p.suffix.lower() in ('', '.md', '.txt', '.rst', '.html')
-            and not any(part in ('node_modules', 'target', '.git', 'vendor', 'test', 'tests', 'src') for part in p.relative_to(directory).parts)]
+            and p.suffix.lower() not in NON_NOTICE_SUFFIXES
+            and not any(part.lower() in EXCLUDED_DIRECTORIES for part in p.relative_to(directory).parts[:-1])]
 
 
 def generate():
