@@ -106,7 +106,7 @@
 			<SelectContent>
 				{#each Array(7) as _, i}
 					<SelectItem value={String(i)}>
-						Lv {i} — {RESOLVE_LEVEL_NAMES[i]}
+						Lv {i} · {RESOLVE_LEVEL_NAMES[i]}
 					</SelectItem>
 				{/each}
 			</SelectContent>

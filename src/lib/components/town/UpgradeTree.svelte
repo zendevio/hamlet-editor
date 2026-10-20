@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { Switch } from '#lib/components/ui/switch/index.js';
-	import {
-		Tooltip,
-		TooltipContent,
-		TooltipTrigger
-	} from '#lib/components/ui/tooltip/index.js';
-	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
+	import { toast } from 'svelte-sonner';
 	import { snakeToTitle, stripDsonPrefix } from '#lib/utils.js';
 	import {
 		type BuildingUpgradeGroup,
@@ -37,20 +32,25 @@
 		return map;
 	});
 
-	function hasCascadeRisk(purchase: UpgradePurchase): boolean {
-		if (!purchase.is_purchased) return false;
+	/** Purchased tiers above this one, which the store turns off together with it. */
+	function higherPurchased(purchase: UpgradePurchase): UpgradePurchase[] {
 		const treeId = stripDsonPrefix(purchase.tree_id);
 		const dotIndex = treeId.indexOf('.');
 		const key = dotIndex >= 0 ? treeId.substring(dotIndex + 1) : treeId;
-		const siblings = upgradesByKey[key] ?? [];
-		// Check if any higher-tier upgrade is purchased
-		return siblings.some(
+		return (upgradesByKey[key] ?? []).filter(
 			(s) => s.requirement_code > purchase.requirement_code && s.is_purchased
 		);
 	}
 
 	function handleToggle(purchase: UpgradePurchase) {
+		const cascaded = purchase.is_purchased ? higherPurchased(purchase) : [];
 		toggleUpgrade(purchase);
+		// Only report the cascade when the store actually applied it.
+		if (cascaded.length > 0 && cascaded.every((s) => !s.is_purchased)) {
+			toast.info(
+				`Also turned off ${cascaded.length === 1 ? 'tier' : 'tiers'} ${cascaded.map((s) => s.requirement_code).join(', ')}, which need tier ${purchase.requirement_code}.`
+			);
+		}
 	}
 </script>
 
@@ -71,19 +71,6 @@
 						<span class="text-xs text-muted-foreground">
 							Tier {purchase.requirement_code}
 						</span>
-						{#if purchase.is_purchased && hasCascadeRisk(purchase)}
-							<Tooltip>
-								<TooltipTrigger>
-									<WarningIcon size={14} class="text-amber-500" />
-								</TooltipTrigger>
-								<TooltipContent>
-									<p class="max-w-xs text-xs">
-										Reverting this upgrade will also revert all higher-tier upgrades
-										in the same tree to maintain consistency.
-									</p>
-								</TooltipContent>
-							</Tooltip>
-						{/if}
 					</div>
 				{/each}
 			</div>

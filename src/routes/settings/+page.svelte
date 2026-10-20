@@ -706,7 +706,7 @@
 												{formatTimestamp(backup.timestamp)}
 											</p>
 											<p class="text-[11px] text-muted-foreground">
-												{backup.file_count} file{backup.file_count !== 1 ? 's' : ''} — {backup.profile_id}
+												{backup.file_count} file{backup.file_count !== 1 ? 's' : ''} · {backup.profile_id}
 											</p>
 										</div>
 									</div>
@@ -828,7 +828,7 @@
 				<div class="border border-border bg-muted/30 p-3">
 					<p class="text-xs font-medium">{formatTimestamp(restoreTarget.timestamp)}</p>
 					<p class="text-[11px] text-muted-foreground">
-						{restoreTarget.file_count} file{restoreTarget.file_count !== 1 ? 's' : ''} — {restoreTarget.profile_id}
+						{restoreTarget.file_count} file{restoreTarget.file_count !== 1 ? 's' : ''} · {restoreTarget.profile_id}
 					</p>
 				</div>
 
