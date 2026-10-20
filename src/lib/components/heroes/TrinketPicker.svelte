@@ -56,11 +56,13 @@
 	let {
 		value = '',
 		heroClass = '',
+		disabled = false,
 		placeholder = 'Select trinket...',
 		onselect
 	}: {
 		value?: string;
 		heroClass?: string;
+		disabled?: boolean;
 		placeholder?: string;
 		onselect?: (trinketId: string, source: TrinketSource) => void;
 	} = $props();
@@ -90,12 +92,12 @@
 
 	function handleSelect(id: string, source: TrinketSource) {
 		open = false;
-		onselect?.(id, source);
+		if (!disabled) onselect?.(id, source);
 	}
 </script>
 
 <Popover bind:open>
-	<PopoverTrigger>
+	<PopoverTrigger {disabled}>
 		{#snippet child({ props })}
 			<Button
 				variant="outline"
@@ -103,6 +105,7 @@
 				aria-expanded={open}
 				class="h-8 w-full justify-between text-xs font-normal"
 				{...props}
+				{disabled}
 			>
 				<span class="truncate {value ? '' : 'text-muted-foreground'}">
 					{value ? trinketDisplayName(value) : placeholder}

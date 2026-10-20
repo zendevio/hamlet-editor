@@ -12,12 +12,12 @@
 	import HeartIcon from 'phosphor-svelte/lib/HeartIcon';
 	import BrainIcon from 'phosphor-svelte/lib/BrainIcon';
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
+	import RevivalWizard from './RevivalWizard.svelte';
 	import type { HeroSummary } from '#lib/stores/save-data.svelte.js';
 	import {
 		healHeroToMax,
 		setHeroStress,
 		setHeroLevel,
-		getRevivalBlockReason,
 		RESOLVE_LEVEL_NAMES
 	} from '#lib/stores/save-data.svelte.js';
 
@@ -28,6 +28,8 @@
 		selectedHeroes: HeroSummary[];
 		totalCount: number;
 	} = $props();
+
+	let revivalOpen = $state(false);
 
 	let allDead = $derived(
 		selectedHeroes.length > 0 && selectedHeroes.every((h) => h.status === 3)
@@ -118,14 +120,16 @@
 						variant="outline"
 						size="sm"
 						class="h-7 gap-1.5 text-[11px]"
-						disabled
+						onclick={() => (revivalOpen = true)}
 					>
 						<HeartIcon size={12} class="text-green-500" />
 						Revive
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent>{getRevivalBlockReason()}</TooltipContent>
+				<TooltipContent>Review town revival and roster capacity</TooltipContent>
 			</Tooltip>
 		{/if}
 	{/if}
 </div>
+
+<RevivalWizard heroes={selectedHeroes} bind:open={revivalOpen} />

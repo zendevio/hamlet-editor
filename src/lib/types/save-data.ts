@@ -72,6 +72,7 @@ export interface RaidData {
 		inbattle: boolean;
 		stat_database: Record<string, unknown>;
 		raid_finish_quirk_monster_class_ids: unknown[];
+		loot?: Record<string, unknown>;
 		party: RaidParty;
 	};
 }
@@ -88,6 +89,9 @@ export interface HeroQuirk {
 }
 
 export interface HeroActor {
+	performing_turn: number;
+	check_round_ranks: number;
+	rounds_in_ranks: number;
 	name: string;
 	current_hp: number;
 	colour_variation: number;

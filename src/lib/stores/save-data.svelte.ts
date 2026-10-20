@@ -11,7 +11,7 @@ import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 import { updateWallet, updateEstateItem } from '#lib/estate.js';
 import { updateTorchlight, updateHungerBuffer, updateRaidAmount, abandonRaidData, abandonRaidBlockReason } from '#lib/raid.js';
 import { updateDistrict } from '#lib/districts.js';
-import { canPickQuirk, changeCurseState, dismissBlockReason, equippedTrinkets, revivalBlockReason } from '#lib/hero-safety.js';
+import { canPickQuirk, changeCurseState, dismissBlockReason, equippedTrinkets, revivalBlockReason, rosterCapacity, clearHeroCombatState } from '#lib/hero-safety.js';
 import { ensureNameTable } from '#lib/api/names.js';
 import { loadProfile } from '#lib/api/save.js';
 import { readTreatmentSlots, clearTreatmentSlot } from '#lib/treatment.js';
@@ -107,9 +107,6 @@ let town = $state<TownData | null>(null);
 let upgrades = $state<UpgradesData | null>(null);
 let raid = $state<RaidData | null>(null);
 let game = $state<GameData | null>(null);
-// Read-only references from an inactive raid, never included in dirty data.
-let inactiveRaidHeroGuids = $state<readonly number[]>([]);
-let inactiveRaidError = $state<string | null>(null);
 let campaignLog = $state<Record<string, unknown> | null>(null);
 let progression = $state<Record<string, unknown> | null>(null);
 let gameInRaid = $state(false);
@@ -122,8 +119,6 @@ let loadedGamePath = $state('');
 let profileLoadSequence = 0;
 // Svelte 5 requires immutable replacement to trigger reactivity on Sets.
 let dirtyFiles = $state<Set<string>>(new Set());
-// Files to be deleted on next save (e.g. raid file after abandonRaid).
-let deletedFiles = $state<Set<string>>(new Set());
 // JSON snapshots of on-disk state, used for in-memory revert.
 let rosterSnapshot = $state<string | null>(null);
 let estateSnapshot = $state<string | null>(null);
@@ -288,12 +283,6 @@ export function getSaveData() {
 		get game() {
 			return game;
 		},
-		get inactiveRaidHeroGuids() {
-			return inactiveRaidHeroGuids;
-		},
-		get inactiveRaidError() {
-			return inactiveRaidError;
-		},
 		get campaignLog() {
 			return campaignLog;
 		},
@@ -354,7 +343,7 @@ export function markDirty(filename: SaveFileName) {
 
 /** Check if any files are dirty. */
 export function hasDirtyFiles(): boolean {
-	return dirtyFiles.size > 0 || deletedFiles.size > 0;
+	return dirtyFiles.size > 0;
 }
 
 // ── Mutation Functions ──
@@ -462,7 +451,7 @@ export function setHeroStatus(guid: string, status: number) {
 	if (!raw) return;
 	const parsed = parseInteger(status, 0, 4);
 	if (parsed.error !== undefined || raw['roster.status'] === parsed.value) return;
-	// Status transitions for dead heroes require a verified multi-file revival.
+	// Death and revival use dedicated operations, never a generic status change.
 	if (raw['roster.status'] === 3 || parsed.value === 3) return;
 	raw['roster.status'] = parsed.value;
 	markDirty('persist.roster.json');
@@ -529,9 +518,37 @@ export function healHeroToMax(guid: string) {
 	markDirty('persist.roster.json');
 }
 
-/** Revival stays blocked until a complete dead-hero transition is verified. */
-export function getRevivalBlockReason(): string {
-	return revivalBlockReason(gameInRaid || !!game?.base_root.inraid || raid !== null);
+/** Use the installed rules and current purchases, including unsaved upgrade edits. */
+export function getRevivalBlockReason(count = 1): string | null {
+	const data = getGameData();
+	const rules = loadedGamePath && data.rosterCapacityGamePath !== loadedGamePath ? null : data.rosterCapacityRules;
+	return revivalBlockReason(game, roster, rosterCapacity(game, upgrades, rules), count);
+}
+
+/** Validate the entire selection before applying a roster-only town revival. */
+export function reviveHeroes(guids: readonly string[]): string | null {
+	const unique = [...new Set(guids)];
+	if (!unique.length) return 'Select a dead hero to revive.';
+	const reason = getRevivalBlockReason(unique.length);
+	if (reason) return reason;
+	const heroes: HeroBaseRoot[] = [];
+	for (const guid of unique) {
+		const hero = getHeroRawData(guid);
+		if (!hero || hero['roster.status'] !== 3) return 'Only dead roster heroes can be revived.';
+		if (!hero.actor || !Number.isInteger(hero.armour_rank)) return 'This hero has incomplete actor or armour data. Reload the complete profile.';
+		heroes.push(hero);
+	}
+	const maxima = heroes.map((hero) => getMaxHp(hero.heroClass, hero.armour_rank));
+	if (maxima.some((hp) => !Number.isFinite(hp) || hp <= 0)) return 'The class maximum HP could not be determined.';
+	for (const [index, hero] of heroes.entries()) {
+		hero['roster.status'] = 0;
+		hero['roster.before_on_start_town_visit_status'] = 0;
+		hero.actor.current_hp = maxima[index];
+		clearHeroCombatState(hero);
+		hero.visited_deaths_door = false;
+	}
+	markDirty('persist.roster.json');
+	return null;
 }
 
 export function setHeroCurseState(guid: string, id: string) {
@@ -552,7 +569,7 @@ export function setEstateName(name: string) {
 }
 
 export function getDismissBlockReason(guid: string): string | null {
-	return dismissBlockReason(guid, { roster, estate, town, upgrades, game, raid, inactiveRaidHeroGuids, inactiveRaidError });
+	return dismissBlockReason(guid, { roster, estate, town, upgrades, game, raid });
 }
 
 /** Remove live roster/purchase references, preserving campaign and progression history. */
@@ -730,21 +747,14 @@ export function setDistrictBuilt(districtId: string, built: boolean) {
 	if (town && updateDistrict(town, districtId, built)) markDirty('persist.town.json');
 }
 
-/** Abandon regular raids; plot raids stay blocked pending a verified game transition. */
+/** Minimal town return for any active expedition, retaining its raid file. */
 export function abandonRaid(): string | null {
-	if (!game || !raid || !roster || !town) return 'Game, raid, roster and town data must be loaded before abandoning a raid.';
-	const reason = abandonRaidBlockReason(game);
+	const reason = abandonRaidBlockReason(game, raid, roster, estate);
 	if (reason) return reason;
-	for (const filename of abandonRaidData(game, raid, roster, town)) {
+	for (const filename of abandonRaidData(game!, raid!, roster!, estate)) {
 		markDirty(filename as SaveFileName);
 	}
-	raid = null;
 	gameInRaid = false;
-	// Preserve the snapshot until Save so Discard can restore the expedition.
-	deletedFiles = new Set([...deletedFiles, 'persist.raid.json']);
-	const remaining = new Set(dirtyFiles);
-	remaining.delete('persist.raid.json');
-	dirtyFiles = remaining;
 	return null;
 }
 
@@ -838,8 +848,6 @@ export async function loadProfileFromBackend(profilePath: string): Promise<void>
 		if (sequence !== profileLoadSequence) return;
 		const data = loaded.data;
 		nameTableVersion = loaded.name_table_version;
-		inactiveRaidHeroGuids = Object.freeze([...loaded.inactive_raid_hero_guids]);
-		inactiveRaidError = loaded.inactive_raid_error;
 
 		if (data['persist.roster.json']) {
 			loadRoster(data['persist.roster.json'] as RosterData);
@@ -902,7 +910,6 @@ export function revertHero(guid: string) {
 /** Clear all dirty flags and update snapshots to current state (call after successful save). */
 export function clearAllDirty() {
 	dirtyFiles = new Set();
-	deletedFiles = new Set();
 	if (roster) rosterSnapshot = JSON.stringify(roster);
 	if (estate) estateSnapshot = JSON.stringify(estate);
 	if (town) townSnapshot = JSON.stringify(town);
@@ -937,7 +944,6 @@ export function discardAllChanges() {
 	if (progressionSnapshot) progression = JSON.parse(progressionSnapshot) as Record<string, unknown>;
 	else progression = null;
 	dirtyFiles = new Set();
-	deletedFiles = new Set();
 }
 
 /**
@@ -970,9 +976,6 @@ export function getDirtyData(): Record<string, unknown> {
 	if (dirtyFiles.has('persist.progression.json') && progression) {
 		data['persist.progression.json'] = progression;
 	}
-	if (deletedFiles.size > 0) {
-		data['_deleted'] = [...deletedFiles];
-	}
 	return data;
 }
 
@@ -984,8 +987,6 @@ export function resetSaveData() {
 	upgrades = null;
 	raid = null;
 	game = null;
-	inactiveRaidHeroGuids = [];
-	inactiveRaidError = null;
 	campaignLog = null;
 	progression = null;
 	gameInRaid = false;
@@ -995,7 +996,6 @@ export function resetSaveData() {
 	loadedProfilePath = '';
 	loadedGamePath = '';
 	dirtyFiles = new Set();
-	deletedFiles = new Set();
 	rosterSnapshot = null;
 	estateSnapshot = null;
 	townSnapshot = null;

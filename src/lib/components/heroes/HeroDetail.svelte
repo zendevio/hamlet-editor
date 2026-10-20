@@ -896,6 +896,7 @@
 								<TrinketPicker
 									value={trinketSlot0?.id ?? ''}
 									heroClass={hero.heroClass}
+									disabled={isDead}
 									onselect={(id, source) => handleTrinketSelect('0', id, source)}
 								/>
 							</div>
@@ -912,10 +913,12 @@
 								<TrinketPicker
 									value={trinketSlot1?.id ?? ''}
 									heroClass={hero.heroClass}
+									disabled={isDead}
 									onselect={(id, source) => handleTrinketSelect('1', id, source)}
 								/>
 							</div>
 						</div>
+						{#if isDead}<p class="text-muted-foreground mt-1 text-[10px]">Revive this hero in town before changing trinkets.</p>{/if}
 					</div>
 			</div>
 		</div>
@@ -976,7 +979,7 @@
 							Revive Hero
 						</Button>
 						<p class="text-muted-foreground text-[10px]">
-							Shows revival availability and the current restrictions for this hero.
+							Revive in town when a roster slot is free. Skill upgrades lost at death are not restored.
 						</p>
 					{/if}
 
@@ -1047,8 +1050,5 @@
 
 <!-- Revival Wizard (rendered outside ScrollArea to avoid z-index issues) -->
 {#if isDead}
-	<RevivalWizard {hero} bind:open={revivalWizardOpen}
-		isRaidActive={saveData.gameInRaid || saveData.raid !== null}
-		raidPartySize={saveData.raid?.base_root.party.heroes.length ?? 0}
-		heroWasInParty={saveData.raid?.base_root.party.heroes.includes(Number(hero.guid)) ?? false} />
+	<RevivalWizard heroes={[hero]} bind:open={revivalWizardOpen} />
 {/if}

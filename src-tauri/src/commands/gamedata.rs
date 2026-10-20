@@ -40,6 +40,61 @@ pub struct TrinketDef {
 // Tauri commands
 // ---------------------------------------------------------------------------
 
+/// Read mode-specific roster limits and the Shieldbreaker DLC slot bonus.
+#[tauri::command]
+pub fn load_roster_capacity_rules(game_path: String) -> Result<serde_json::Value, String> {
+    let root = resolve_data_root(Path::new(&game_path));
+    read_roster_capacity_rules(&root)
+}
+
+fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> {
+    let relative = "campaign/town/buildings/stage_coach/stage_coach.building.json";
+    let read = |path: &Path| -> Result<serde_json::Value, String> {
+        serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())
+    };
+    let mut by_mode = serde_json::Map::new();
+    for mode in ["base", "radiant", "new_game_plus", "bloodmoon"] {
+        let overlay = root.join("modes").join(mode).join(relative);
+        let path = if mode != "base" && overlay.is_file() {
+            overlay
+        } else {
+            root.join(relative)
+        };
+        let building = read(&path)?;
+        let levels = building
+            .pointer("/data/stores")
+            .and_then(|v| v.as_array())
+            .and_then(|stores| stores.iter().find(|v| v["id"] == "hero_recruit"))
+            .and_then(|v| v.pointer("/data/roster_size_upgrades"))
+            .and_then(|v| v.as_array())
+            .filter(|levels| !levels.is_empty())
+            .ok_or("Missing Stage Coach roster capacity data")?;
+        for level in levels {
+            if !level["amount"]
+                .as_i64()
+                .is_some_and(|n| n > 0 && n <= i32::MAX as i64)
+                || (level.get("upgrade_tree_id").is_some()
+                    && (level["upgrade_tree_id"] != "stage_coach.rostersize"
+                        || level["upgrade_requirement_code"].as_str().is_none()))
+            {
+                return Err("Unsupported Stage Coach roster capacity data".into());
+            }
+        }
+        by_mode.insert(mode.into(), levels.clone().into());
+    }
+    let bonus = read(&root.join(
+        "dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json",
+    ))
+    .ok()
+    .and_then(|v| {
+        v.pointer("/additional/roster_size")
+            .and_then(|n| n.as_i64())
+    })
+    .filter(|n| *n >= 0 && *n <= i32::MAX as i64);
+    Ok(serde_json::json!({ "by_mode": by_mode, "shieldbreaker_bonus": bonus }))
+}
+
 /// Load all quirk definitions from the game's quirk library JSON files.
 ///
 /// Reads the base quirk library plus any DLC quirk libraries found in the
@@ -427,4 +482,54 @@ fn read_json(path: &Path) -> serde_json::Value {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or(serde_json::Value::Null)
+}
+
+#[cfg(test)]
+mod roster_capacity_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn capacity_reads_mode_overrides_and_dlc_bonus_and_rejects_missing_rules() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-roster-rules-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let write = |relative: &str, value: serde_json::Value| {
+            let path = root.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, serde_json::to_vec(&value).unwrap()).unwrap();
+        };
+        let building = |amount| json!({"data":{"stores":[{"id":"hero_recruit","data":{"roster_size_upgrades":[{"amount":9},{"amount":amount,"upgrade_tree_id":"stage_coach.rostersize","upgrade_requirement_code":"e"}]}}]}});
+        write(
+            "campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(28),
+        );
+        write(
+            "modes/radiant/campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(30),
+        );
+        write("dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json", json!({"additional":{"roster_size":1}}));
+        let rules = read_roster_capacity_rules(&root).unwrap();
+        assert_eq!(rules["by_mode"]["base"][1]["amount"], 28);
+        assert_eq!(rules["by_mode"]["radiant"][1]["amount"], 30);
+        assert_eq!(rules["by_mode"]["new_game_plus"][1]["amount"], 28);
+        assert_eq!(rules["shieldbreaker_bonus"], 1);
+        std::fs::remove_file(root.join("dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json")).unwrap();
+        assert!(read_roster_capacity_rules(&root).unwrap()["shieldbreaker_bonus"].is_null());
+        write(
+            "campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(-1),
+        );
+        assert_eq!(
+            read_roster_capacity_rules(&root).unwrap_err(),
+            "Unsupported Stage Coach roster capacity data"
+        );
+        std::fs::remove_dir_all(&root).unwrap();
+        assert!(read_roster_capacity_rules(&root).is_err());
+    }
 }

@@ -101,7 +101,7 @@
 				break;
 			case 'status':
 			default: {
-				// Status priority: Available(0), Squad(1), Staffed(2), Gone(4), Dead(3)
+				// Status priority: Available(0), In party(1), In Treatment(2), Missing(4), Dead(3)
 				const statusOrder: Record<number, number> = { 0: 0, 1: 1, 2: 2, 4: 3, 3: 4 };
 				sorted.sort(
 					(a, b) =>

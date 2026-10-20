@@ -23,9 +23,15 @@ wizard's save-folder step tell users to:
 
 ### Mid-Raid Editing
 Allowed, but with prominent warnings:
-- Mid-raid edits: hero revival normally requires 3 files (roster + campaign_log + progression), plus persist.raid.json if mid-dungeon (4 files total)
+- Revival is town-only and changes the roster alone: alive status, full class HP, cleared combat state. Death history is retained and lost skill purchases are not recreated. Installed mode-specific Stage Coach capacity, current upgrades and the Shieldbreaker DLC slot bonus determine the living roster limit. Unknown capacity blocks revival.
 - Incorrect edits during a raid are more likely to corrupt the save
 - Editor should validate cross-file consistency for raid edits
+
+### Expedition Return and Hero Status
+
+Editor abandon is a minimal town return for every active raid, including plot and Courtyard raids. It preserves the raid path and file, clears survivor combat state, retains dead heroes, and returns party inventory trinkets. Supplies and loot are lost. It does not advance the week or reproduce quest, campaign log or quirk processing; the dialog recommends the game's "Regroup in the Hamlet!". Revival and editor abandon await in-game verification in checklist scenarios 11 and 12.
+
+Status 1 means "In party" and is valid in town after the game returns. Status 4 is labeled "Missing". Inactive raid files are ignored for dismissal. Dead heroes retain their graves and cannot be dismissed or have trinkets equipped/unequipped; the final living hero cannot be dismissed.
 
 ### Save Validation
 Round-trip integrity check after editing: encode → decode → compare at the **semantic/JSON level** (not byte-for-byte binary, because bits 1 and 31 of fieldInfo are intentionally stripped during re-encoding). Catches encoding errors before the user loads the save in-game.

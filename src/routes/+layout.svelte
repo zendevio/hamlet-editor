@@ -66,7 +66,7 @@
 		getHeroes,
 		CLASS_DISPLAY_NAMES
 	} from '#lib/stores/save-data.svelte.js';
-	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills } from '#lib/stores/game-data.svelte.js';
+	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills, setRosterCapacityRules } from '#lib/stores/game-data.svelte.js';
 	import {
 		Select,
 		SelectContent,
@@ -77,7 +77,7 @@
 	import { saveProfile } from '#lib/api/save.js';
 	import { createBackup } from '#lib/api/backup.js';
 	import { ensureNameTable, loadLocalization } from '#lib/api/names.js';
-	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills } from '#lib/api/gamedata.js';
+	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills, loadRosterCapacityRules } from '#lib/api/gamedata.js';
 	import { scanModDirectories } from '#lib/api/mods.js';
 	import { runPreSaveValidation, type ValidationIssue } from '#lib/validation.js';
 
@@ -142,16 +142,18 @@
 		setNameTable(locData);
 
 		// 3. Load quirk, trinket, class stats, and class skills definitions from game files.
-		const [quirkDefs, trinketDefs, statsDefs, skillsDefs] = await Promise.all([
+		const [quirkDefs, trinketDefs, statsDefs, skillsDefs, capacityRules] = await Promise.all([
 			loadQuirkLibrary(gamePath),
 			loadTrinketLibrary(gamePath),
 			loadClassStats(gamePath),
-			loadClassSkills(gamePath)
+			loadClassSkills(gamePath),
+			loadRosterCapacityRules(gamePath)
 		]);
 		setQuirks(quirkDefs);
 		setTrinkets(trinketDefs);
 		setClassStats(statsDefs);
 		setClassSkills(skillsDefs);
+		setRosterCapacityRules(capacityRules, gamePath);
 
 		// 4. Scan mod directories and surface the count.
 		const mods = await scanModDirectories(gamePath);

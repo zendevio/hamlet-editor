@@ -149,45 +149,6 @@ pub(crate) fn raid_relative_path(game: &serde_json::Value) -> Result<PathBuf, St
     Ok(folder.join("persist.raid.json"))
 }
 
-/// Inactive raids remain on disk after a town visit. Return only hero references,
-/// without granting the frontend write access to the inactive raid file.
-fn inactive_raid_hero_guids(value: &serde_json::Value) -> BTreeSet<i64> {
-    fn visit(value: &serde_json::Value, guids: &mut BTreeSet<i64>) {
-        match value {
-            serde_json::Value::Object(map) => {
-                for (key, value) in map {
-                    if key == "hero_guid" || key.ends_with("_hero_guid") {
-                        if let Some(guid) = value.as_i64().filter(|guid| *guid > 0) {
-                            guids.insert(guid);
-                        }
-                    }
-                    visit(value, guids);
-                }
-            }
-            serde_json::Value::Array(values) => {
-                for value in values {
-                    visit(value, guids);
-                }
-            }
-            _ => {}
-        }
-    }
-    let mut guids = BTreeSet::new();
-    if let Some(party) = value
-        .pointer("/base_root/party/heroes")
-        .and_then(|v| v.as_array())
-    {
-        guids.extend(
-            party
-                .iter()
-                .filter_map(|v| v.as_i64())
-                .filter(|guid| *guid > 0),
-        );
-    }
-    visit(value, &mut guids);
-    guids
-}
-
 #[tauri::command]
 pub fn load_profile(
     profile_path: String,
@@ -236,15 +197,13 @@ pub fn load_profile_with_table(
         )?;
     }
     let game = result.get("persist.game.json").cloned().unwrap_or_default();
-    let raid_path = raid_relative_path(&game)?;
     let active = game
         .pointer("/base_root/inraid")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let mut inactive_guids = BTreeSet::new();
-    let mut inactive_error = None;
-    if dir.join(&raid_path).is_file() {
-        if active {
+    if active {
+        let raid_path = raid_relative_path(&game)?;
+        if dir.join(&raid_path).is_file() {
             load_one(
                 dir,
                 "persist.raid.json",
@@ -253,16 +212,6 @@ pub fn load_profile_with_table(
                 &mut result,
                 &mut snapshots,
             )?;
-        } else {
-            match decode_save_file(dir.join(&raid_path).to_string_lossy().into_owned()) {
-                Ok(raid) => inactive_guids = inactive_raid_hero_guids(&raid),
-                Err(error) => {
-                    inactive_error = Some(format!(
-                        "Failed to read inactive raid {}: {error}",
-                        raid_path.display()
-                    ));
-                }
-            }
         }
     }
     if profile_fingerprint(dir)? != fingerprint {
@@ -274,10 +223,7 @@ pub fn load_profile_with_table(
             .map_err(|e| format!("Invalid profile path: {e}"))?,
     );
     table.loaded_files = snapshots;
-    Ok(
-        serde_json::json!({ "data": result, "name_table_version": table.version,
-        "inactive_raid_hero_guids": inactive_guids, "inactive_raid_error": inactive_error }),
-    )
+    Ok(serde_json::json!({ "data": result, "name_table_version": table.version }))
 }
 
 fn load_one(
@@ -398,30 +344,10 @@ pub fn save_profile_with_detector(
         }
         Ok(PathBuf::from(name))
     };
-    let mut deletes = BTreeSet::new();
-    let mut deleted_names = Vec::new();
-    if let Some(deleted) = obj.get("_deleted") {
-        for value in deleted.as_array().ok_or("_deleted must be an array")? {
-            let name = value.as_str().ok_or("_deleted entries must be strings")?;
-            if name != "persist.raid.json" {
-                return Err(format!(
-                    "Deleting {name} is not allowed; only persist.raid.json can be deleted."
-                ));
-            }
-            if obj.contains_key(name) {
-                return Err(format!("Cannot write and delete {name} in the same save."));
-            }
-            deletes.insert(relative_for(name)?);
-            deleted_names.push(name.to_owned());
-        }
-    }
     let mut writes = BTreeMap::new();
     let mut updated = HashMap::new();
     // Validate and encode every file in memory before creating any temp files.
     for (name, value) in obj {
-        if name == "_deleted" {
-            continue;
-        }
         let relative_path = relative_for(name)?;
         let file = if let Some(original) = table.loaded_files.get(name) {
             original.file.merge_json_value(value)
@@ -449,17 +375,11 @@ pub fn save_profile_with_detector(
     }
     // Derive the new fingerprint from the verified snapshot and our exact writes.
     let mut fingerprint = table.loaded_fingerprint.clone();
-    for path in &deletes {
-        fingerprint.remove(path);
-    }
     for (path, bytes) in &writes {
         fingerprint.insert(path.clone(), Sha256::digest(bytes).into());
     }
-    super::transaction::apply_changes(&canonical, &writes, &deletes)?;
+    super::transaction::apply_changes(&canonical, &writes, &BTreeSet::new())?;
     table.loaded_fingerprint = fingerprint;
-    for name in deleted_names {
-        table.loaded_files.remove(&name);
-    }
     table.loaded_files.extend(updated);
     Ok(())
 }

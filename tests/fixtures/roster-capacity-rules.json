@@ -1,0 +1,125 @@
+{
+  "by_mode": {
+    "base": [
+      {
+        "amount": 9
+      },
+      {
+        "amount": 12,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "a"
+      },
+      {
+        "amount": 16,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "b"
+      },
+      {
+        "amount": 20,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "c"
+      },
+      {
+        "amount": 24,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "d"
+      },
+      {
+        "amount": 28,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "e"
+      }
+    ],
+    "radiant": [
+      {
+        "amount": 9
+      },
+      {
+        "amount": 12,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "a"
+      },
+      {
+        "amount": 16,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "b"
+      },
+      {
+        "amount": 21,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "c"
+      },
+      {
+        "amount": 25,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "d"
+      },
+      {
+        "amount": 30,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "e"
+      }
+    ],
+    "new_game_plus": [
+      {
+        "amount": 9
+      },
+      {
+        "amount": 12,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "a"
+      },
+      {
+        "amount": 16,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "b"
+      },
+      {
+        "amount": 20,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "c"
+      },
+      {
+        "amount": 24,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "d"
+      },
+      {
+        "amount": 28,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "e"
+      }
+    ],
+    "bloodmoon": [
+      {
+        "amount": 9
+      },
+      {
+        "amount": 12,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "a"
+      },
+      {
+        "amount": 16,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "b"
+      },
+      {
+        "amount": 20,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "c"
+      },
+      {
+        "amount": 24,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "d"
+      },
+      {
+        "amount": 28,
+        "upgrade_tree_id": "stage_coach.rostersize",
+        "upgrade_requirement_code": "e"
+      }
+    ]
+  },
+  "shieldbreaker_bonus": 1
+}

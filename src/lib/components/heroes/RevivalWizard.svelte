@@ -1,32 +1,33 @@
 <script lang="ts">
 	import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '#lib/components/ui/dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
-	import { revivalBlockReason } from '#lib/hero-safety.js';
+	import { getRevivalBlockReason, reviveHeroes } from '#lib/stores/save-data.svelte.js';
+	import { toast } from 'svelte-sonner';
 	import type { HeroSummary } from '#lib/types/save-data.js';
 
-	let { hero, open = $bindable(false), isRaidActive = false, raidPartySize = 0, heroWasInParty = false }: {
-		hero: HeroSummary;
-		open: boolean;
-		isRaidActive?: boolean;
-		raidPartySize?: number;
-		heroWasInParty?: boolean;
-	} = $props();
+	let { heroes, open = $bindable(false) }: { heroes: HeroSummary[]; open: boolean } = $props();
+	let reason = $derived(getRevivalBlockReason(heroes.length));
+
+	function revive() {
+		const error = reviveHeroes(heroes.map((hero) => hero.guid));
+		if (error) { toast.error(error); return; }
+		open = false;
+		toast.success('Revival applied', { description: 'Save to apply changes, or Discard to undo.' });
+	}
 </script>
 
 <Dialog bind:open>
 	<DialogContent class="sm:max-w-lg">
 		<DialogHeader>
-			<DialogTitle>Revive {hero.name}</DialogTitle>
-			<DialogDescription>{revivalBlockReason(isRaidActive)}</DialogDescription>
+			<DialogTitle>Revive {heroes.length === 1 ? heroes[0].name : `${heroes.length} heroes`}</DialogTitle>
+			<DialogDescription>
+				Return to the living roster with full class HP and cleared combat effects. Stress, quirks, skills and campaign history are retained. Skill upgrades lost at death are not restored.
+			</DialogDescription>
 		</DialogHeader>
-		{#if isRaidActive}
-			<p class="text-sm text-muted-foreground">
-				Current party: {raidPartySize}/4. {heroWasInParty ? 'This hero is referenced by the raid party.' : 'This hero is outside the raid party.'}
-			</p>
-		{/if}
+		{#if reason}<p class="text-sm text-muted-foreground">{reason}</p>{/if}
 		<DialogFooter>
-			<Button variant="outline" onclick={() => (open = false)}>Close</Button>
-			<Button disabled>Revival unavailable</Button>
+			<Button variant="outline" onclick={() => (open = false)}>Cancel</Button>
+			<Button disabled={!!reason} onclick={revive}>Revive</Button>
 		</DialogFooter>
 	</DialogContent>
 </Dialog>

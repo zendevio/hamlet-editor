@@ -9,7 +9,7 @@ export function canEquipTrinket(id: string, heroClass: string, definitions: read
 	return !restriction || restriction === heroClass;
 }
 
-function storageItems(estate: EstateData | null): Record<string, unknown> | null {
+export function storageItems(estate: EstateData | null): Record<string, unknown> | null {
 	const items = estate?.base_root?.trinkets?.items;
 	if (!items || typeof items !== 'object' || Array.isArray(items)) return null;
 	if (Object.keys(items).some((key) => !/^(0|[1-9]\d*)$/.test(key) || Number(key) >= 2147483647)) return null;
@@ -47,6 +47,7 @@ export function equipTrinket(
 	definitions: readonly TrinketDef[] = []
 ): { changed: boolean; estateChanged: boolean; error?: string } {
 	const unchanged = { changed: false, estateChanged: false };
+	if (hero['roster.status'] === 3) return { ...unchanged, error: 'Trinkets cannot be equipped or unequipped on a dead hero. Revive them in town first.' };
 	const entries = equippedTrinkets(hero);
 	if (!entries) return { ...unchanged, error: 'This hero has unsupported trinket data.' };
 	const previous = hero.trinkets.items[slot] as TrinketEntry | undefined;

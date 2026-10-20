@@ -4,6 +4,19 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
+export interface RosterCapacityRules {
+	by_mode: Record<string, { amount: number; upgrade_requirement_code?: string }[]>;
+	shieldbreaker_bonus: number | null;
+}
+
+export async function loadRosterCapacityRules(gamePath: string): Promise<RosterCapacityRules | null> {
+	try {
+		return await invoke<RosterCapacityRules>('load_roster_capacity_rules', { gamePath });
+	} catch {
+		return null;
+	}
+}
+
 export interface ClassStats {
 	class_id: string;
 	hp_by_rank: number[];

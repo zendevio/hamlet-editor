@@ -23,6 +23,7 @@ const server = await createServer({
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const settings = await server.ssrLoadModule('/src/lib/stores/settings.svelte.ts');
+const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const { saveProfile } = await server.ssrLoadModule('/src/lib/api/save.ts');
 const { createSaveWorkflow, createUnsavedGuard, createProfileReload, profileSaveBlockReason } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -32,7 +33,7 @@ function deferred() {
 	return { promise, resolve };
 }
 function loaded(path) {
-	return { data: { 'persist.game.json': { base_root: { estatename: path, inraid: false, game_mode: 'radiant' } } }, name_table_version: 7, inactive_raid_hero_guids: [], inactive_raid_error: null };
+	return { data: { 'persist.game.json': { base_root: { estatename: path, inraid: false, game_mode: 'radiant' } } }, name_table_version: 7 };
 }
 
 test('startup waits for name generation AND publication; switches and restores use the same barrier', async () => {
@@ -121,7 +122,7 @@ test('save passes the version from the loaded profile to the backend guard', asy
 });
 
 
-test('inactive raid metadata blocks only referenced heroes and never becomes dirty save data', async () => {
+test('inactive raid references do not block town dismissal or become writable data', async () => {
     const fixture = JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'));
     settings.setGamePath('/fixtures/inactive-raid');
     invokeHandler = (command) => {
@@ -130,7 +131,7 @@ test('inactive raid metadata blocks only referenced heroes and never becomes dir
         if (command === 'load_profile') return {
             data: Object.fromEntries(Object.entries(structuredClone(fixture)).map(([key, value]) => [
                 `persist.${{ campaignLog: 'campaign_log' }[key] ?? key}.json`, value
-            ])), name_table_version: 7, inactive_raid_hero_guids: [1, 34, 48, 96], inactive_raid_error: null
+            ])), name_table_version: 7
         };
         throw new Error(`Unexpected command: ${command}`);
     };
@@ -139,45 +140,11 @@ test('inactive raid metadata blocks only referenced heroes and never becomes dir
     assert.equal(data.game.base_root.inraid, false);
     assert.ok(data.game.base_root.raid_save);
     assert.equal(data.raid, null);
-    const before = JSON.stringify(data.roster);
-    assert.match(store.dismissHero('96'), /saved inactive raid/);
-    assert.equal(JSON.stringify(data.roster), before);
-    assert.equal(store.hasDirtyFiles(), false);
+    assert.equal(store.dismissHero('96'), null);
     assert.equal(store.dismissHero('44'), null);
-    assert.deepEqual(data.inactiveRaidHeroGuids, [1, 34, 48, 96]);
     assert.equal(Object.hasOwn(store.getDirtyData(), 'persist.raid.json'), false);
     assert.equal(Object.hasOwn(store.getDirtyData(), 'inactive_raid_hero_guids'), false);
     store.resetSaveData();
-    assert.deepEqual(data.inactiveRaidHeroGuids, []);
-});
-
-test('unreadable inactive raid metadata blocks dismissal while unrelated edits remain available', async () => {
-	const fixture = JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'));
-	const error = 'Failed to read inactive raid persist.raid.json: Failed to decode DSON';
-	settings.setGamePath('/fixtures/unreadable-inactive-raid');
-	invokeHandler = (command) => {
-		if (command === 'generate_name_table') return ['abbey.meditation'];
-		if (command === 'set_name_table') return;
-		if (command === 'load_profile') return {
-			data: Object.fromEntries(Object.entries(structuredClone(fixture)).map(([key, value]) => [
-				`persist.${{ campaignLog: 'campaign_log' }[key] ?? key}.json`, value
-			])), name_table_version: 7, inactive_raid_hero_guids: [], inactive_raid_error: error
-		};
-		throw new Error(`Unexpected command: ${command}`);
-	};
-	await store.loadProfileFromBackend('/profiles/profile_0');
-	const data = store.getSaveData();
-	assert.equal(data.isLoaded, true);
-	assert.equal(data.inactiveRaidError, error);
-	assert.match(store.dismissHero('44'), /inactive raid references could not be read/);
-	assert.match(store.dismissHero('96'), /inactive raid references could not be read/);
-	assert.equal(store.hasDirtyFiles(), false);
-	assert.equal(store.setEstateName('Still editable'), null);
-	assert.deepEqual(Object.keys(store.getDirtyData()), ['persist.game.json']);
-	store.discardAllChanges();
-	assert.equal(data.inactiveRaidError, error);
-	store.resetSaveData();
-	assert.equal(data.inactiveRaidError, null);
 });
 
 test('layout reload controller uses real stale Save block and Discard/Cancel choices before backend reload', async () => {
@@ -229,4 +196,30 @@ test('layout reload controller uses real stale Save block and Discard/Cancel cho
         assert.equal(store.hasDirtyFiles(), choice !== 'discard');
         assert.equal(writes, 0);
     }
+});
+
+
+test('capacity rules survive a same-install reload and cannot be reused for another game install', async () => {
+	const fixture = JSON.parse(await readFile(new URL('./fixtures/run7-snap-4.json', import.meta.url), 'utf8'));
+	const rules = JSON.parse(await readFile(new URL('./fixtures/roster-capacity-rules.json', import.meta.url), 'utf8'));
+	settings.setGamePath('/fixtures/capacity-install');
+	invokeHandler = (command) => {
+		if (command === 'generate_name_table') return ['stage_coach.rostersize'];
+		if (command === 'set_name_table') return;
+		if (command === 'load_profile') return {
+			data: Object.fromEntries(Object.entries(structuredClone(fixture)).map(([name, value]) => [`persist.${name}.json`, value])),
+			name_table_version: 7
+		};
+		throw new Error(`Unexpected command: ${command}`);
+	};
+	await store.loadProfileFromBackend('/profiles/profile_0');
+	gameData.setRosterCapacityRules(rules, '/fixtures/capacity-install');
+	assert.equal(store.getRevivalBlockReason(), null);
+	await store.loadProfileFromBackend('/profiles/profile_0');
+	assert.equal(store.getRevivalBlockReason(), null);
+	settings.setGamePath('/fixtures/other-install');
+	await store.loadProfileFromBackend('/profiles/profile_0');
+	assert.match(store.getRevivalBlockReason(), /capacity is unknown/);
+	gameData.setRosterCapacityRules(rules, '/fixtures/other-install');
+	assert.equal(store.getRevivalBlockReason(), null);
 });

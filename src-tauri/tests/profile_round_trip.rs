@@ -199,14 +199,13 @@ fn duplicate_achievement_survives_unrelated_edits_and_repeated_saves() {
 }
 
 #[test]
-fn encoding_failure_preserves_all_files_and_pending_deletions() {
+fn encoding_failure_preserves_all_files() {
     let sandbox = Sandbox::new();
     sandbox.activate_raid();
     let before = tree(&sandbox.profile());
     let (mut table, mut data) = sandbox.load();
     data["persist.estate.json"]["base_root"]["bad_integer"] = json!(99_999_999_999_i64);
     data["persist.game.json"]["base_root"]["estatename"] = json!("Must not be written");
-    data["_deleted"] = json!(["persist.raid.json"]);
     data.as_object_mut().unwrap().remove("persist.raid.json");
     let error = sandbox.save(&mut table, data).unwrap_err();
     assert!(error.contains("persist.estate.json"), "{error}");
@@ -215,7 +214,7 @@ fn encoding_failure_preserves_all_files_and_pending_deletions() {
 }
 
 #[test]
-fn raid_subfolder_float_edit_and_deletion_leave_unsupported_map_untouched() {
+fn raid_subfolder_edit_and_abandon_preserve_raid_path_and_unsupported_map() {
     let sandbox = Sandbox::new();
     sandbox.activate_raid();
     let map_path = sandbox
@@ -255,9 +254,28 @@ fn raid_subfolder_float_edit_and_deletion_leave_unsupported_map_untouched() {
         )
         .is_err());
     data["persist.game.json"]["base_root"]["inraid"] = json!(false);
-    data["persist.game.json"]["base_root"]["raid_save"] = json!("");
-    sandbox.save(&mut table, json!({"persist.game.json": data["persist.game.json"], "_deleted": ["persist.raid.json"]})).unwrap();
-    assert!(!sandbox
+    sandbox
+        .save(
+            &mut table,
+            json!({"persist.game.json": data["persist.game.json"]}),
+        )
+        .unwrap();
+    assert_eq!(
+        fs::read(
+            sandbox
+                .profile()
+                .join("plot_crimson_court_1/persist.raid.json")
+        )
+        .unwrap(),
+        raid
+    );
+    let (_, reloaded) = sandbox.load();
+    assert_eq!(
+        reloaded["persist.game.json"]["base_root"]["raid_save"],
+        "plot_crimson_court_1/"
+    );
+    assert!(reloaded.get("persist.raid.json").is_none());
+    assert!(sandbox
         .profile()
         .join("plot_crimson_court_1/persist.raid.json")
         .exists());
@@ -578,7 +596,7 @@ fn core_decode_failure_is_visible_and_clears_write_authorization() {
 }
 
 #[test]
-fn deletion_allow_list_refuses_every_non_raid_file_before_writing() {
+fn profile_save_refuses_deletion_requests_before_writing() {
     let sandbox = Sandbox::new();
     let (mut table, data) = sandbox.load();
     let before = tree(&sandbox.profile());
@@ -589,10 +607,7 @@ fn deletion_allow_list_refuses_every_non_raid_file_before_writing() {
                 json!({"_deleted": [name], "persist.game.json": data["persist.game.json"]}),
             )
             .unwrap_err();
-        assert!(
-            error.contains("only persist.raid.json can be deleted"),
-            "{error}"
-        );
+        assert!(error.contains("Invalid save filename: _deleted"), "{error}");
         assert_eq!(tree(&sandbox.profile()), before);
     }
 }
@@ -667,7 +682,7 @@ fn last_party_guid_replacement_preserves_four_slots_through_binary_round_trip() 
 }
 
 #[test]
-fn inactive_raid_references_are_read_only_and_include_non_party_hero_fields() {
+fn inactive_raid_is_ignored_but_active_raid_still_resolves_the_subfolder() {
     let sandbox = Sandbox::new();
     let raid_path = sandbox
         .profile()
@@ -694,10 +709,8 @@ fn inactive_raid_references_are_read_only_and_include_non_party_hero_fields() {
         loaded["data"]["persist.game.json"]["base_root"]["inraid"],
         false
     );
-    assert_eq!(
-        loaded["inactive_raid_hero_guids"],
-        json!([1, 34, 44, 48, 96])
-    );
+    assert!(loaded.get("inactive_raid_hero_guids").is_none());
+    assert!(loaded.get("inactive_raid_error").is_none());
     assert!(loaded["data"].get("persist.raid.json").is_none());
     assert!(!table.loaded_files.contains_key("persist.raid.json"));
     let error = sandbox
@@ -712,12 +725,12 @@ fn inactive_raid_references_are_read_only_and_include_non_party_hero_fields() {
     let loaded =
         save::load_profile_with_table(sandbox.profile().to_string_lossy().into_owned(), &mut table)
             .unwrap();
-    assert_eq!(loaded["inactive_raid_hero_guids"], json!([]));
+    assert!(loaded.get("inactive_raid_hero_guids").is_none());
     assert!(loaded["data"].get("persist.raid.json").is_some());
 }
 
 #[test]
-fn undecodable_inactive_raids_allow_other_edits_and_return_a_dismissal_block() {
+fn undecodable_inactive_raids_are_ignored_and_active_decode_errors_remain_fatal() {
     for top_level in [false, true] {
         let sandbox = Sandbox::new();
         let raid_path = if top_level {
@@ -745,11 +758,7 @@ fn undecodable_inactive_raids_allow_other_edits_and_return_a_dismissal_block() {
             &mut table,
         )
         .unwrap();
-        assert_eq!(loaded["inactive_raid_hero_guids"], json!([]));
-        assert!(loaded["inactive_raid_error"]
-            .as_str()
-            .unwrap()
-            .starts_with("Failed to read inactive raid "));
+        assert!(loaded.get("inactive_raid_hero_guids").is_none());
         assert!(loaded["data"].get("persist.raid.json").is_none());
         assert!(!table.loaded_files.contains_key("persist.raid.json"));
         let mut game = loaded["data"]["persist.game.json"].clone();

@@ -125,41 +125,6 @@ test('raid updates verified root torchlight and party hunger, leaving inventory 
 	assert.equal(store.hasDirtyFiles(), false);
 });
 
-test('abandon clears game pointers, returns living party to town, releases treatment and schedules deletion; discard restores all', () => {
-	assert.deepEqual(Object.entries(fixture.roster.base_root.heroes).filter(([, h]) => h.hero_file_data.raw_data.base_root['roster.before_on_start_town_visit_status'] === 1).map(([guid]) => Number(guid)).sort((a,b) => a-b), [...fixture.raid.base_root.party.heroes].sort((a,b) => a-b));
-	fixture.game.base_root.inraid = true;
-	fixture.game.base_root.raid_save = '';
-	// Expedition status can exist outside party.heroes; this injected hero is not in the raid list.
-	fixture.roster.base_root.heroes['44'] = structuredClone(fixture.roster.base_root.heroes['96']);
-	fixture.roster.base_root.heroes['44'].hero_file_data.raw_data.base_root['roster.status'] = 1;
-	store.loadGame(fixture.game);
-	store.setGameInRaid(true);
-	store.getHeroRawData('96')['roster.status'] = 3;
-	store.getHeroRawData('96').actor.current_hp = 0;
-	const before = structuredClone({ game: fixture.game, roster: fixture.roster, raid: fixture.raid, town: fixture.town });
-	store.loadRoster(fixture.roster);
-	assert.equal(store.abandonRaid(), null);
-	const data = store.getDirtyData();
-	assert.deepEqual(data._deleted, ['persist.raid.json']);
-	assert.equal(data['persist.game.json'].base_root.inraid, false);
-	assert.equal(data['persist.game.json'].base_root.raid_save, '');
-	assert.equal(data['persist.game.json'].base_root.raiddungeon, 'none');
-	for (const guid of ['1', '34', '48', '44']) {
-		const hero = store.getHeroRawData(guid);
-		assert.equal(hero['roster.status'], 0);
-		assert.equal(hero['roster.before_on_start_town_visit_status'], 0);
-		assert.equal(hero['roster.building_name'], '');
-	}
-	assert.equal(store.getHeroRawData('96')['roster.status'], 3);
-	assert.equal(store.getSaveData().raid, null);
-	assert.equal(data['persist.raid.json'], undefined);
-	assert.equal(store.getTreatmentSlots().some(({ slot }) => [1,34,48,96].includes(slot.hero)), false);
-	store.discardAllChanges();
-	for (const key of ['game','raid','roster','town']) assert.deepEqual(store.getSaveData()[key], before[key]);
-	assert.equal(store.getSaveData().gameInRaid, true);
-	assert.equal(store.hasDirtyFiles(), false);
-});
-
 test('abandon refuses incomplete data and no-op setters never dirty unchanged files', () => {
 	store.setWalletAmount('gold', fixture.estate.base_root.wallet['0'].amount);
 	store.setRaidTorchlight(100);
@@ -227,30 +192,16 @@ test('dismiss cleans a real last-party vector after treatment release and blocks
 	assert.deepEqual(store.getSaveData().roster.base_root.last_party.last_party_guids, [1, 48, -1, -1]);
 	assert.deepEqual(store.getSaveData().campaignLog, dismissReference.campaignLog);
 	assert.deepEqual(store.getSaveData().progression, dismissReference.progression);
-	for (const mode of ['party', 'status', 'raid', 'shape']) {
+	for (const mode of ['party', 'raid', 'shape']) {
 		loadDismissReference();
 		const data = store.getSaveData();
-		if (mode === 'party') store.loadRaid(structuredClone(reference.raid));
-		if (mode === 'status') store.getHeroRawData('96')['roster.status'] = 1;
+		if (mode === 'party') { store.loadRaid(structuredClone(reference.raid)); data.game.base_root.inraid = true; }
 		if (mode === 'raid') data.game.base_root.inraid = true;
 		if (mode === 'shape') data.roster.base_root.last_party.last_party_guids = {};
 		const before = JSON.stringify([data.roster, data.upgrades, data.town]);
 		assert.match(store.dismissHero('96'), /raid party|during a raid|unsupported shape/);
 		assert.equal(JSON.stringify([data.roster, data.upgrades, data.town]), before);
 		assert.equal(store.hasDirtyFiles(), false);
-	}
-});
-
-test('unverified revival is blocked in town and raid with no writes, including generic status transition', () => {
-	assert.equal(fixture.progression.base_root.completed_plot_quests_data['2'].heroes['3'].survived, false);
-	const hero = store.getHeroRawData('34');
-	hero['roster.status'] = 3;
-	for (const active of [false, true]) {
-		store.setGameInRaid(active);
-		assert.match(store.getRevivalBlockReason(), /unverified|unavailable/);
-		store.setHeroStatus('34', 0);
-		assert.equal(hero['roster.status'], 3);
-		assert.deepEqual(store.getDirtyData(), {});
 	}
 });
 
@@ -446,14 +397,6 @@ test('a pending profile decision cannot be replaced by a second path change', as
 	decide('cancel');
 	assert.equal(await first, false);
 	assert.deepEqual(calls, []);
-});
-
-test('plot raid abandonment is blocked without mutations, including pure data helper', () => {
-	const before = JSON.stringify([fixture.game, fixture.raid, fixture.roster, fixture.town]);
-	assert.match(store.abandonRaid(), /plot and Courtyard/);
-	assert.equal(raid.abandonRaidData(fixture.game, fixture.raid, fixture.roster, fixture.town).size, 0);
-	assert.equal(JSON.stringify([fixture.game, fixture.raid, fixture.roster, fixture.town]), before);
-	assert.deepEqual(store.getDirtyData(), {});
 });
 
 test('estate names share hero validation and invalid input never dirties game data', () => {

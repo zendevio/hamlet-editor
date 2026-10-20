@@ -91,10 +91,10 @@ export const RESOLVE_LEVEL_NAMES = [
 /** Status code labels and colors. */
 export const STATUS_MAP: Record<number, { label: string; color: string; dotClass: string }> = {
 	0: { label: 'Available', color: 'green', dotClass: 'bg-green-500' },
-	1: { label: 'In Squad', color: 'teal', dotClass: 'bg-teal-500' },
+	1: { label: 'In party', color: 'teal', dotClass: 'bg-teal-500' },
 	2: { label: 'In Treatment', color: 'blue', dotClass: 'bg-blue-500' },
 	3: { label: 'Dead', color: 'red', dotClass: 'bg-red-500' },
-	4: { label: 'In Raid', color: 'orange', dotClass: 'bg-orange-500' }
+	4: { label: 'Missing', color: 'orange', dotClass: 'bg-orange-500' }
 };
 
 // ── HP Table ──

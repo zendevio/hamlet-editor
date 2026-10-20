@@ -1,4 +1,5 @@
 import { readTreatmentSlots } from '#lib/treatment.js';
+import type { RosterCapacityRules } from '#lib/api/gamedata.js';
 import type { EstateData, GameData, HeroBaseRoot, HeroQuirk, RaidData, RosterData, TownData, TrinketEntry, UpgradesData } from '#lib/types/save-data.js';
 
 export const CURSE_STATES = ['disease_vampire_passive', 'disease_vampire_crave', 'disease_vampire_wasting', 'disease_vampire_blood_lust'] as const;
@@ -22,8 +23,6 @@ export interface HeroReferences {
 	game: GameData | null;
 	raid: RaidData | null;
 	estate: EstateData | null;
-	inactiveRaidHeroGuids: readonly number[];
-	inactiveRaidError: string | null;
 }
 
 /** Validate equipment; only estate trinket fields may be transferred on dismissal. */
@@ -43,20 +42,15 @@ export function equippedTrinkets(hero: HeroBaseRoot): TrinketEntry[] | null {
 export function dismissBlockReason(guid: string, data: HeroReferences): string | null {
 	const hero = data.roster?.base_root.heroes[guid]?.hero_file_data.raw_data.base_root;
 	if (!hero) return 'This hero is no longer in the roster.';
-	if (Object.keys(data.roster!.base_root.heroes).length <= 1) return 'You need at least 1 hero to venture on. Recruit another hero before dismissing this one.';
+	if (hero['roster.status'] === 3) return 'Dead heroes cannot be dismissed. Their roster record preserves the grave.';
+	if (livingHeroCount(data.roster!) <= 1) return 'You need at least 1 hero to venture on. Recruit another hero before dismissing this one.';
 	if (hero['roster.status'] === 2 || hero['roster.building_name'] || readTreatmentSlots(data.town).some(({ slot }) => String(slot.hero) === guid)) {
 		return 'Release this hero from treatment before dismissing them.';
 	}
-	if (data.raid?.base_root.party.heroes.includes(Number(guid)) || hero['roster.status'] === 1) {
+	if (data.game?.base_root.inraid && (data.raid?.base_root.party.heroes.includes(Number(guid)) || hero['roster.status'] === 1)) {
 		return 'This hero is in the raid party. Return to town before dismissing them.';
 	}
 	if (data.game?.base_root.inraid) return 'Dismissal is unavailable during a raid.';
-	if (data.inactiveRaidError) {
-		return `Dismissal is blocked because saved inactive raid references could not be read. ${data.inactiveRaidError}`;
-	}
-	if (data.inactiveRaidHeroGuids.includes(Number(guid))) {
-		return 'This hero is referenced by the saved inactive raid. Complete that expedition in the game before dismissing them.';
-	}
 	if (!data.town || !data.upgrades || !data.game) {
 		return 'Dismissal is blocked because reference data is missing. Reload the complete profile.';
 	}
@@ -75,9 +69,37 @@ export function dismissBlockReason(guid: string, data: HeroReferences): string |
 	return null;
 }
 
-/** The available sample has no dead roster hero or verified revival transition. */
-export function revivalBlockReason(isRaidActive: boolean): string {
-	return isRaidActive
-		? 'Revival is blocked during a raid because restoring combat and party state is unverified. Return to town first.'
-		: 'Revival is unavailable: the reference saves do not verify how to restore dead heroes across roster, progression and campaign history. Revive through an in-game town event.';
+export function livingHeroCount(roster: RosterData): number {
+	return Object.values(roster.base_root.heroes).filter((entry) => entry.hero_file_data.raw_data.base_root['roster.status'] !== 3).length;
+}
+
+/** Resolve the installed Stage Coach rules against the current save purchases. */
+export function rosterCapacity(game: GameData | null, upgrades: UpgradesData | null, rules: RosterCapacityRules | null): number | null {
+	if (!game || !upgrades || !rules) return null;
+	const levels = rules.by_mode[game.base_root.game_mode];
+	const dlc = game.base_root.dlc as Record<string, { name?: string; source?: string }> | undefined;
+	if (!levels || !dlc || Object.values(dlc).some((entry) => entry.source !== 'dlc')) return null;
+	const shieldbreaker = Object.values(dlc).some((entry) => entry.name === 'shieldbreaker');
+	if (shieldbreaker && rules.shieldbreaker_bonus === null) return null;
+	const purchases = Object.values(upgrades.base_root.purchases).filter((p) => p.instance_number === 0 && p.is_purchased && (p.tree_id === '###stage_coach.rostersize' || p.tree_id === 'stage_coach.rostersize'));
+	if (purchases.some((p) => !levels.some((level) => level.upgrade_requirement_code === p.requirement_code))) return null;
+	const amounts = levels.filter((level) => !level.upgrade_requirement_code || purchases.some((p) => p.requirement_code === level.upgrade_requirement_code)).map((level) => level.amount);
+	const capacity = Math.max(...amounts) + (shieldbreaker ? rules.shieldbreaker_bonus! : 0);
+	return Number.isInteger(capacity) && capacity > 0 ? capacity : null;
+}
+
+export function revivalBlockReason(game: GameData | null, roster: RosterData | null, capacity: number | null, count = 1): string | null {
+	if (game?.base_root.inraid) return 'Revival is blocked during a raid because restoring combat and party state is unverified. Return to town first.';
+	if (!game || !roster) return 'Game and roster data must be loaded before revival.';
+	if (capacity === null) return 'Revival is blocked because roster capacity is unknown. Load the installed Stage Coach capacity data and complete upgrade data.';
+	if (livingHeroCount(roster) + count > capacity) return `Revival needs ${count} free roster slot${count === 1 ? '' : 's'}. The living roster is ${livingHeroCount(roster)}/${capacity}.`;
+	return null;
+}
+
+export function clearHeroCombatState(hero: HeroBaseRoot): void {
+	hero.actor.buff_group = {};
+	hero.actor.performing_turn = 0;
+	hero.actor.combat_ready = false;
+	hero.actor.check_round_ranks = 0;
+	hero.actor.rounds_in_ranks = 0;
 }

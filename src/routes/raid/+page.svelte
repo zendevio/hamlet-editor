@@ -22,7 +22,7 @@
 		swapPartyPositions
 	} from '#lib/stores/save-data.svelte.js';
 	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
-	import { abandonRaidBlockReason } from '#lib/raid.js';
+	import { abandonRaidBlockReason, abandonRaidInventory } from '#lib/raid.js';
 	import { stripDsonPrefix } from '#lib/utils.js';
 	import type { RaidData, InventoryItem } from '#lib/types/save-data.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
@@ -68,7 +68,7 @@
 
 	/** Raid data from persist.raid.json — sourced from the shared save-data store. */
 	let raidData = $derived(saveData.raid as RaidData | null);
-	let abandonBlockedReason = $derived(saveData.game ? abandonRaidBlockReason(saveData.game) : null);
+	let abandonBlockedReason = $derived(abandonRaidBlockReason(saveData.game, raidData, saveData.roster, saveData.estate));
 
 	/** Whether persist.game.json reports inraid: true — sourced from the shared save-data store. */
 	let gameInRaid = $derived(saveData.gameInRaid);
@@ -76,7 +76,8 @@
 	// ── Derived ──
 
 	let raidFileExists = $derived(raidData !== null);
-	let isInconsistent = $derived(raidFileExists !== gameInRaid);
+	let isInconsistent = $derived(gameInRaid && !raidFileExists);
+	let abandonInventory = $derived(abandonRaidInventory(raidData));
 
 	let raidInstance = $derived(raidData?.base_root.raid_instance ?? null);
 	let party = $derived(raidData?.base_root.party ?? null);
@@ -157,13 +158,13 @@
 		if (reason) { toast.error(reason); return; }
 		abandonDialogOpen = false;
 		toast.success('Raid abandoned', {
-			description: 'Party returned to town and raid pointer cleared. Save to apply changes.'
+			description: 'Party returned to town. Save to apply changes, or Discard to restore the expedition.'
 		});
 	}
 </script>
 
 <!-- No raid, no inconsistency — show empty state -->
-{#if !raidFileExists && !gameInRaid}
+{#if !gameInRaid}
 	<EmptyState
 		title="No active raid"
 		description="Start a dungeon in-game to see raid data here. Raid editing is available only during an active expedition."
@@ -178,13 +179,8 @@
 				Raid State Inconsistent
 			</Alert.Title>
 			<Alert.Description class="text-amber-600 dark:text-amber-400/80">
-				{#if raidFileExists && !gameInRaid}
-					persist.raid.json exists but <code class="text-xs">inraid</code> is
-					<code class="text-xs">false</code> in persist.game.json.
-				{:else}
-					persist.game.json reports <code class="text-xs">inraid: true</code> but
-					persist.raid.json was not found.
-				{/if}
+				persist.game.json reports <code class="text-xs">inraid: true</code> but
+				persist.raid.json was not found.
 				Backup recommended before editing.
 			</Alert.Description>
 			<Alert.Action>
@@ -404,7 +400,7 @@
 				Abandon Raid
 			</Dialog.Title>
 			<Dialog.Description>
-				This returns living expedition heroes to town, clears the raid pointer and deletes the raid save when you Save. Discard restores the expedition before saving.
+				This returns surviving party heroes to town and keeps the raid save and its path. Discard restores the expedition before saving.
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -412,10 +408,18 @@
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-					Abandoning a raid will remove the party from the dungeon. All living heroes marked as on an expedition will have their town status restored. Create a backup before proceeding.
+					The week will not advance. Quest results, campaign logging and post-expedition quirk processing will not happen. Use “Regroup in the Hamlet!” in the game for the complete return process.
 				</p>
 			</div>
 
+			<p class="text-xs">{abandonInventory.returnedTrinkets} party inventory trinket(s) will return to estate storage. Other supplies and loot will be lost:</p>
+			<ul class="list-disc pl-5 text-xs">
+				{#each abandonInventory.lost as item}
+					<li>{item.id}: {item.amount} ({item.type})</li>
+				{:else}
+					<li>No supplies or loot.</li>
+				{/each}
+			</ul>
 			<label class="flex items-center gap-2">
 				<Checkbox bind:checked={abandonConfirmChecked} />
 				<span class="text-[11px]">I understand this will abandon the active raid</span>
@@ -429,7 +433,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!abandonConfirmChecked}
+				disabled={!abandonConfirmChecked || !!abandonBlockedReason}
 				onclick={handleAbandonRaid}
 			>
 				<SkullIcon size={14} class="mr-1" />

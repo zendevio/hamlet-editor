@@ -92,6 +92,7 @@ pub fn run() {
             commands::gamedata::load_trinket_library,
             commands::gamedata::load_class_stats,
             commands::gamedata::load_class_skills,
+            commands::gamedata::load_roster_capacity_rules,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

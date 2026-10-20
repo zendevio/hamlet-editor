@@ -9,7 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Save all dirty file data for the active profile.
- * The backend checks load provenance and disk freshness, then commits all writes and deletions transactionally.
+ * The backend checks load provenance and disk freshness, then commits all writes transactionally.
  * The caller handles backups and input validation.
  */
 export async function saveProfile(
@@ -27,10 +27,7 @@ export async function saveProfile(
 export interface LoadedProfile {
 	data: Record<string, unknown>;
 	name_table_version: number;
-	/** Read-only hero references; the inactive raid is not an editable file. */
-	inactive_raid_hero_guids: number[];
-	/** An unreadable inactive raid blocks dismissal, while other files stay editable. */
-	inactive_raid_error: string | null;
+
 }
 
 export async function loadProfile(profilePath: string): Promise<LoadedProfile> {

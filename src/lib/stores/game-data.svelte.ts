@@ -7,7 +7,7 @@
  */
 
 import { snakeToTitle } from '#lib/utils.js';
-import type { ClassSkills, ClassStats, QuirkDef, TrinketDef } from '#lib/api/gamedata.js';
+import type { ClassSkills, ClassStats, QuirkDef, TrinketDef, RosterCapacityRules } from '#lib/api/gamedata.js';
 
 // ── State ──
 
@@ -17,11 +17,15 @@ let quirks = $state<QuirkDef[]>([]);
 let trinkets = $state<TrinketDef[]>([]);
 let classStats = $state<ClassStats[]>([]);
 let classSkills = $state<ClassSkills[]>([]);
+let rosterCapacityRules = $state<RosterCapacityRules | null>(null);
+let rosterCapacityGamePath = $state('');
 
 // ── Public API ──
 
 export function getGameData() {
 	return {
+		get rosterCapacityRules() { return rosterCapacityRules; },
+		get rosterCapacityGamePath() { return rosterCapacityGamePath; },
 		get nameTable() {
 			return nameTable;
 		},
@@ -79,6 +83,11 @@ export function setClassSkills(defs: ClassSkills[]) {
 	classSkills = defs;
 }
 
+export function setRosterCapacityRules(rules: RosterCapacityRules | null, gamePath = '') {
+	rosterCapacityRules = rules;
+	rosterCapacityGamePath = gamePath;
+}
+
 /** Get the available combat skill IDs for a given hero class. */
 export function getAvailableCombatSkills(heroClass: string): string[] {
 	const entry = classSkills.find((s) => s.class_id === heroClass);
@@ -111,4 +120,6 @@ export function resetGameData() {
 	trinkets = [];
 	classStats = [];
 	classSkills = [];
+	rosterCapacityRules = null;
+	rosterCapacityGamePath = '';
 }
