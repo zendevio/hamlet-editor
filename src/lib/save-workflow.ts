@@ -5,7 +5,10 @@ export interface SaveIssue {
 }
 export type ValidationChoice = 'fix' | 'save' | 'cancel';
 export type UnsavedChoice = 'save' | 'discard' | 'cancel';
-export type RequestDataChange = (action: () => Promise<void>) => Promise<boolean>;
+export type RequestDataChange = (
+	action: () => Promise<void>,
+	preflight?: () => Promise<void>
+) => Promise<boolean>;
 export const DATA_CHANGE_CONTEXT = 'hamlet-request-data-change';
 
 /** A confirmed close must not re-open the prompt when the UI re-renders. */
@@ -125,7 +128,7 @@ export function createUnsavedGuard(options: {
 	discard: () => void;
 }): RequestDataChange {
 	let active = false;
-	return async (action) => {
+	return async (action, preflight) => {
 		if (active) return false;
 		active = true;
 		try {
@@ -134,7 +137,10 @@ export function createUnsavedGuard(options: {
 				if (choice === 'cancel') return false;
 				if (choice === 'save' && options.canSave?.() === false) return false;
 				if (choice === 'save' && !await options.save()) return false;
+				await preflight?.();
 				if (choice === 'discard') options.discard();
+			} else {
+				await preflight?.();
 			}
 			await action();
 			return true;

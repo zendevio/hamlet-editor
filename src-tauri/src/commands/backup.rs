@@ -22,6 +22,13 @@ struct BackupManifest {
     files: Vec<PathBuf>,
 }
 
+fn profile_id(source: &Path) -> Result<&str, String> {
+    source
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "Invalid profile ID".to_owned())
+}
+
 fn backups_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_local_data_dir()
@@ -41,13 +48,20 @@ pub fn create_backup_at(profile: &Path, root: &Path) -> Result<PathBuf, String> 
     let source = profile
         .canonicalize()
         .map_err(|e| format!("Invalid profile {}: {e}", profile.display()))?;
-    let mut files = read_save_tree(&source)?;
+    create_backup_from_tree(&source, root, read_save_tree(&source)?)
+}
+
+fn create_backup_from_tree(
+    source: &Path,
+    root: &Path,
+    mut files: BTreeMap<PathBuf, Vec<u8>>,
+) -> Result<PathBuf, String> {
     if files.is_empty() {
         return Err("No save files found to back up".into());
     }
     let now = Local::now();
     let manifest = BackupManifest {
-        source_profile: source.clone(),
+        source_profile: source.to_path_buf(),
         timestamp: now.with_timezone(&Utc).to_rfc3339(),
         files: files.keys().cloned().collect(),
     };
@@ -57,10 +71,7 @@ pub fn create_backup_at(profile: &Path, root: &Path) -> Result<PathBuf, String> 
     );
     std::fs::create_dir_all(root)
         .map_err(|e| format!("Failed to create backups directory: {e}"))?;
-    let id = source
-        .file_name()
-        .and_then(|n| n.to_str())
-        .ok_or("Invalid profile ID")?;
+    let id = profile_id(source)?;
     let directory = root.join(format!(
         "{}__{}__{}__{}",
         id,
@@ -145,7 +156,7 @@ pub fn list_backups_at(profile: &Path, root: &Path) -> Result<Vec<BackupEntry>, 
     Ok(backups)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn restore_backup(
     backup_path: String,
     profile_path: String,
@@ -174,6 +185,7 @@ struct RestorePlan {
     files: BTreeMap<PathBuf, Vec<u8>>,
     deletes: BTreeSet<PathBuf>,
     check: RestoreCheck,
+    safety_files: BTreeMap<PathBuf, Vec<u8>>,
 }
 
 impl RestorePlan {
@@ -181,16 +193,18 @@ impl RestorePlan {
         if let Some(reason) = self.check.blocked_reason {
             return Err(reason);
         }
-        create_backup_at(&self.source, root)?;
+        create_backup_from_tree(&self.source, root, self.safety_files)?;
         super::transaction::apply_changes(&self.source, &self.files, &self.deletes)
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn check_restore(
     backup_path: Option<String>,
     profile_path: String,
+    app_handle: tauri::AppHandle,
 ) -> Result<RestoreCheck, String> {
+    backups_root(&app_handle)?;
     check_restore_with_detectors(
         backup_path.as_deref().map(Path::new),
         Path::new(&profile_path),
@@ -245,7 +259,7 @@ fn prepare_restore(
         if files.is_empty() {
             return Err("No save files found in game backup".into());
         }
-        return restore_plan(source, files, BTreeSet::new(), steam_detector);
+        return restore_plan(profile, source, files, BTreeSet::new(), steam_detector);
     };
     let manifest = read_manifest(backup)?;
     if let Some(manifest) = &manifest {
@@ -283,10 +297,10 @@ fn prepare_restore(
     if files.is_empty() {
         return Err("No save files found in backup".into());
     }
-    restore_plan(source, files, deletes, steam_detector)
+    restore_plan(profile, source, files, deletes, steam_detector)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn restore_game_backup(
     profile_path: String,
     app_handle: tauri::AppHandle,
@@ -309,14 +323,17 @@ pub fn restore_game_backup_with_detectors(
 }
 
 fn restore_plan(
+    profile: &Path,
     source: PathBuf,
     files: BTreeMap<PathBuf, Vec<u8>>,
     deletes: BTreeSet<PathBuf>,
     steam_detector: impl FnOnce() -> Result<bool, String>,
 ) -> Result<RestorePlan, String> {
     super::transaction::validate_changes(&source, &files, &deletes)?;
-    // Match the safety backup's read-only validation before any discard prompt.
-    if read_save_tree(&source)?.is_empty() {
+    profile_id(&source)?;
+    // Validate once and reuse these bytes when creating the safety backup.
+    let safety_files = read_save_tree(&source)?;
+    if safety_files.is_empty() {
         return Err("No save files found to back up".into());
     }
     let adds = files
@@ -325,7 +342,7 @@ fn restore_plan(
         .count();
     let removes = deletes.len();
     let blocked_reason = if (adds > 0 || removes > 0)
-        && super::detect::is_steam_profile(&source)
+        && (super::detect::is_steam_profile(profile) || super::detect::is_steam_profile(&source))
         && steam_detector()?
     {
         Some(STEAM_RESTORE_REASON.to_owned())
@@ -333,6 +350,7 @@ fn restore_plan(
         None
     };
     Ok(RestorePlan {
+        safety_files,
         source,
         files,
         deletes,
@@ -461,4 +479,21 @@ fn parse_timestamp_from_dirname(name: &str) -> Option<String> {
         .ok()
         .and_then(|value| value.and_local_timezone(Local).single())
         .map(|value: DateTime<Local>| value.with_timezone(&Utc).to_rfc3339())
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::profile_id;
+    use std::os::unix::ffi::OsStringExt;
+    use std::path::PathBuf;
+
+    #[test]
+    fn safety_backup_profile_id_rejects_non_utf8_names() {
+        let path = PathBuf::from(std::ffi::OsString::from_vec(b"profile_\xff".to_vec()));
+        assert_eq!(profile_id(&path).unwrap_err(), "Invalid profile ID");
+        assert_eq!(
+            profile_id(std::path::Path::new("/tmp/profile_0")).unwrap(),
+            "profile_0"
+        );
+    }
 }

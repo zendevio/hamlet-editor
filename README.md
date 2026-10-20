@@ -28,9 +28,9 @@ corrupted campaign. Before editing, either turn off Steam Cloud for the game
 the General tab turn off "Keep game saves in the Steam Cloud") or fully close
 Steam while you edit and save. The editor does not detect cloud sync for you.
 
-**Restoring backups:** For Steam-managed profiles, quit Steam completely before restoring a backup that adds
-or removes save files. The running client caches file sizes and can prevent the
-restored campaign from loading. Overwrite-only restores and normal saves are
+**Restoring backups:** For Steam-managed profiles, quit Steam completely before
+restoring a backup that adds or removes save files. The running client caches
+file sizes and can prevent the restored campaign from loading. Overwrite-only restores and normal saves are
 unaffected by this restriction.
 
 ## Development

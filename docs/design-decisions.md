@@ -54,8 +54,9 @@ Configurable (boolean setting, off by default):
 ### Backup Restore and Steam
 Both restore commands compute writes and deletions before changing files or
 creating a safety backup. Settings runs the same read-only preflight before
-confirmation and before the unsaved-edits prompt, shows the actual additions and
-deletions, and disables Restore with the reason when Steam blocks it. Restore
+confirmation, before the unsaved-edits prompt, and after the user chooses Save
+or Discard (after a successful Save, before discarding edits). It shows the actual
+additions and deletions, and disables Restore with the reason when Steam blocks it. Restore
 commands repeat all checks to guard against changes after preflight.
 If the restore adds or removes files in a Steam-managed profile, Steam must be
 fully stopped: its running remote-storage cache retains stale file sizes and
@@ -63,13 +64,16 @@ can stop the game from loading the campaign. Overwrite-only restores remain
 allowed. All restores still require the game to be stopped first. Main client
 process names are matched exactly, ignoring case: `steam_osx` on macOS,
 `steam.exe` on Windows, and `steam` on Linux; helper processes are excluded.
-Steam ownership is determined from the canonical path layout
-`userdata/<numeric account>/262060/remote/<profile>` used by discovery, including
-profiles reached through symlinks. This is storage ownership, not Cloud status.
+Steam ownership matches either the supplied or canonical path against the
+`userdata/<numeric account>/262060/remote/<profile>` layout used by discovery.
+This guards both an outside alias pointing into Steam and a Steam-side symlink
+or junction pointing to an outside folder. This is storage ownership, not Cloud
+status.
 GOG, Epic and manual profiles outside that layout do not need Steam to stop.
 Game backup restores exclude stale `persist.raid.json`, `persist.map.json` and
 `persist.loading_screen.json` snapshots; the game removes the loading screen
-file on returning to town. Restore errors remain visible in persistent toasts.
+file on returning to town. Blocked confirmations offer Check again after Steam
+stops. Restore errors remain visible in persistent toasts with close buttons.
 Normal profile saves only overwrite files decoded at load and never delete files.
 Legacy and game backups remain partial snapshots and do not authorize deletions.
 

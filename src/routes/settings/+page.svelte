@@ -36,6 +36,7 @@
 		setProfileId,
 		setAutoBackup
 	} from '#lib/stores/settings.svelte.js';
+	import { restoreOutcome, runRestore } from '#lib/restore-workflow.js';
 	import { withCurrentProfile } from '#lib/profiles.js';
 	import { getSaveData, loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
@@ -289,20 +290,18 @@
 
 	let restoreCheck = $state<RestoreCheck | null>(null);
 	let gameRestoreCheck = $state<RestoreCheck | null>(null);
-
-	function restoreOutcome(check: RestoreCheck | null): string {
-		if (!check) return '';
-		return check.adds === 0 && check.removes === 0
-			? 'This restore is overwrite-only.'
-			: `This restore adds ${check.adds} and removes ${check.removes} files.`;
-	}
+	let checkingRestore = $state(false);
 
 	async function openRestoreDialog(backup: BackupEntry) {
+		if (checkingRestore) return;
+		checkingRestore = true;
 		try {
 			restoreCheck = await checkRestore(backup.path, settings.savePath);
 		} catch (err) {
-			toast.error('Restore unavailable', { description: String(err), duration: Infinity });
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
 			return;
+		} finally {
+			checkingRestore = false;
 		}
 		restoreTarget = backup;
 		restoreConfirmChecked = false;
@@ -315,14 +314,14 @@
 		restoreDialogOpen = false;
 		try {
 			const target = restoreTarget;
-			restoreCheck = await checkRestore(target.path, settings.savePath);
-			if (restoreCheck.blocked_reason) {
-				restoreDialogOpen = true;
-				return;
-			}
-			if (!await requestDataChange(async () => {
-				await restoreBackup(target.path, settings.savePath);
-				await loadProfileFromBackend(settings.savePath);
+			const profilePath = settings.savePath;
+			if (!await runRestore({
+				check: () => checkRestore(target.path, profilePath),
+				checked: (check) => { restoreCheck = check; },
+				blocked: () => { restoreDialogOpen = true; },
+				requestDataChange,
+				restore: () => restoreBackup(target.path, profilePath),
+				reload: () => loadProfileFromBackend(profilePath)
 			})) return;
 			toast.success('Backup restored', {
 				description: `Restored from ${formatTimestamp(restoreTarget.timestamp)}.`
@@ -330,7 +329,7 @@
 			await loadBackupList();
 		} catch (err) {
 			toast.error('Restore failed', {
-				duration: Infinity,
+				duration: Infinity, closeButton: true,
 				description: String(err)
 			});
 		} finally {
@@ -341,11 +340,15 @@
 	}
 
 	async function openRestoreGameBackupDialog() {
+		if (checkingRestore) return;
+		checkingRestore = true;
 		try {
 			gameRestoreCheck = await checkRestore(null, settings.savePath);
 		} catch (err) {
-			toast.error('Restore unavailable', { description: String(err), duration: Infinity });
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
 			return;
+		} finally {
+			checkingRestore = false;
 		}
 		restoreGameBackupConfirmChecked = false;
 		restoreGameBackupDialogOpen = true;
@@ -356,14 +359,14 @@
 		restoringGameBackup = true;
 		restoreGameBackupDialogOpen = false;
 		try {
-			gameRestoreCheck = await checkRestore(null, settings.savePath);
-			if (gameRestoreCheck.blocked_reason) {
-				restoreGameBackupDialogOpen = true;
-				return;
-			}
-			if (!await requestDataChange(async () => {
-				await restoreGameBackup(settings.savePath);
-				await loadProfileFromBackend(settings.savePath);
+			const profilePath = settings.savePath;
+			if (!await runRestore({
+				check: () => checkRestore(null, profilePath),
+				checked: (check) => { gameRestoreCheck = check; },
+				blocked: () => { restoreGameBackupDialogOpen = true; },
+				requestDataChange,
+				restore: () => restoreGameBackup(profilePath),
+				reload: () => loadProfileFromBackend(profilePath)
 			})) return;
 			toast.success('Game backup restored', {
 				description: 'The game\'s own backup has been restored successfully.'
@@ -371,7 +374,7 @@
 			await loadBackupList();
 		} catch (err) {
 			toast.error('Restore failed', {
-				duration: Infinity,
+				duration: Infinity, closeButton: true,
 				description: String(err)
 			});
 		} finally {
@@ -795,6 +798,7 @@
 
 		{#if restoreCheck?.blocked_reason}
 			<p role="alert" class="text-sm text-destructive">{restoreCheck.blocked_reason}</p>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => restoreTarget && openRestoreDialog(restoreTarget)}>Check again</Button>
 		{/if}
 
 		{#if restoreTarget}
@@ -828,7 +832,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!restoreConfirmChecked || !restoreCheck || !!restoreCheck.blocked_reason}
+				disabled={checkingRestore || !restoreConfirmChecked || !restoreCheck || !!restoreCheck.blocked_reason}
 				onclick={handleRestore}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
@@ -854,6 +858,7 @@
 
 		{#if gameRestoreCheck?.blocked_reason}
 			<p role="alert" class="text-sm text-destructive">{gameRestoreCheck.blocked_reason}</p>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={openRestoreGameBackupDialog}>Check again</Button>
 		{/if}
 
 		<div class="space-y-3">
@@ -879,7 +884,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={!restoreGameBackupConfirmChecked || !gameRestoreCheck || !!gameRestoreCheck.blocked_reason}
+				disabled={checkingRestore || !restoreGameBackupConfirmChecked || !gameRestoreCheck || !!gameRestoreCheck.blocked_reason}
 				onclick={handleRestoreGameBackup}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />

@@ -439,9 +439,9 @@
 		save: saveChanges,
 		discard: discardAllChanges
 	});
-	const requestDataChange: RequestDataChange = async (action) => {
+	const requestDataChange: RequestDataChange = async (action, preflight) => {
 		if (isSaving || saveData.isLoading || isProfileLoading) return false;
-		return guardChanges(action);
+		return guardChanges(action, preflight);
 	};
 	setContext(DATA_CHANGE_CONTEXT, requestDataChange);
 

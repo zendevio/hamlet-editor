@@ -1127,24 +1127,39 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
 
 #[test]
 fn non_steam_profiles_skip_steam_guard_for_set_changes() {
-    let sandbox = Sandbox::new();
-    fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
-    let check = backup::check_restore_with_detectors(
-        None,
-        &sandbox.profile(),
-        || Ok(false),
-        || panic!("manual profile must skip Steam"),
-    )
-    .unwrap();
-    assert_eq!(check.adds, 1);
-    assert!(check.blocked_reason.is_none());
-    backup::restore_game_backup_with_detectors(
-        &sandbox.profile(),
-        &sandbox.backups(),
-        || Ok(false),
-        || panic!("manual profile must skip Steam"),
-    )
-    .unwrap();
+    for editor in [false, true] {
+        let sandbox = Sandbox::new();
+        let snapshot =
+            backup::create_backup_at(&sandbox.profile(), &sandbox.0.join("source")).unwrap();
+        fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+        let check = backup::check_restore_with_detectors(
+            editor.then_some(snapshot.as_path()),
+            &sandbox.profile(),
+            || Ok(false),
+            || panic!("manual profile must skip Steam"),
+        )
+        .unwrap();
+        assert_eq!(check.adds, 1);
+        assert!(check.blocked_reason.is_none());
+        if editor {
+            backup::restore_backup_with_detectors(
+                &snapshot,
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || panic!("manual profile must skip Steam"),
+            )
+            .unwrap();
+        } else {
+            backup::restore_game_backup_with_detectors(
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || panic!("manual profile must skip Steam"),
+            )
+            .unwrap();
+        }
+    }
 }
 
 #[test]
@@ -1268,4 +1283,68 @@ fn preflight_validates_transaction_targets_before_safety_backup() {
         assert_eq!(tree(&sandbox.profile()), before);
         assert!(!sandbox.backups().exists());
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn steam_guard_uses_supplied_steam_path_to_external_profile() {
+    let sandbox = Sandbox::new();
+    let remote = sandbox.0.join("userdata/123/262060/remote");
+    fs::create_dir_all(&remote).unwrap();
+    let alias = remote.join("profile_0_link");
+    std::os::unix::fs::symlink(sandbox.profile(), &alias).unwrap();
+    let snapshot = backup::create_backup_at(&sandbox.profile(), &sandbox.0.join("source")).unwrap();
+    fs::remove_file(sandbox.profile().join("persist.roster.json")).unwrap();
+    let before = tree(&sandbox.profile());
+    for editor in [false, true] {
+        let check = backup::check_restore_with_detectors(
+            editor.then_some(snapshot.as_path()),
+            &alias,
+            || Ok(false),
+            || Ok(true),
+        )
+        .unwrap();
+        assert_eq!(check.adds, 1);
+        assert!(check.blocked_reason.is_some());
+        let result = if editor {
+            backup::restore_backup_with_detectors(
+                &snapshot,
+                &alias,
+                &sandbox.backups(),
+                || Ok(false),
+                || Ok(true),
+            )
+        } else {
+            backup::restore_game_backup_with_detectors(
+                &alias,
+                &sandbox.backups(),
+                || Ok(false),
+                || Ok(true),
+            )
+        };
+        assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+        assert_eq!(tree(&sandbox.profile()), before);
+        assert!(!sandbox.backups().exists());
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn preflight_rejects_non_utf8_profile_id_without_writes() {
+    use std::os::unix::ffi::OsStringExt;
+    let sandbox = Sandbox::new();
+    let destination = sandbox
+        .0
+        .join(std::ffi::OsString::from_vec(b"profile_\xff".to_vec()));
+    fs::rename(sandbox.profile(), &destination).unwrap();
+    let before = tree(&destination);
+    let check = backup::check_restore_with_detectors(
+        None,
+        &destination,
+        || Ok(false),
+        || panic!("invalid ID must fail first"),
+    );
+    assert_eq!(check.unwrap_err(), "Invalid profile ID");
+    assert_eq!(tree(&destination), before);
+    assert!(!sandbox.backups().exists());
 }
