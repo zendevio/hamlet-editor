@@ -50,7 +50,7 @@ Contents top-to-bottom:
    - **Heroes** (ph:users-four) — Default landing page.
    - **Estate** (ph:bank) — Wallet, trinket storage, estate currencies.
    - **Town** (ph:buildings) — Building upgrades, treatment slots.
-   - **Raid** (ph:compass): Enabled when `inraid: true` in `persist.game.json`, dimmed and disabled in town. Active raid data resolves through game.json `raid_save` (or the profile root when empty). When inraid is true but the raid file is missing, the nav item remains enabled with an amber warning icon and tooltip: "Raid state is inconsistent between persist.raid.json and persist.game.json. Backup recommended before editing."
+   - **Raid** (ph:compass): Enabled when `inraid: true` in `persist.game.json`, dimmed and disabled in town. Active raid data resolves through game.json `raid_save` (or the profile root when empty). When inraid is true but the raid file is missing, the nav item stays enabled; the header badge "Raid State Inconsistent" and the raid page show the warning.
    - **Settings** (ph:gear) — Paths, backups, preferences.
 4. **Sidebar footer**:
    - Backup status indicator (last backup timestamp or "No backup").
@@ -458,7 +458,7 @@ Sectioned form layout.
 
 Town revival is a roster-only edit based on the captured dead hero Bonel (run7 snap-4). Game acceptance of editor revival is pending in-game verification (checklist scenario 11).
 
-Roster capacity refuses campaigns with non-empty `persistent_ugcs`: enabled mod overrides are not loaded. Revival names mods in its block message and refuses unknown class maximum HP. Bloodmoon capacity uses its own installed Stage Coach overlay, then new_game_plus, then base if neither overlay exists. This last fallback matches the current install, which has no Stage Coach overlay for either mode.
+Roster capacity refuses campaigns with non-empty `persistent_ugcs`: enabled mod overrides are not loaded. Revival names mods in its block message and refuses unknown class maximum HP. Bloodmoon has no mode folder of its own (its mode_settings.json declares `"replaces_default_mode": "new_game_plus"`), so it uses the new_game_plus Stage Coach overlay, then base. The current install has no Stage Coach overlay for either mode.
 
 1. Select a dead hero and click "Revive Hero", or select only dead heroes and click batch "Revive". Both open the same confirmation dialog.
 2. Revival requires `game.base_root.inraid: false` and enough free living roster slots. Capacity comes from installed mode-specific Stage Coach data, current roster-size purchases and the enabled Shieldbreaker DLC bonus. Missing or unsupported capacity data blocks revival with an explanation. Status 3 heroes do not count toward capacity.

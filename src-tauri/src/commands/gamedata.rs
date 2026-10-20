@@ -56,12 +56,16 @@ fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> 
     };
     let mut by_mode = serde_json::Map::new();
     for mode in ["base", "radiant", "new_game_plus", "bloodmoon"] {
-        let overlay = root.join("modes").join(mode).join(relative);
-        let stygian = root.join("modes/new_game_plus").join(relative);
+        // Bloodmoon ships no mode folder of its own; its mode_settings.json
+        // declares "replaces_default_mode": "new_game_plus".
+        let overlay_mode = if mode == "bloodmoon" {
+            "new_game_plus"
+        } else {
+            mode
+        };
+        let overlay = root.join("modes").join(overlay_mode).join(relative);
         let path = if mode != "base" && overlay.is_file() {
             overlay
-        } else if mode == "bloodmoon" && stygian.is_file() {
-            stygian
         } else {
             root.join(relative)
         };
@@ -566,14 +570,6 @@ mod roster_capacity_tests {
         let rules = read_roster_capacity_rules(&root).unwrap();
         assert_eq!(rules["by_mode"]["new_game_plus"][1]["amount"], 24);
         assert_eq!(rules["by_mode"]["bloodmoon"][1]["amount"], 24);
-        write(
-            "modes/bloodmoon/campaign/town/buildings/stage_coach/stage_coach.building.json",
-            building(26),
-        );
-        assert_eq!(
-            read_roster_capacity_rules(&root).unwrap()["by_mode"]["bloodmoon"][1]["amount"],
-            26
-        );
         std::fs::remove_file(root.join("dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json")).unwrap();
         assert!(read_roster_capacity_rules(&root).unwrap()["shieldbreaker_bonus"].is_null());
         write(

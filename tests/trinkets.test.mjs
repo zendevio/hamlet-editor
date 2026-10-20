@@ -17,7 +17,7 @@ after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const { runPreSaveValidation } = await server.ssrLoadModule('/src/lib/validation.ts');
-const { equipTrinket, inventoryTrinkets, canEquipTrinket, trinketEquipBlockReason, catalogueTrinket } = await server.ssrLoadModule('/src/lib/trinkets.ts');
+const { equipTrinket, inventoryTrinkets, trinketEquipBlockReason, catalogueTrinket } = await server.ssrLoadModule('/src/lib/trinkets.ts');
 const reference = {
 	...JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8')),
 	...JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'))
@@ -86,8 +86,8 @@ test('missing or malformed estate, exhausted inventory and class restrictions bl
 		assert.equal(h.trinkets.items['0'].id, 'old');
 	}
 	const definitions = [{ id: 'restricted', class_restriction: 'vestal' }];
-	assert.equal(canEquipTrinket('restricted', 'crusader', definitions), false);
-	assert.equal(canEquipTrinket('restricted', 'vestal', definitions), true);
+	assert.notEqual(trinketEquipBlockReason('restricted', 'crusader', definitions), null);
+	assert.equal(trinketEquipBlockReason('restricted', 'vestal', definitions), null);
 	assert.ok(equipTrinket(hero(), estate(), '0', 'restricted', 'catalogue', definitions).error);
 });
 
@@ -173,8 +173,8 @@ test('installed feature definitions refuse the Plague Doctor codex on a Crusader
 		assert.match(equipTrinket(h, e, '0', 'unknown', source, definitions).error, /Class restriction unknown/);
 		assert.deepEqual({ h, e }, before);
 	}
-	assert.equal(canEquipTrinket(id, 'plague_doctor', definitions), true);
-	assert.equal(canEquipTrinket('unknown', 'crusader', []), true);
+	assert.equal(trinketEquipBlockReason(id, 'plague_doctor', definitions), null);
+	assert.equal(trinketEquipBlockReason('unknown', 'crusader', []), null);
 });
 
 test('per-hero limits count the other slot and reject both sources before mutation', () => {
@@ -194,17 +194,11 @@ test('per-hero limits count the other slot and reject both sources before mutati
 	}
 });
 
-test('validation allows storage overlap and ordinary copies, informing only about limit-one items on multiple heroes', () => {
+test('validation does not flag storage overlap or copies on several heroes', () => {
 	const ids = store.getHeroes().slice(0, 2).map((hero) => hero.guid);
 	assert.equal(ids.length, 2);
 	for (const guid of ids) store.getHeroRawData(guid).trinkets.items = { 0: item('ring') };
 	store.getSaveData().estate.base_root.trinkets.items = { 0: item('ring', 4) };
-	for (const limit of [null, 2, 1]) {
-		gameData.setTrinkets([{ id: 'ring', class_restriction: null, limit }]);
-		const issues = runPreSaveValidation().filter((issue) => issue.category === 'Trinkets');
-		assert.equal(issues.length, limit === 1 ? 1 : 0);
-		if (issues.length) assert.match(issues[0].message, /For information:.*Separate copies may be legitimate/);
-	}
-	store.getHeroRawData(ids[1]).trinkets.items = {};
+	gameData.setTrinkets([{ id: 'ring', class_restriction: null, limit: 1 }]);
 	assert.equal(runPreSaveValidation().filter((issue) => issue.category === 'Trinkets').length, 0);
 });

@@ -14,10 +14,6 @@ export function trinketEquipBlockReason(id: string, heroClass: string, definitio
 	return null;
 }
 
-export function canEquipTrinket(id: string, heroClass: string, definitions: readonly TrinketDef[]): boolean {
-	return trinketEquipBlockReason(id, heroClass, definitions) === null;
-}
-
 export function storageItems(estate: EstateData | null): Record<string, unknown> | null {
 	const items = estate?.base_root?.trinkets?.items;
 	if (!items || typeof items !== 'object' || Array.isArray(items)) return null;

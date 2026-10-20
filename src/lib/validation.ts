@@ -9,14 +9,12 @@
 import {
 	getSaveData,
 	getHeroes,
-	getHeroRawData,
 	getTreatmentSlots,
 	releaseHeroFromTreatment,
 	xpToLevel,
 	type HeroSummary
 } from '#lib/stores/save-data.svelte.js';
 import type { GameInstall } from '#lib/api/detect.js';
-import { getGameData } from '#lib/stores/game-data.svelte.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
 
 // ── Types ──
@@ -44,7 +42,6 @@ export function runPreSaveValidation(): ValidationIssue[] {
 
 	issues.push(...checkGearRanks());
 	issues.push(...checkTreatmentConsistency());
-	issues.push(...checkDuplicateTrinkets());
 
 	const gameInstall = getSettings().gameInstall;
 	if (gameInstall !== null) {
@@ -115,23 +112,6 @@ function checkTreatmentConsistency(): ValidationIssue[] {
 		});
 	}
 	return issues;
-}
-
-/** Inform about limit-one trinkets used by multiple heroes; storage copies are normal. */
-function checkDuplicateTrinkets(): ValidationIssue[] {
-	const limited = new Set(getGameData().trinkets.filter((entry) => entry.limit === 1).map((entry) => entry.id));
-	const equipped = new Map<string, string[]>();
-	for (const hero of getHeroes()) {
-		const ids = new Set(Object.values(getHeroRawData(hero.guid)?.trinkets?.items ?? {}).map((item) => item && typeof item === 'object' && 'id' in item ? String(item.id) : ''));
-		for (const id of ids) {
-			if (limited.has(id)) equipped.set(id, [...(equipped.get(id) ?? []), hero.name]);
-		}
-	}
-	return [...equipped].filter(([, names]) => names.length > 1).map(([id, names]) => ({
-		severity: 'warning',
-		category: 'Trinkets',
-		message: `For information: trinket "${id}" has a per-hero limit of 1 and is equipped on multiple heroes: ${names.join(', ')}. Separate copies may be legitimate.`
-	}));
 }
 
 // ── DLC Field Injection Guards ──
