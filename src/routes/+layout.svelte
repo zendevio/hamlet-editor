@@ -288,6 +288,12 @@
 	// ── Window Close Handler ──
 
 	onMount(() => {
+		import('@tauri-apps/api/core').then(({ invoke }) =>
+			invoke<string | null>('take_migration_notice').then((message) => {
+				if (message) toast.error('Previous version import failed', { description: message, duration: Infinity });
+			})
+		).catch(() => { /* Browser preview has no migration state. */ });
+
 		// Fetch app version from Tauri (fire-and-forget; falls back to 'dev' in browser)
 		import('@tauri-apps/api/app').then(({ getVersion }) =>
 			getVersion().then((v) => { appVersion = 'v' + v; })

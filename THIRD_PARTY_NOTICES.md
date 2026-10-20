@@ -4,6 +4,8 @@ Hamlet Editor includes a vendored and modified copy of **ddsavelib**, copyright 
 
 [DSON format documentation](docs/dson-format.md) is adapted from robojumper's [docs/dson.md](https://github.com/robojumper/DarkestDungeonSaveEditor/blob/master/docs/dson.md), also under the MIT license above.
 
+The bundled **JetBrains Mono** variable font is copyright 2020 The JetBrains Mono Project Authors and is distributed under **OFL-1.1** (SIL Open Font License 1.1). The full font notice and license, Rust crate licenses and npm package notices are shipped in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
 Rust and npm dependencies retain their own licenses, including MIT, Apache-2.0, BSD, Zlib and Unicode licenses. The MPL-2.0 crates **cssparser**, **cssparser-macros**, **dtoa-short**, **selectors** and **option-ext** are used unmodified; their source and license notices are available on [crates.io](https://crates.io/).
 
 Hamlet Editor is an unofficial fan tool and is not affiliated with, endorsed by, or associated with Red Hook Studios. Darkest Dungeon is a registered trademark of Red Hook Studios Inc.

@@ -34,15 +34,10 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: node .github/scripts/release-version.mjs
 
-      - name: Generate changelog
-        id: changelog
-        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4.9.1
+      - name: Verify curated release notes
         env:
-          GITHUB_REPO: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          config: cliff.toml
-          args: --latest --strip header
+          TAG: ${{ github.ref_name }}
+        run: test -s ".github/release-notes/${TAG}.md"
 
       - name: Create draft release
         id: create
@@ -50,7 +45,7 @@ jobs:
         with:
           draft: true
           prerelease: ${{ steps.meta.outputs.is_prerelease }}
-          body: ${{ steps.changelog.outputs.content }}
+          body_path: .github/release-notes/${{ github.ref_name }}.md
           tag_name: ${{ github.ref_name }}
 
   build:

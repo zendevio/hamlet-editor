@@ -7,105 +7,181 @@ use tauri::Manager;
 
 const LEGACY_IDENTIFIER: &str = "com.hamlet-editor.app";
 
+#[derive(Default)]
+pub struct MigrationNotice(pub std::sync::Mutex<Option<String>>);
+
+#[tauri::command]
+pub fn take_migration_notice(state: tauri::State<'_, MigrationNotice>) -> Option<String> {
+    state.0.lock().ok()?.take()
+}
+
 pub fn migrate_legacy_data(app: &tauri::AppHandle) {
-    let paths = app.path();
-    let roots = paths
-        .app_data_dir()
-        .and_then(|data| paths.app_local_data_dir().map(|local| (data, local)));
-    match roots {
-        Ok((data, local)) => {
-            let (Some(data_parent), Some(local_parent)) = (data.parent(), local.parent()) else {
-                warn(format_args!(
-                    "Could not resolve legacy app data directories"
-                ));
-                return;
-            };
-            for error in migrate_data_dirs(
-                &data_parent.join(LEGACY_IDENTIFIER),
-                &data,
-                &local_parent.join(LEGACY_IDENTIFIER),
-                &local,
-            ) {
-                warn(format_args!("Legacy app data migration: {error}"));
-            }
+    let result = (|| {
+        let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+        let local = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
+        let data_parent = data.parent().ok_or("Missing app data parent")?;
+        let local_parent = local.parent().ok_or("Missing local data parent")?;
+        let errors = migrate_data_dirs(
+            &data_parent.join(LEGACY_IDENTIFIER),
+            &data,
+            &local_parent.join(LEGACY_IDENTIFIER),
+            &local,
+        );
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
         }
-        Err(error) => warn(format_args!(
-            "Could not resolve app data directories for migration: {error}"
-        )),
+    })();
+    if let Err(error) = result {
+        log::warn!("Legacy app data migration: {error}");
+        *app.state::<MigrationNotice>().0.lock().unwrap() = Some(format!(
+            "Could not import settings and backups from the previous version: {error}. \
+             Original files are unchanged. Quit the editor and retry after resolving the cause."
+        ));
     }
 }
 
-// The file logger is debug-only. Keep migration failures visible on stderr in
-// release builds too, without making startup depend on logging initialization.
-fn warn(message: std::fmt::Arguments<'_>) {
-    if cfg!(debug_assertions) {
-        log::warn!("{message}");
-    } else {
-        eprintln!("{message}");
-    }
-}
-
-// Settings use AppData (roaming on Windows); backups use AppLocalData.
-// Existing settings or backups make this an established installation, which
-// must never import stale pre-release data. Successful copies make this a no-op
-// on subsequent starts, including when both platform directories are the same.
+// Settings must be ready before the webview starts. The originals remain the
+// durable copy, so staged files do not need an expensive full fsync per file.
 fn migrate_data_dirs(
     old_data: &Path,
     new_data: &Path,
     old_local: &Path,
     new_local: &Path,
 ) -> Vec<String> {
+    match import_data(old_data, new_data, old_local, new_local) {
+        Ok(()) => Vec::new(),
+        Err(error) => vec![error.to_string()],
+    }
+}
+
+fn exists(path: &Path) -> io::Result<bool> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+fn remove_staging(path: &Path) -> io::Result<()> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_dir() => fs::remove_dir_all(path),
+        Ok(_) => fs::remove_file(path),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+fn import_data(
+    old_data: &Path,
+    new_data: &Path,
+    old_local: &Path,
+    new_local: &Path,
+) -> io::Result<()> {
     let settings = new_data.join("settings.json");
     let backups = new_local.join("backups");
-    for destination in [&settings, &backups] {
-        match fs::symlink_metadata(destination) {
-            Ok(_) => return Vec::new(),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-            Err(error) => {
-                return vec![format!("Cannot inspect {}: {error}", destination.display())]
-            }
-        }
+    let journal = new_data.join(".legacy-import-ready");
+    let staged_settings = new_data.join(".settings.json.import");
+    let staged_backups = new_local.join(".backups.import");
+    let has_staging = exists(&staged_settings)? || exists(&staged_backups)?;
+    if !has_staging && !exists(&journal)? && (exists(&settings)? || exists(&backups)?) {
+        return Ok(());
     }
-
-    let mut errors = Vec::new();
-    for (source, destination) in [
-        (old_data.join("settings.json"), settings),
-        (old_local.join("backups"), backups),
-    ] {
-        // Check the root too: a symlink must not redirect the copy elsewhere.
-        let root = source.parent().expect("Migration source has a parent");
-        match fs::symlink_metadata(root) {
-            Ok(metadata) if metadata.is_dir() => {}
-            Ok(_) => {
-                errors.push(format!(
-                    "Legacy directory is not a regular directory: {}",
-                    root.display()
-                ));
-                continue;
-            }
-            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
-            Err(error) => {
-                errors.push(format!("Cannot inspect {}: {error}", root.display()));
-                continue;
-            }
-        }
-        match fs::symlink_metadata(&source) {
-            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
-            Err(error) => {
-                errors.push(format!("Cannot inspect {}: {error}", source.display()));
-                continue;
-            }
-            Ok(_) => {}
-        }
-        if let Err(error) = copy_new(&source, &destination) {
-            errors.push(format!(
-                "Cannot copy {} to {}: {error}",
-                source.display(),
-                destination.display()
+    if !has_staging && !exists(old_data)? && !exists(old_local)? && !exists(&journal)? {
+        return Ok(());
+    }
+    for root in [new_data, new_local] {
+        if exists(root)? && !fs::symlink_metadata(root)?.is_dir() {
+            return Err(io::Error::other(
+                "Destination directory is not a regular directory",
             ));
         }
     }
-    errors
+    fs::create_dir_all(new_data)?;
+    // An OS lock is released even after a crash. Never clean another live
+    // instance's staging files. The lock file itself is deliberately retained.
+    let lock = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(new_data.join(".legacy-import-lock"))?;
+    lock.lock()?;
+    let ready = exists(&journal)?;
+    if !ready {
+        remove_staging(&staged_settings)?;
+        remove_staging(&staged_backups)?;
+        if exists(&settings)? || exists(&backups)? {
+            return Ok(());
+        }
+        let result = (|| {
+            for (root, name, destination) in [
+                (old_data, "settings.json", &staged_settings),
+                (old_local, "backups", &staged_backups),
+            ] {
+                if !exists(root)? {
+                    continue;
+                }
+                if !fs::symlink_metadata(root)?.is_dir() {
+                    return Err(io::Error::other(
+                        "Legacy directory is not a regular directory",
+                    ));
+                }
+                let source = root.join(name);
+                if exists(&source)? {
+                    copy_new(&source, destination).map_err(|error| {
+                        io::Error::new(
+                            error.kind(),
+                            format!(
+                                "Cannot copy {} to {}: {error}",
+                                source.display(),
+                                destination.display()
+                            ),
+                        )
+                    })?;
+                }
+            }
+            // This journal is created only after BOTH copies finish. On a
+            // crash between renames, the next start finishes the publication.
+            let mut marker = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&journal)?;
+            use std::io::Write;
+            marker.write_all(b"ready\n")?;
+            marker.sync_all()?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = remove_staging(&staged_settings);
+            let _ = remove_staging(&staged_backups);
+            let _ = remove_staging(&journal);
+            return result;
+        }
+    }
+    for (stage, destination) in [(&staged_backups, &backups), (&staged_settings, &settings)] {
+        if exists(stage)? {
+            if exists(destination)? {
+                return Err(io::Error::other(format!(
+                    "Import destination already exists: {}",
+                    destination.display()
+                )));
+            }
+            fs::rename(stage, destination)?;
+        }
+    }
+    // A single directory sync per distinct target parent, never per backup.
+    #[cfg(unix)]
+    for parent in [new_data, new_local] {
+        if parent.is_dir() {
+            fs::File::open(parent)?.sync_all()?;
+        }
+        if new_data == new_local {
+            break;
+        }
+    }
+    fs::remove_file(journal)?;
+    Ok(())
 }
 
 /// Create every destination exclusively; refuse symlinks and special files.
@@ -146,7 +222,7 @@ fn copy_new(source: &Path, destination: &Path) -> io::Result<()> {
             .write(true)
             .create_new(true)
             .open(destination)?;
-        let result = io::copy(&mut input, &mut output).and_then(|_| output.sync_all());
+        let result = io::copy(&mut input, &mut output).map(|_| ());
         drop(output);
         if result.is_err() {
             let _ = fs::remove_file(destination);
@@ -299,6 +375,83 @@ mod tests {
             fs::read(sandbox.path("old-data/settings.json")).unwrap(),
             b"settings"
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_backup_copy_is_retryable_and_stale_staging_is_cleaned() {
+        use std::os::unix::fs::symlink;
+        let sandbox = Sandbox::new();
+        sandbox.write("old-data/settings.json", b"settings");
+        sandbox.write("old-local/backups/snapshot/save", b"backup");
+        symlink(
+            sandbox.path("old-data/settings.json"),
+            sandbox.path("old-local/backups/bad"),
+        )
+        .unwrap();
+        assert!(!sandbox.migrate().is_empty());
+        assert!(!sandbox.path("new-data/settings.json").exists());
+        assert!(!sandbox.path("new-local/backups").exists());
+        sandbox.write("new-local/.backups.import/truncated", b"partial");
+        fs::remove_file(sandbox.path("old-local/backups/bad")).unwrap();
+        assert!(sandbox.migrate().is_empty());
+        assert_eq!(
+            fs::read(sandbox.path("new-data/settings.json")).unwrap(),
+            b"settings"
+        );
+        assert_eq!(
+            fs::read(sandbox.path("new-local/backups/snapshot/save")).unwrap(),
+            b"backup"
+        );
+        assert!(!sandbox.path("new-local/backups/truncated").exists());
+    }
+
+    #[test]
+    fn stale_staging_is_cleaned_without_overwriting_new_data() {
+        let sandbox = Sandbox::new();
+        sandbox.write("new-data/settings.json", b"current");
+        sandbox.write("new-data/.settings.json.import", b"stale");
+        sandbox.write("new-local/.backups.import/partial", b"partial");
+        assert!(sandbox.migrate().is_empty());
+        assert_eq!(
+            fs::read(sandbox.path("new-data/settings.json")).unwrap(),
+            b"current"
+        );
+        assert!(!sandbox.path("new-data/.settings.json.import").exists());
+        assert!(!sandbox.path("new-local/.backups.import").exists());
+        assert!(!sandbox.path("new-local/backups").exists());
+    }
+
+    #[test]
+    fn interrupted_publication_refuses_to_overwrite_new_settings() {
+        let sandbox = Sandbox::new();
+        sandbox.write("new-data/.legacy-import-ready", b"ready\n");
+        sandbox.write("new-data/.settings.json.import", b"old");
+        sandbox.write("new-data/settings.json", b"current");
+        assert!(!sandbox.migrate().is_empty());
+        assert_eq!(
+            fs::read(sandbox.path("new-data/settings.json")).unwrap(),
+            b"current"
+        );
+        assert!(sandbox.path("new-data/.settings.json.import").exists());
+    }
+
+    #[test]
+    fn interrupted_publication_finishes_without_overwriting_completed_backups() {
+        let sandbox = Sandbox::new();
+        sandbox.write("new-data/.legacy-import-ready", b"ready\n");
+        sandbox.write("new-data/.settings.json.import", b"settings");
+        sandbox.write("new-local/backups/snapshot/save", b"complete");
+        assert!(sandbox.migrate().is_empty());
+        assert_eq!(
+            fs::read(sandbox.path("new-data/settings.json")).unwrap(),
+            b"settings"
+        );
+        assert_eq!(
+            fs::read(sandbox.path("new-local/backups/snapshot/save")).unwrap(),
+            b"complete"
+        );
+        assert!(!sandbox.path("new-data/.legacy-import-ready").exists());
     }
 
     #[cfg(unix)]

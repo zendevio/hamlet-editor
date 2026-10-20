@@ -40,8 +40,9 @@ Download from [this repository's Releases page](https://github.com/zendevio/haml
 ### Windows (10/11, x64)
 
 - Use `hamlet-editor_1.0.0_windows_x64-setup.exe` for per-user installation without admin rights, or `hamlet-editor_1.0.0_windows_x64.msi`.
+- Your browser may warn that the file is not commonly downloaded. Choose **Keep** (Edge: **... > Keep > Show more > Keep anyway**).
 - If SmartScreen shows **Windows protected your PC**, click **More info**, then **Run anyway**.
-- Windows 11 Smart App Control can block unsigned apps without a per-app override. A system that blocks the download may require a trusted build from source or a system where Smart App Control is already off.
+- If Smart App Control is on, Windows 11 may block the unsigned installer outright, with no per-app override. The app can only be installed where Smart App Control is off.
 - The installer downloads WebView2 if it is missing, which needs internet access.
 
 ### macOS (11 or later, Intel and Apple Silicon)

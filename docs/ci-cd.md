@@ -2,7 +2,7 @@
 
 ## Checks
 
-Pushes to `main` and pull requests run frontend checking, building and tests, plus Rust formatting, strict Clippy and tests. The vendored save codec has explicit formatting, Clippy and test steps because it is a path dependency rather than a workspace member. Rust is pinned to 1.99.1 in `src-tauri/rust-toolchain.toml` and in Actions; the declared 1.95 minimum is not independently tested. pnpm 12.14.0 is pinned in `package.json`, and Node 24 comes from `.node-version`.
+Pushes to `main` and pull requests run frontend checking, building and tests, plus Rust formatting, strict Clippy and tests. The vendored save codec has explicit formatting, Clippy and test steps because it is a path dependency rather than a workspace member. The codec has its own committed Cargo.lock and CI Clippy uses `--locked`. Rust is pinned to 1.99.1 in `src-tauri/rust-toolchain.toml` and in Actions; the declared 1.95 minimum is not independently tested. pnpm 12.14.0 is pinned in `package.json`, and Node 24 comes from `.node-version`.
 
 Weekly security checks run `cargo audit` and full `pnpm audit`, including frontend libraries compiled from dev dependencies. cargo-audit is installed from a checksum-verified prebuilt release through the pinned install action, with source-install fallback disabled. GitHub disables scheduled workflows in public repositories after 60 days without activity; check that the schedule remains enabled.
 
@@ -14,7 +14,7 @@ Dependabot checks npm, Cargo and SHA-pinned GitHub Actions weekly. Action pins h
 2. Run **Actions > Release > Run workflow** on `main`. This builds Windows, macOS and Linux installers as workflow artifacts without creating or publishing a release. Each artifact ZIP contains the original Tauri filename; custom release names are applied only to GitHub release assets.
 3. Download and test the Windows setup/MSI, universal macOS DMG on Apple Silicon, and Linux AppImage/native packages on real systems. Verify ad-hoc signing and first launch on a clean Mac. The README contains installation instructions. If hardened runtime prevents the ad-hoc app from launching, investigate `bundle.macOS.hardenedRuntime: false` and repeat the dry run before tagging.
 4. Create `v1.0.0` on the tested commit and push **only** `git push origin v1.0.0`. Tag, npm, Cargo and Tauri versions must agree. Tags are filtered to version-like names and validated before any draft is created. A version with a prerelease suffix is marked as a prerelease; MSI also requires an explicit numeric `bundle.windows.wix.version` for such versions.
-5. Wait for all installer jobs to succeed. Check that every expected asset is present, inspect the changelog and its commit links, and test the installers downloaded from the draft. Publish the draft manually from GitHub's Releases page. The workflow never auto-publishes.
+5. Wait for all installer jobs to succeed. Check that every expected asset is present, inspect the curated release notes, and test the installers downloaded from the draft. Publish the draft manually from GitHub's Releases page. The workflow never auto-publishes.
 
 Release runs are serialized per ref and have job timeouts. Use **Re-run failed jobs** so the original draft ID is retained; a full rerun can create another draft. Never publish a partial draft. Only CI-produced artifacts should be published.
 
@@ -53,7 +53,9 @@ GitHub shows SHA-256 digests for release assets. Build provenance attestations a
 
 ## Existing pre-release data
 
-The application identifier is now `io.github.zendevio.hamlet-editor`. Before the first window opens, startup copies `settings.json` from the legacy `com.hamlet-editor.app` app data directory and `backups/` from its local data directory, only if neither resource exists in the new locations. It never moves originals or overwrites existing data, rejects symlinks, and logs failures without aborting startup. Successful migration makes later starts a no-op. Unrelated webview data is not copied.
+The application identifier is now `io.github.zendevio.hamlet-editor`. Before tagging, write `.github/release-notes/<tag>.md` with curated public release notes. The draft body comes from that file, never raw commit subjects.
+
+Before the first window opens, startup copies `settings.json` from the legacy `com.hamlet-editor.app` app data directory and `backups/` from its local data directory, only if neither resource exists in the new locations. It never moves originals or overwrites existing data, rejects symlinks, and displays failures as a persistent startup toast. Both resources are staged before publication; interrupted copies are cleaned and retried on the next start. An import journal lets startup finish an interruption between the two renames. Successful migration makes later starts a no-op. Webview data is not copied, so the light/dark theme choice resets once. The copy runs before window creation so settings are ready for the frontend. It uses no per-file fsync and syncs only the journal and target directories, since the originals remain intact.
 
 | OS | Settings and backups |
 | --- | --- |
@@ -61,7 +63,7 @@ The application identifier is now `io.github.zendevio.hamlet-editor`. Before the
 | Windows | Settings: `%APPDATA%\io.github.zendevio.hamlet-editor\settings.json`; backups: `%LOCALAPPDATA%\io.github.zendevio.hamlet-editor\backups\` |
 | Linux | `${XDG_DATA_HOME:-~/.local/share}/io.github.zendevio.hamlet-editor/` |
 
-If migration fails, the legacy files remain available for manual recovery. Resolve the logged cause before starting again. If either new resource already exists, recover any remaining legacy data manually without overwriting current files.
+If migration fails, the toast gives the cause and the legacy files remain intact. Quit the editor, resolve the cause and restart to retry. If new settings or backups were created by normal use after a failed import, automatic import stops to protect them; recover remaining legacy data manually without overwriting current files.
 
 ## Caching and local builds
 
@@ -83,4 +85,10 @@ Publish only artifacts built by CI, which contain runner paths instead of local 
 - `.github/workflows/audit.yml`: security audits.
 - `.github/dependabot.yml`: dependency updates.
 - `.github/scripts/release-version.mjs`: tag/version and prerelease MSI guard.
-- `cliff.toml`: changelog generation, with explicit repository context in Actions.
+- `.github/release-notes/<tag>.md`: curated public release body.
+
+## Regenerating bundled dependency licenses
+
+After dependency changes, run `pnpm install --frozen-lockfile` and `cargo fetch --locked` in `src-tauri`, then run `python3 .github/scripts/generate-licenses.py` from the repository root. The generator runs Cargo metadata offline with the app lockfile and reads the installed pnpm graph. It deliberately includes build tools and all Cargo targets as a conservative superset of shipped dependencies. Commit `THIRD_PARTY_LICENSES.md` with the dependency changes. No license tool is downloaded during generation.
+
+Package archive license/copyright/notice files are retained verbatim, with identical texts deduplicated. Packages without archive license files retain metadata attribution and refer to the complete canonical texts in `.github/scripts/license-texts/`, copied from cached upstream package distributions. Check new license expressions and add any new required canonical text before regeneration. The generated file includes JetBrains Mono's full OFL-1.1 text and is bundled under `licenses/` with the other notices. Inspect this directory in each downloaded installer before publication.

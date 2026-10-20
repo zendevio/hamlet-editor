@@ -77,7 +77,7 @@ jobs:
         run: cargo fmt --check --manifest-path crates/ddsavelib/Cargo.toml
 
       - name: Save codec Clippy
-        run: cargo clippy --manifest-path crates/ddsavelib/Cargo.toml --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --manifest-path crates/ddsavelib/Cargo.toml --all-targets --all-features -- -D warnings
 
       - name: Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings

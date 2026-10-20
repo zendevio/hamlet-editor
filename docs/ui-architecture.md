@@ -395,9 +395,9 @@ Sectioned form layout.
 **Backup Section**
 - Auto-backup toggle (`Switch`). Off by default. When enabled, creates a backup before every save operation.
 - Backup location display (read-only, OS-conventional path from `app_local_data_dir()`):
-  - Windows: `%LOCALAPPDATA%\hamlet-editor\backups\`
-  - macOS: `~/Library/Application Support/hamlet-editor/backups/`
-  - Linux: `~/.local/share/hamlet-editor/backups/`
+  - Windows: `%LOCALAPPDATA%\io.github.zendevio.hamlet-editor\backups\`
+  - macOS: `~/Library/Application Support/io.github.zendevio.hamlet-editor/backups/`
+  - Linux: `~/.local/share/io.github.zendevio.hamlet-editor/backups/`
 - "Open Backup Folder" button (system file manager).
 - "Restore from Game Backup" button — reads from the game's own `profile_#/backup/` directory.
 - Recent backup list with timestamps, profile identifiers, and "Restore" buttons.
