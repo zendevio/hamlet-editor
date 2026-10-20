@@ -213,10 +213,12 @@ fn is_steam_process(name: &str) -> bool {
     )
 }
 
-/// The canonical DD1 Steam layout, also used by save-location discovery.
+/// The DD1 Steam layout, also used by save-location discovery.
 /// This identifies storage ownership, not whether Cloud sync is enabled.
-pub(crate) fn is_steam_profile(canonical: &Path) -> bool {
-    let parts: Vec<_> = canonical.components().collect();
+/// Callers check both the supplied and the canonical path, so symlinked
+/// profiles are recognised from either side.
+pub(crate) fn is_steam_profile(path: &Path) -> bool {
+    let parts: Vec<_> = path.components().collect();
     parts.windows(5).any(|parts| {
         parts[0].as_os_str() == "userdata"
             && parts[1]

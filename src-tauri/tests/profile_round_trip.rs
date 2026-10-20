@@ -1348,3 +1348,52 @@ fn preflight_rejects_non_utf8_profile_id_without_writes() {
     assert_eq!(tree(&destination), before);
     assert!(!sandbox.backups().exists());
 }
+
+#[test]
+fn restore_safety_backup_matches_a_normal_backup_of_the_profile() {
+    let without_manifest = |root: &Path| {
+        let mut files = tree(root);
+        files.remove(Path::new(".hamlet-backup.json"));
+        files
+    };
+    for game in [false, true] {
+        let sandbox = Sandbox::new();
+        let backup = backup::create_backup_at(&sandbox.profile(), &sandbox.backups()).unwrap();
+        fs::write(sandbox.profile().join("persist.roster.json"), b"changed").unwrap();
+        fs::write(
+            sandbox.profile().join("backup/persist.estate.json"),
+            b"changed backup copy",
+        )
+        .unwrap();
+        let reference_root = sandbox.0.join("reference-backups");
+        let reference = backup::create_backup_at(&sandbox.profile(), &reference_root).unwrap();
+        if game {
+            backup::restore_game_backup_with_detectors(
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || Ok(false),
+            )
+            .unwrap();
+        } else {
+            backup::restore_backup_with_detectors(
+                &backup,
+                &sandbox.profile(),
+                &sandbox.backups(),
+                || Ok(false),
+                || Ok(false),
+            )
+            .unwrap();
+        }
+        let safety: Vec<_> = fs::read_dir(sandbox.backups())
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| *path != backup)
+            .collect();
+        assert_eq!(safety.len(), 1);
+        let expected = without_manifest(&reference);
+        assert!(expected.contains_key(Path::new("backup/persist.estate.json")));
+        assert!(expected.contains_key(Path::new("plot_crimson_court_1/persist.raid.json")));
+        assert_eq!(without_manifest(&safety[0]), expected);
+    }
+}

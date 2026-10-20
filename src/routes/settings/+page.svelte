@@ -308,6 +308,28 @@
 		restoreDialogOpen = true;
 	}
 
+	/** Re-run the preflight for an open dialog; a result that arrives after Cancel is dropped. */
+	async function recheckRestore(game: boolean) {
+		const backupPath = game ? null : restoreTarget?.path;
+		if (checkingRestore || backupPath === undefined) return;
+		checkingRestore = true;
+		try {
+			const check = await checkRestore(backupPath, settings.savePath);
+			if (game ? !restoreGameBackupDialogOpen : !restoreDialogOpen) return;
+			if (game) {
+				gameRestoreCheck = check;
+				restoreGameBackupConfirmChecked = false;
+			} else {
+				restoreCheck = check;
+				restoreConfirmChecked = false;
+			}
+		} catch (err) {
+			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+		} finally {
+			checkingRestore = false;
+		}
+	}
+
 	async function handleRestore() {
 		if (!restoreTarget || !settings.savePath) return;
 		restoringBackup = restoreTarget.path;
@@ -798,7 +820,7 @@
 
 		{#if restoreCheck?.blocked_reason}
 			<p role="alert" class="text-sm text-destructive">{restoreCheck.blocked_reason}</p>
-			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => restoreTarget && openRestoreDialog(restoreTarget)}>Check again</Button>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(false)}>Check again</Button>
 		{/if}
 
 		{#if restoreTarget}
@@ -858,7 +880,7 @@
 
 		{#if gameRestoreCheck?.blocked_reason}
 			<p role="alert" class="text-sm text-destructive">{gameRestoreCheck.blocked_reason}</p>
-			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={openRestoreGameBackupDialog}>Check again</Button>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(true)}>Check again</Button>
 		{/if}
 
 		<div class="space-y-3">

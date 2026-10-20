@@ -156,7 +156,9 @@ pub fn list_backups_at(profile: &Path, root: &Path) -> Result<Vec<BackupEntry>, 
     Ok(backups)
 }
 
-#[tauri::command(async)]
+// Writers stay synchronous: an async task could be cut off mid-transaction
+// when the window closes, leaving a half-restored profile.
+#[tauri::command]
 pub fn restore_backup(
     backup_path: String,
     profile_path: String,
@@ -267,10 +269,7 @@ fn prepare_restore(
             return Err("Backup belongs to a different source profile".into());
         }
     } else {
-        let id = source
-            .file_name()
-            .and_then(|n| n.to_str())
-            .ok_or("Invalid profile ID")?;
+        let id = profile_id(&source)?;
         if !backup
             .file_name()
             .and_then(|n| n.to_str())
@@ -300,7 +299,7 @@ fn prepare_restore(
     restore_plan(profile, source, files, deletes, steam_detector)
 }
 
-#[tauri::command(async)]
+#[tauri::command]
 pub fn restore_game_backup(
     profile_path: String,
     app_handle: tauri::AppHandle,
@@ -331,11 +330,6 @@ fn restore_plan(
 ) -> Result<RestorePlan, String> {
     super::transaction::validate_changes(&source, &files, &deletes)?;
     profile_id(&source)?;
-    // Validate once and reuse these bytes when creating the safety backup.
-    let safety_files = read_save_tree(&source)?;
-    if safety_files.is_empty() {
-        return Err("No save files found to back up".into());
-    }
     let adds = files
         .keys()
         .filter(|path| !source.join(path).exists())
@@ -349,6 +343,11 @@ fn restore_plan(
     } else {
         None
     };
+    // Read as late as possible and reuse these bytes for the safety backup.
+    let safety_files = read_save_tree(&source)?;
+    if safety_files.is_empty() {
+        return Err("No save files found to back up".into());
+    }
     Ok(RestorePlan {
         safety_files,
         source,
