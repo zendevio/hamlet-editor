@@ -1,0 +1,41 @@
+{
+  "dlc/580100_crimson_court/features/crimson_court/trinkets/crimson_court.entries.trinkets.json": {
+    "entries": [
+      {
+        "id": "cc_set_pd_codex_of_plagues",
+        "buffs": [
+          "TRINKET_pd_codex_HP_B1",
+          "TRINKET_pd_codex_DISEASERESIST_B1"
+        ],
+        "hero_class_requirements": [
+          "plague_doctor"
+        ],
+        "set_id": "cc_pd",
+        "rarity": "crimson_court",
+        "price": 50000,
+        "limit": 1,
+        "origin_dungeon": "courtyard"
+      }
+    ]
+  },
+  "dlc/580100_crimson_court/features/flagellant/trinkets/flagellant.entries.trinkets.json": {
+    "entries": [
+      {
+        "id": "flag_1",
+        "buffs": [
+          "TRINKET_FLAG_DEATHRESIST_B",
+          "TRINKET_FLAG_DEATHDOOR_DODGE",
+          "TRINKET_FLAG_DMGL_STRESSED",
+          "TRINKET_FLAG_DMGH_STRESSED"
+        ],
+        "hero_class_requirements": [
+          "flagellant"
+        ],
+        "rarity": "very_rare",
+        "price": 25000,
+        "limit": 0,
+        "origin_dungeon": ""
+      }
+    ]
+  }
+}

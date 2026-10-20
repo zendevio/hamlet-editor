@@ -1,3 +1,5 @@
+import { localize } from '#lib/stores/game-data.svelte.js';
+import { snakeToTitle } from '#lib/utils.js';
 import { parseInteger, validTorchlight } from '#lib/input-validation.js';
 import type { EstateData, GameData, InventoryItem, RaidData, RosterData } from '#lib/types/save-data.js';
 import { clearHeroCombatState } from '#lib/hero-safety.js';
@@ -111,4 +113,11 @@ export function abandonRaidData(game: GameData, raid: RaidData, roster: RosterDa
 	changed.add('persist.roster.json');
 	changed.add('persist.game.json');
 	return changed;
+}
+
+/** Inventory localization keys concatenate the type and optional ID. */
+export function raidItemLabel(item: InventoryItem): string {
+	const key = `str_inventory_title_${item.type}${item.id}`;
+	const name = localize(key);
+	return name === snakeToTitle(key) ? snakeToTitle(item.id || item.type) : name;
 }

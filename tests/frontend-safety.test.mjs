@@ -453,7 +453,7 @@ test('dismiss returns every equipped trinket to verified estate entries and disc
     equipped[0].hero_only = { unverified: 42 };
     equipped[1].slot = 1;
     equipped[1].amount = 2;
-    const returned = equipped.map(({ id, amount }) => ({ id, type: 'trinket', amount }));
+    const returned = structuredClone(equipped);
     store.getHeroRawData('44').trinkets.items = { 0: equipped[0], 1: equipped[1] };
     store.clearAllDirty();
     const next = Math.max(...Object.keys(items).map(Number)) + 1;

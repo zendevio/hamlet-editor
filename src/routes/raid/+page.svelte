@@ -22,7 +22,7 @@
 		swapPartyPositions
 	} from '#lib/stores/save-data.svelte.js';
 	import { ScrollArea } from '#lib/components/ui/scroll-area/index.js';
-	import { abandonRaidBlockReason, abandonRaidInventory } from '#lib/raid.js';
+	import { abandonRaidBlockReason, abandonRaidInventory, raidItemLabel } from '#lib/raid.js';
 	import { stripDsonPrefix } from '#lib/utils.js';
 	import type { RaidData, InventoryItem } from '#lib/types/save-data.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
@@ -415,7 +415,7 @@
 			<p class="text-xs">{abandonInventory.returnedTrinkets} party inventory trinket(s) will return to estate storage. Other supplies and loot will be lost:</p>
 			<ul class="list-disc pl-5 text-xs">
 				{#each abandonInventory.lost as item}
-					<li>{item.id}: {item.amount} ({item.type})</li>
+					<li>{raidItemLabel(item)}: {item.amount}</li>
 				{:else}
 					<li>No supplies or loot.</li>
 				{/each}

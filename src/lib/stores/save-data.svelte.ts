@@ -538,12 +538,13 @@ export function reviveHeroes(guids: readonly string[]): string | null {
 		if (!hero.actor || !Number.isInteger(hero.armour_rank)) return 'This hero has incomplete actor or armour data. Reload the complete profile.';
 		heroes.push(hero);
 	}
-	const maxima = heroes.map((hero) => getMaxHp(hero.heroClass, hero.armour_rank));
-	if (maxima.some((hp) => !Number.isFinite(hp) || hp <= 0)) return 'The class maximum HP could not be determined.';
+	const maxima = heroes.map((hero) => getGameDataMaxHp(hero.heroClass, hero.armour_rank)
+		?? HP_TABLE[hero.heroClass]?.[Math.max(0, Math.min(hero.armour_rank, 4))]);
+	if (maxima.some((hp) => hp === undefined || !Number.isFinite(hp) || hp <= 0)) return 'Revival is blocked: class maximum HP unknown.';
 	for (const [index, hero] of heroes.entries()) {
 		hero['roster.status'] = 0;
 		hero['roster.before_on_start_town_visit_status'] = 0;
-		hero.actor.current_hp = maxima[index];
+		hero.actor.current_hp = maxima[index]!;
 		clearHeroCombatState(hero);
 		hero.visited_deaths_door = false;
 	}

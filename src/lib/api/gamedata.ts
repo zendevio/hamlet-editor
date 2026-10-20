@@ -32,6 +32,7 @@ export interface TrinketDef {
 	id: string;
 	rarity: string | null;
 	class_restriction: string | null;
+	limit: number | null;
 }
 
 /**

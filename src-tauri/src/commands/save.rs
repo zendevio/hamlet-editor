@@ -557,28 +557,29 @@ mod tests {
     }
 
     #[test]
-    fn stale_table_version_and_wrong_profile_are_blocked_before_deletion() {
+    fn stale_table_version_and_wrong_profile_are_blocked_before_writing() {
         let profile = Profile::new();
         profile.write();
         let other = Profile::new();
         other.write();
         let mut names = table();
         load_profile_with_table(profile.path(), &mut names).unwrap();
-        let deletion = json!({ "_deleted": ["persist.upgrades.json"] });
-        assert!(
-            save_profile_with_table(profile.path(), deletion.clone(), 0, &mut names)
-                .unwrap_err()
-                .contains("missing or changed")
+        let unchanged = json!({});
+        assert_eq!(
+            save_profile_with_table(profile.path(), unchanged.clone(), 0, &mut names).unwrap_err(),
+            "Name table is missing or changed. Reload game data and the profile before saving."
         );
-        assert!(
-            save_profile_with_table(other.path(), deletion, 1, &mut names)
-                .unwrap_err()
-                .contains("Profile was not loaded")
+        assert_eq!(
+            save_profile_with_table(other.path(), unchanged, 1, &mut names).unwrap_err(),
+            "Profile was not loaded with the current name table. Reload the profile before saving."
         );
         assert!(Path::new(&profile.upgrades()).exists());
         assert!(Path::new(&other.upgrades()).exists());
         names.version += 1;
-        assert!(save_profile_with_table(profile.path(), json!({}), 1, &mut names).is_err());
+        assert_eq!(
+            save_profile_with_table(profile.path(), json!({}), 1, &mut names).unwrap_err(),
+            "Name table is missing or changed. Reload game data and the profile before saving."
+        );
     }
 
     #[test]
@@ -614,19 +615,20 @@ mod tests {
     }
 
     #[test]
-    fn invalid_upgrade_input_is_blocked_before_deletion() {
+    fn invalid_upgrade_input_is_blocked_before_writing() {
         let profile = Profile::new();
         profile.write();
         let mut names = table();
         let mut loaded = load_profile_with_table(profile.path(), &mut names).unwrap();
-        for value in [json!(1.5), json!("###unknown.tree")] {
+        for (value, expected) in [
+            (json!(1.5), "Upgrade IDs were not resolved. Reload the profile before saving."),
+            (json!("###unknown.tree"), "Unknown upgrade tree unknown.tree. Reload game data and the profile before saving."),
+        ] {
             loaded["data"]["persist.upgrades.json"]["base_root"]["purchases"]["0"]["tree_id"] =
                 value;
-            loaded["data"]["_deleted"] = json!(["persist.upgrades.json"]);
-            assert!(
-                save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names)
-                    .is_err()
-            );
+            let original = std::fs::read(profile.upgrades()).unwrap();
+            assert_eq!(save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names).unwrap_err(), format!("persist.upgrades.json: {expected}"));
+            assert_eq!(std::fs::read(profile.upgrades()).unwrap(), original);
             assert!(Path::new(&profile.upgrades()).exists());
         }
     }

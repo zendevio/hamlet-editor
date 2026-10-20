@@ -895,6 +895,7 @@
 								</div>
 								<TrinketPicker
 									value={trinketSlot0?.id ?? ''}
+									otherIds={trinketSlot1?.id ? [trinketSlot1.id] : []}
 									heroClass={hero.heroClass}
 									disabled={isDead}
 									onselect={(id, source) => handleTrinketSelect('0', id, source)}
@@ -912,6 +913,7 @@
 								</div>
 								<TrinketPicker
 									value={trinketSlot1?.id ?? ''}
+									otherIds={trinketSlot0?.id ? [trinketSlot0.id] : []}
 									heroClass={hero.heroClass}
 									disabled={isDead}
 									onselect={(id, source) => handleTrinketSelect('1', id, source)}

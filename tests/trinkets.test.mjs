@@ -15,18 +15,22 @@ const server = await createServer({
 });
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
-const { equipTrinket, inventoryTrinkets, canEquipTrinket } = await server.ssrLoadModule('/src/lib/trinkets.ts');
+const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
+const { runPreSaveValidation } = await server.ssrLoadModule('/src/lib/validation.ts');
+const { equipTrinket, inventoryTrinkets, canEquipTrinket, trinketEquipBlockReason, catalogueTrinket } = await server.ssrLoadModule('/src/lib/trinkets.ts');
 const reference = {
 	...JSON.parse(await readFile(new URL('./fixtures/safety-reference.json', import.meta.url), 'utf8')),
 	...JSON.parse(await readFile(new URL('./fixtures/dismiss-reference.json', import.meta.url), 'utf8'))
 };
 reference.estate.base_root.trinkets.items = { '0': { id: 'lane_m_ring', type: 'trinket', amount: 3 } };
+const metadata = { added_buffs: 3, hero_name: 'Bonel', previous_trinket_id: 'before', did_transform: true, trinkets_gained_count: 2 };
 const item = (id, amount = 1) => ({ id, type: 'trinket', amount });
 const hero = () => ({ heroClass: 'crusader', trinkets: { items: {} } });
 const estate = (items = {}) => ({ base_root: { trinkets: { items } } });
 
 beforeEach(() => {
 	store.resetSaveData();
+	gameData.setTrinkets([]);
 	for (const [name, value] of Object.entries(structuredClone(reference))) {
 		const method = `load${name[0].toUpperCase()}${name.slice(1)}`;
 		if (typeof store[method] === 'function') store[method](value);
@@ -36,9 +40,9 @@ beforeEach(() => {
 for (const amount of [1, 3]) {
 	test(`inventory equip consumes one of ${amount} and preserves other keys`, () => {
 		const h = hero();
-		const e = estate({ '0': item('focus_ring', amount), '4': item('sun_ring') });
+		const e = estate({ '0': { ...item('focus_ring', amount), ...metadata }, '4': item('sun_ring') });
 		assert.deepEqual(equipTrinket(h, e, '0', 'focus_ring', 'inventory'), { changed: true, estateChanged: true });
-		assert.deepEqual(h.trinkets.items['0'], item('focus_ring'));
+		assert.deepEqual(h.trinkets.items['0'], { ...item('focus_ring'), ...metadata });
 		assert.deepEqual(e.base_root.trinkets.items['4'], item('sun_ring'));
 		if (amount === 1) assert.equal(e.base_root.trinkets.items['0'], undefined);
 		else assert.equal(e.base_root.trinkets.items['0'].amount, amount - 1);
@@ -53,13 +57,13 @@ test('catalogue equip creates a trinket without consuming inventory or requiring
 	assert.equal(equipTrinket(hero(), null, '0', 'sun_ring', 'catalogue').changed, true);
 });
 
-test('replacement and unequip return previous items using estate fields only', () => {
+test('replacement and unequip preserve complete item metadata', () => {
 	for (const source of ['inventory', 'catalogue']) {
 		const h = hero();
-		h.trinkets.items['0'] = { ...item('old'), hero_only: 42 };
+		h.trinkets.items['0'] = { ...item('old'), ...metadata };
 		const e = estate({ '3': item('new', 2) });
 		assert.equal(equipTrinket(h, e, '0', 'new', source).estateChanged, true);
-		assert.deepEqual(e.base_root.trinkets.items['4'], item('old'));
+		assert.deepEqual(e.base_root.trinkets.items['4'], { ...item('old'), ...metadata });
 		assert.equal(e.base_root.trinkets.items['3'].amount, source === 'inventory' ? 1 : 2);
 		assert.equal(equipTrinket(h, e, '0', '', 'inventory').changed, true);
 		assert.equal(h.trinkets.items['0'], undefined);
@@ -128,8 +132,79 @@ test('catalogue store creation dirties only roster and missing estate blocks rep
 	assert.deepEqual(Object.keys(store.getDirtyData()), ['persist.roster.json']);
 	const savedRoster = structuredClone(store.getSaveData().roster);
 	store.resetSaveData();
+	gameData.setTrinkets([]);
 	store.loadRoster(savedRoster);
 	assert.match(store.setHeroTrinket('1', '0', 'other', 'catalogue'), /estate file/);
 	assert.deepEqual(store.getSaveData().roster, savedRoster);
 	assert.equal(store.hasDirtyFiles(), false);
+});
+
+test('catalogue creation copies the estate schema with default metadata', () => {
+	const e = estate({ 0: { ...item('old', 3), ...metadata } });
+	const expected = { ...item('new'), added_buffs: 0, hero_name: '', previous_trinket_id: '', did_transform: false, trinkets_gained_count: 0 };
+	assert.deepEqual(catalogueTrinket('new', e.base_root.trinkets.items), expected);
+	const h = hero();
+	assert.equal(equipTrinket(h, e, '0', 'new', 'catalogue').changed, true);
+	assert.deepEqual(h.trinkets.items['0'], expected);
+	assert.deepEqual(e.base_root.trinkets.items['0'], { ...item('old', 3), ...metadata });
+});
+
+test('whole-item moves clone nested metadata instead of sharing it', () => {
+	const original = { ...item('ring', 2), added_buffs: { nested: [1] } };
+	const h = hero();
+	const e = estate({ 0: original });
+	equipTrinket(h, e, '0', 'ring', 'inventory');
+	h.trinkets.items['0'].added_buffs.nested.push(2);
+	assert.deepEqual(original.added_buffs, { nested: [1] });
+	const equipped = h.trinkets.items['0'];
+	equipTrinket(h, e, '0', '', 'inventory');
+	equipped.added_buffs.nested.push(3);
+	assert.deepEqual(e.base_root.trinkets.items['1'].added_buffs, { nested: [1, 2] });
+});
+
+test('installed feature definitions refuse the Plague Doctor codex on a Crusader and unknown ids fail closed', async () => {
+	const fixture = JSON.parse(await readFile(new URL('./fixtures/dlc-trinket-definitions.json', import.meta.url)));
+	const definitions = Object.values(fixture).flatMap(({ entries }) => entries.map((entry) => ({ id: entry.id, class_restriction: entry.hero_class_requirements[0], limit: entry.limit })));
+	const id = 'cc_set_pd_codex_of_plagues';
+	for (const source of ['inventory', 'catalogue']) {
+		const h = hero(), e = estate({ 0: item(id), 1: item('unknown') });
+		const before = structuredClone({ h, e });
+		assert.match(equipTrinket(h, e, '0', id, source, definitions).error, /another hero class/);
+		assert.match(equipTrinket(h, e, '0', 'unknown', source, definitions).error, /Class restriction unknown/);
+		assert.deepEqual({ h, e }, before);
+	}
+	assert.equal(canEquipTrinket(id, 'plague_doctor', definitions), true);
+	assert.equal(canEquipTrinket('unknown', 'crusader', []), true);
+});
+
+test('per-hero limits count the other slot and reject both sources before mutation', () => {
+	for (const limit of [1, 2, 0, null]) {
+		for (const source of ['inventory', 'catalogue']) {
+			const h = hero(), e = estate({ 0: item('ring', 2) });
+			h.trinkets.items['0'] = item('ring');
+			const definitions = [{ id: 'ring', class_restriction: null, limit }];
+			const before = structuredClone({ h, e });
+			const result = equipTrinket(h, e, '1', 'ring', source, definitions);
+			if (limit === 1) {
+				assert.match(result.error, /limited to 1 per hero/);
+				assert.match(trinketEquipBlockReason('ring', 'crusader', definitions, ['ring']), /limited/);
+				assert.deepEqual({ h, e }, before);
+			} else assert.equal(result.changed, true);
+		}
+	}
+});
+
+test('validation allows storage overlap and ordinary copies, informing only about limit-one items on multiple heroes', () => {
+	const ids = store.getHeroes().slice(0, 2).map((hero) => hero.guid);
+	assert.equal(ids.length, 2);
+	for (const guid of ids) store.getHeroRawData(guid).trinkets.items = { 0: item('ring') };
+	store.getSaveData().estate.base_root.trinkets.items = { 0: item('ring', 4) };
+	for (const limit of [null, 2, 1]) {
+		gameData.setTrinkets([{ id: 'ring', class_restriction: null, limit }]);
+		const issues = runPreSaveValidation().filter((issue) => issue.category === 'Trinkets');
+		assert.equal(issues.length, limit === 1 ? 1 : 0);
+		if (issues.length) assert.match(issues[0].message, /For information:.*Separate copies may be legitimate/);
+	}
+	store.getHeroRawData(ids[1]).trinkets.items = {};
+	assert.equal(runPreSaveValidation().filter((issue) => issue.category === 'Trinkets').length, 0);
 });

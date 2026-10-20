@@ -70,10 +70,10 @@ export function sliderControl(value: number, range: SliderRange, commit: (value:
 	const maxStep = Math.floor(range.max * factor / scaledStep) * scaledStep / factor;
 	const boundedStep = (next: number) => Math.min(maxStep, Math.max(minStep, next));
 	let stored = value;
-	let shown = snapped;
+	let shown = boundedStep(snapped);
 	let pointerStart: number | undefined;
 	return {
-		value,
+		value: boundedStep(snapped),
 		restoreValue: () => {
 			shown = boundedStep(snappedSliderValue(stored, alignedSliderRange(range)));
 			return shown;

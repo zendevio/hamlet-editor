@@ -34,6 +34,7 @@ pub struct TrinketDef {
     pub id: String,
     pub rarity: Option<String>,
     pub class_restriction: Option<String>,
+    pub limit: Option<u32>,
 }
 
 // ---------------------------------------------------------------------------
@@ -56,8 +57,11 @@ fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> 
     let mut by_mode = serde_json::Map::new();
     for mode in ["base", "radiant", "new_game_plus", "bloodmoon"] {
         let overlay = root.join("modes").join(mode).join(relative);
+        let stygian = root.join("modes/new_game_plus").join(relative);
         let path = if mode != "base" && overlay.is_file() {
             overlay
+        } else if mode == "bloodmoon" && stygian.is_file() {
+            stygian
         } else {
             root.join(relative)
         };
@@ -134,32 +138,30 @@ pub fn load_trinket_library(game_path: String) -> Result<Vec<TrinketDef>, String
     let base = data_root.join("trinkets/base.entries.trinkets.json");
     parse_trinket_file(&base, &mut trinkets);
 
-    // DLC trinket files: scan dlc/*/trinkets/*.trinkets.json
-    let dlc_dir = data_root.join("dlc");
-    if dlc_dir.is_dir() {
-        if let Ok(entries) = std::fs::read_dir(&dlc_dir) {
-            for entry in entries.flatten() {
-                let dlc_path = entry.path();
-                if dlc_path.is_dir() {
-                    let trinkets_dir = dlc_path.join("trinkets");
-                    if trinkets_dir.is_dir() {
-                        if let Ok(files) = std::fs::read_dir(&trinkets_dir) {
-                            for file in files.flatten() {
-                                let fp = file.path();
-                                if fp.is_file() {
-                                    if let Some(name) = fp.file_name().and_then(|n| n.to_str()) {
-                                        if name.ends_with(".trinkets.json") {
-                                            parse_trinket_file(&fp, &mut trinkets);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+    // Feature DLCs nest their trinkets below features/<feature>/trinkets/.
+    fn visit(dir: &Path, out: &mut Vec<TrinketDef>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            let mut entries: Vec<_> = entries.flatten().collect();
+            entries.sort_by_key(|entry| entry.path());
+            for entry in entries {
+                let path = entry.path();
+                let Ok(kind) = entry.file_type() else {
+                    continue;
+                };
+                if kind.is_dir() {
+                    visit(&path, out);
+                } else if kind.is_file()
+                    && path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|name| name.ends_with(".entries.trinkets.json"))
+                {
+                    parse_trinket_file(&path, out);
                 }
             }
         }
     }
+    visit(&data_root.join("dlc"), &mut trinkets);
 
     Ok(trinkets)
 }
@@ -399,6 +401,10 @@ fn parse_trinket_file(path: &Path, out: &mut Vec<TrinketDef>) {
             id,
             rarity,
             class_restriction,
+            limit: entry
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .and_then(|n| u32::try_from(n).ok()),
         });
     }
 }
@@ -490,6 +496,39 @@ mod roster_capacity_tests {
     use serde_json::json;
 
     #[test]
+    fn trinkets_load_installed_feature_layout_with_class_restrictions_and_limits() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-dlc-trinkets-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/dlc-trinket-definitions.json"
+        ))
+        .unwrap();
+        for (relative, value) in fixture.as_object().unwrap() {
+            let path = root.join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, serde_json::to_vec(value).unwrap()).unwrap();
+        }
+        let definitions = load_trinket_library(root.to_string_lossy().into()).unwrap();
+        assert_eq!(definitions.len(), 2);
+        let codex = definitions
+            .iter()
+            .find(|d| d.id == "cc_set_pd_codex_of_plagues")
+            .unwrap();
+        assert_eq!(codex.class_restriction.as_deref(), Some("plague_doctor"));
+        assert_eq!(codex.limit, Some(1));
+        assert!(definitions
+            .iter()
+            .any(|d| d.class_restriction.as_deref() == Some("flagellant")));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn capacity_reads_mode_overrides_and_dlc_bonus_and_rejects_missing_rules() {
         let root = std::env::temp_dir().join(format!(
             "hamlet-roster-rules-{}-{}",
@@ -519,6 +558,22 @@ mod roster_capacity_tests {
         assert_eq!(rules["by_mode"]["radiant"][1]["amount"], 30);
         assert_eq!(rules["by_mode"]["new_game_plus"][1]["amount"], 28);
         assert_eq!(rules["shieldbreaker_bonus"], 1);
+        assert_eq!(rules["by_mode"]["bloodmoon"][1]["amount"], 28);
+        write(
+            "modes/new_game_plus/campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(24),
+        );
+        let rules = read_roster_capacity_rules(&root).unwrap();
+        assert_eq!(rules["by_mode"]["new_game_plus"][1]["amount"], 24);
+        assert_eq!(rules["by_mode"]["bloodmoon"][1]["amount"], 24);
+        write(
+            "modes/bloodmoon/campaign/town/buildings/stage_coach/stage_coach.building.json",
+            building(26),
+        );
+        assert_eq!(
+            read_roster_capacity_rules(&root).unwrap()["by_mode"]["bloodmoon"][1]["amount"],
+            26
+        );
         std::fs::remove_file(root.join("dlc/702540_shieldbreaker/campaign/roster/shieldbreaker.roster.additional_variables.json")).unwrap();
         assert!(read_roster_capacity_rules(&root).unwrap()["shieldbreaker_bonus"].is_null());
         write(

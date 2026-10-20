@@ -20,6 +20,7 @@
 	import EnvelopeIcon from 'phosphor-svelte/lib/EnvelopeIcon';
 	import WrenchIcon from 'phosphor-svelte/lib/WrenchIcon';
 	import MagnifyingGlassIcon from 'phosphor-svelte/lib/MagnifyingGlassIcon';
+	import { catalogueTrinket } from '#lib/trinkets.js';
 	import TrinketPicker from '#lib/components/heroes/TrinketPicker.svelte';
 	import { getSaveData, markDirty, setWalletAmount, setEstateItemAmount, setEstateName, getDlcFlags, loadMockData, getHeroes } from '#lib/stores/save-data.svelte.js';
 	import { localize } from '#lib/stores/game-data.svelte.js';
@@ -193,11 +194,7 @@
 		if (!estateData || !saveData.estate || !trinketId) return;
 		const existingKeys = Object.keys(estateData.trinkets.items).map(Number).filter((n) => !isNaN(n));
 		const nextKey = existingKeys.length > 0 ? Math.max(...existingKeys) + 1 : 0;
-		saveData.estate.base_root.trinkets.items[String(nextKey)] = {
-			id: trinketId,
-			type: 'trinket',
-			amount: 1
-		};
+		saveData.estate.base_root.trinkets.items[String(nextKey)] = catalogueTrinket(trinketId, saveData.estate.base_root.trinkets.items);
 		markDirty('persist.estate.json');
 	}
 

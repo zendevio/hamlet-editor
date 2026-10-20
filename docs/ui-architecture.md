@@ -50,7 +50,7 @@ Contents top-to-bottom:
    - **Heroes** (ph:users-four) — Default landing page.
    - **Estate** (ph:bank) — Wallet, trinket storage, estate currencies.
    - **Town** (ph:buildings) — Building upgrades, treatment slots.
-   - **Raid** (ph:compass): Visible only when BOTH `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in `persist.game.json`. If only one condition is true (inconsistent state), the nav item is visible with an amber warning icon and tooltip: "Raid state is inconsistent between persist.raid.json and persist.game.json. Backup recommended before editing."
+   - **Raid** (ph:compass): Enabled when `inraid: true` in `persist.game.json`, dimmed and disabled in town. Active raid data resolves through game.json `raid_save` (or the profile root when empty). When inraid is true but the raid file is missing, the nav item remains enabled with an amber warning icon and tooltip: "Raid state is inconsistent between persist.raid.json and persist.game.json. Backup recommended before editing."
    - **Settings** (ph:gear) — Paths, backups, preferences.
 4. **Sidebar footer**:
    - Backup status indicator (last backup timestamp or "No backup").
@@ -69,7 +69,7 @@ Horizontal bar across the top of the main content area.
 | Badge | Condition | Color | Text |
 |-------|-----------|-------|------|
 | Game running | `is_game_running()` returns true | Red | "DD Running — Save Blocked" |
-| Raid active | `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in game.json. If only one condition is true, show amber "Raid State Inconsistent" warning instead. | Amber | "Raid Active" |
+| Raid active | `persist.raid.json` resolves through game.json `raid_save` (or the profile root when empty) AND `inraid: true` in game.json. If inraid is true but the raid file is missing, show amber "Raid State Inconsistent" warning instead. An inactive retained raid file is normal town state; Raid navigation and its shortcut are disabled. | Amber | "Raid Active" |
 | Mod content | Modded class/trinket/quirk IDs detected | Amber | "Modded Content" |
 | Unsaved changes | Any in-memory edit differs from on-disk state | Orange dot on Save button + ARIA label "Unsaved changes" | Tooltip: "Unsaved changes" (accessible to screen readers) |
 
@@ -211,8 +211,8 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 - **Armour Rank** — `Select` dropdown (0-4), independent of resolve level. Changes update the roster rank index and displayed max HP.
 - Gear icons: `heroes/<class>/icons_equip/eqp_weapon_<rank>.png` and `eqp_armour_<rank>.png` (note: British spelling `armour`).
 - **Trinkets** — two trinket slots. Each shows trinket icon (`panels/icons_equip/trinket/inv_trinket+<id>.png`) + localized name. Click to open `TrinketPicker` popover.
-  - TrinketPicker lists "In your inventory" first, aggregating counts greater than one, then "Add new from catalogue" for explicit creation. Both groups search by localized name or ID. Loaded game-data class restrictions filter both groups for the selected hero. If definitions are unavailable, the existing static catalogue remains available and class restrictions cannot be checked. Unknown inventory IDs remain selectable.
-  - Equipping from inventory consumes one item, decrementing its amount or deleting its numbered entry. Catalogue creation leaves inventory untouched. Replacing or choosing "Unequip to inventory" returns the previous item using the same append helper as dismissal. Selecting the equipped ID does nothing. Dead heroes cannot equip or unequip trinkets. Moves needing storage are blocked with a message if the estate file is missing or unsupported. Roster and estate become dirty as needed; Discard All restores both. Single-hero Revert asks for Discard All if equipment differs, preventing a partial revert from duplicating trinkets.
+  - TrinketPicker lists "In your inventory" first, aggregating counts greater than one, then "Add new from catalogue" for explicit creation. Both groups search by localized name or ID. Definitions load from base trinkets and recursively from DLC, including Crimson Court and Flagellant feature directories. Both groups disable incompatible classes, unknown inventory IDs when definitions are loaded, and equips that exceed a positive per-hero limit across both slots, with a reason shown. A limit of zero is unlimited. If definitions are unavailable, the existing static catalogue remains available and class restrictions cannot be checked.
+  - Equipping from inventory consumes one item, decrementing its amount or deleting its numbered entry. Catalogue creation leaves inventory untouched. Replacing or choosing "Unequip to inventory" returns the complete previous item using the same append helper as dismissal and raid abandonment. Item metadata is cloned on transfers; new catalogue items use the existing estate schema with empty metadata, or id/type/amount when no template exists. Selecting the equipped ID does nothing. Dead heroes cannot equip or unequip trinkets. Moves needing storage are blocked with a message if the estate file is missing or unsupported. Roster and estate become dirty as needed; Discard All restores both. Single-hero Revert asks for Discard All if equipment differs, preventing a partial revert from duplicating trinkets.
 
 **Blood Curse Section** (conditional: visible only if the hero has any `disease_vampire_*` quirk AND Crimson Court DLC is installed (`dlc.crimsonCourt` from game installation detection))
 - Current state displayed with localized description:
@@ -457,6 +457,8 @@ Sectioned form layout.
 ### 4.5 Reviving a Dead Hero
 
 Town revival is a roster-only edit based on the captured dead hero Bonel (run7 snap-4). Game acceptance of editor revival is pending in-game verification (checklist scenario 11).
+
+Roster capacity refuses campaigns with non-empty `persistent_ugcs`: enabled mod overrides are not loaded. Revival names mods in its block message and refuses unknown class maximum HP. Bloodmoon capacity uses its own installed Stage Coach overlay, then new_game_plus, then base if neither overlay exists. This last fallback matches the current install, which has no Stage Coach overlay for either mode.
 
 1. Select a dead hero and click "Revive Hero", or select only dead heroes and click batch "Revive". Both open the same confirmation dialog.
 2. Revival requires `game.base_root.inraid: false` and enough free living roster slots. Capacity comes from installed mode-specific Stage Coach data, current roster-size purchases and the enabled Shieldbreaker DLC bonus. Missing or unsupported capacity data blocks revival with an explanation. Status 3 heroes do not count toward capacity.

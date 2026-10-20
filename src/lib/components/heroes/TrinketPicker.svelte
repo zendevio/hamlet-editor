@@ -11,7 +11,7 @@
 	import { Button } from '#lib/components/ui/button/index.js';
 	import CaretUpDownIcon from 'phosphor-svelte/lib/CaretUpDownIcon';
 	import { snakeToTitle } from '#lib/utils.js';
-	import { canEquipTrinket, inventoryTrinkets, type TrinketSource } from '#lib/trinkets.js';
+	import { trinketEquipBlockReason, inventoryTrinkets, type TrinketSource } from '#lib/trinkets.js';
 	import { getSaveData } from '#lib/stores/save-data.svelte.js';
 	import { getGameData, localize } from '#lib/stores/game-data.svelte.js';
 
@@ -56,12 +56,14 @@
 	let {
 		value = '',
 		heroClass = '',
+		otherIds = [],
 		disabled = false,
 		placeholder = 'Select trinket...',
 		onselect
 	}: {
 		value?: string;
 		heroClass?: string;
+		otherIds?: string[];
 		disabled?: boolean;
 		placeholder?: string;
 		onselect?: (trinketId: string, source: TrinketSource) => void;
@@ -79,20 +81,20 @@
 		return name === snakeToTitle(key) ? snakeToTitle(id) : name;
 	}
 
-	function allowed(id: string) {
-		return !heroClass || canEquipTrinket(id, heroClass, gameData.trinkets);
+	function blockedReason(id: string) {
+		return !heroClass || id === value ? null : trinketEquipBlockReason(id, heroClass, gameData.trinkets, otherIds);
 	}
 
-	let inventory = $derived(inventoryTrinkets(saveData.estate).filter((entry) => allowed(entry.id))
+	let inventory = $derived(inventoryTrinkets(saveData.estate)
 		.sort((a, b) => trinketDisplayName(a.id).localeCompare(trinketDisplayName(b.id))));
 	let catalogue = $derived((gameData.trinkets.length > 0
 		? gameData.trinkets.map((entry) => entry.id)
 		: [...ANCESTOR_TRINKETS, ...BOSS_DROP_TRINKETS, ...CORE_STACKABLE_TRINKETS])
-		.filter(allowed).sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))));
+		.sort((a, b) => trinketDisplayName(a).localeCompare(trinketDisplayName(b))));
 
 	function handleSelect(id: string, source: TrinketSource) {
 		open = false;
-		if (!disabled) onselect?.(id, source);
+		if (!disabled && (!id || !blockedReason(id))) onselect?.(id, source);
 	}
 </script>
 
@@ -130,16 +132,16 @@
 					{/if}
 					<CommandGroup heading="In your inventory">
 						{#each inventory as trinket (trinket.id)}
-							<CommandItem value={`inventory ${trinket.id} ${trinketDisplayName(trinket.id)}`} onSelect={() => handleSelect(trinket.id, 'inventory')} class="text-xs">
-								{trinketDisplayName(trinket.id)}{trinket.amount > 1 ? ` (${trinket.amount})` : ''}
+							<CommandItem value={`inventory ${trinket.id} ${trinketDisplayName(trinket.id)}`} disabled={!!blockedReason(trinket.id)} onSelect={() => handleSelect(trinket.id, 'inventory')} class="text-xs">
+								<span>{trinketDisplayName(trinket.id)}{trinket.amount > 1 ? ` (${trinket.amount})` : ''}{#if blockedReason(trinket.id)}<small class="block">{blockedReason(trinket.id)}</small>{/if}</span>
 							</CommandItem>
 						{/each}
 					</CommandGroup>
 				{/if}
 				<CommandGroup heading="Add new from catalogue">
 					{#each catalogue as id (id)}
-						<CommandItem value={`catalogue ${id} ${trinketDisplayName(id)}`} onSelect={() => handleSelect(id, 'catalogue')} class="text-xs">
-							{trinketDisplayName(id)}
+						<CommandItem value={`catalogue ${id} ${trinketDisplayName(id)}`} disabled={!!blockedReason(id)} onSelect={() => handleSelect(id, 'catalogue')} class="text-xs">
+							<span>{trinketDisplayName(id)}{#if blockedReason(id)}<small class="block">{blockedReason(id)}</small>{/if}</span>
 						</CommandItem>
 					{/each}
 				</CommandGroup>

@@ -150,7 +150,7 @@ test('regular raids also abandon and keep their empty raid path', () => {
 
 test('abandon returns inventory trinkets once, reports loss counts and Discard restores both inventories', () => {
 	const data = load(3);
-	data.raid.base_root.party.inventory.items['7'] = { id: 'focus_ring', type: 'trinket', amount: 2, hero_only: 42 };
+	data.raid.base_root.party.inventory.items['7'] = { id: 'focus_ring', type: 'trinket', amount: 2, added_buffs: 3, hero_name: 'Bonel', previous_trinket_id: 'old', did_transform: true, trinkets_gained_count: 2 };
 	data.raid.base_root.loot.owned_items.items['0'] = { id: 'gold', type: 'gold', amount: 500 };
 	store.loadRaid(structuredClone(data.raid));
 	const before = snapshot(data);
@@ -161,7 +161,7 @@ test('abandon returns inventory trinkets once, reports loss counts and Discard r
 	const oldCount = trinkets.inventoryTrinkets(before.estate).find((item) => item.id === 'focus_ring')?.amount ?? 0;
 	assert.equal(trinkets.inventoryTrinkets(data.estate).find((item) => item.id === 'focus_ring').amount, oldCount + 2);
 	assert.equal(data.raid.base_root.party.inventory.items['7'], undefined);
-	assert.deepEqual(Object.values(data.estate.base_root.trinkets.items).at(-1), { id: 'focus_ring', type: 'trinket', amount: 2 });
+	assert.deepEqual(Object.values(data.estate.base_root.trinkets.items).at(-1), before.raid.base_root.party.inventory.items['7']);
 	assert.deepEqual(Object.keys(store.getDirtyData()).sort(), ['persist.estate.json', 'persist.game.json', 'persist.raid.json', 'persist.roster.json']);
 	assert.match(store.abandonRaid(), /no active raid/);
 	store.discardAllChanges();
@@ -229,4 +229,45 @@ test('revival uses the installed class maximum shared with the HP slider', () =>
 	assert.equal(store.reviveHeroes(['58']), null);
 	assert.equal(store.getHeroRawData('58').actor.current_hp, 26.5);
 	gameData.setClassStats([]);
+});
+
+test('enabled campaign mods block capacity and revival without any mutation', () => {
+	const data = load(4);
+	data.game.base_root.persistent_ugcs = { 12345: { name: 'Custom Stage Coach' } };
+	assert.equal(safety.rosterCapacity(data.game, data.upgrades, rules), null);
+	const before = snapshot(data);
+	assert.match(store.getRevivalBlockReason(), /mods/);
+	assert.match(store.reviveHeroes(['58']), /mods/);
+	assert.deepEqual(snapshot(data), before);
+	assert.equal(store.hasDirtyFiles(), false);
+});
+
+test('unknown class maximum HP blocks the entire revival batch', () => {
+	const data = load(4);
+	const hero = store.getHeroRawData('96');
+	hero['roster.status'] = 3;
+	hero.heroClass = 'unknown_mod_class';
+	gameData.setClassStats([]);
+	const before = snapshot(data);
+	assert.match(store.reviveHeroes(['58', '96']), /class maximum HP unknown/);
+	assert.deepEqual(snapshot(data), before);
+	assert.equal(store.hasDirtyFiles(), false);
+});
+
+test('dismissal preserves equipped trinket metadata', () => {
+	const data = load(4);
+	store.loadEstate(structuredClone(snapshots[0].estate));
+	store.loadTown(structuredClone(dismiss.town));
+	const item = { id: 'focus_ring', type: 'trinket', amount: 1, added_buffs: 3, hero_name: 'Brereton', previous_trinket_id: 'old', did_transform: true, trinkets_gained_count: 2 };
+	store.getHeroRawData('96').trinkets.items = { 0: structuredClone(item) };
+	assert.equal(store.dismissHero('96'), null);
+	assert.deepEqual(Object.values(data.estate.base_root.trinkets.items).at(-1), item);
+});
+
+test('lost item labels localize supplies and empty-id gold, with readable fallback', () => {
+	gameData.setNameTable({ str_inventory_title_gold: 'Gold', str_inventory_title_supplymedicinal_herbs: 'Medicinal Herbs' });
+	assert.equal(raid.raidItemLabel({ id: '', type: 'gold', amount: 1250 }), 'Gold');
+	assert.equal(raid.raidItemLabel({ id: 'medicinal_herbs', type: 'supply', amount: 1 }), 'Medicinal Herbs');
+	assert.equal(raid.raidItemLabel({ id: 'unknown_item', type: 'supply', amount: 1 }), 'Unknown Item');
+	assert.equal(raid.raidItemLabel({ id: '', type: 'provision', amount: 1 }), 'Provision');
 });

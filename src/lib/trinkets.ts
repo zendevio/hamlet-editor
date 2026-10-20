@@ -1,12 +1,21 @@
 import type { TrinketDef } from '#lib/api/gamedata.js';
 import type { EstateData, HeroBaseRoot, TrinketEntry } from '#lib/types/save-data.js';
+import { cloneSaveItem } from '#lib/clone-save-item.svelte.js';
 import { equippedTrinkets } from '#lib/hero-safety.js';
 
 export type TrinketSource = 'inventory' | 'catalogue';
 
+/** Shared picker and mutation guard, including the other slot on the same hero. */
+export function trinketEquipBlockReason(id: string, heroClass: string, definitions: readonly TrinketDef[], otherIds: readonly string[] = []): string | null {
+	const definition = definitions.find((entry) => entry.id === id);
+	if (definitions.length && !definition) return 'Class restriction unknown: this trinket has no loaded definition.';
+	if (definition?.class_restriction && definition.class_restriction !== heroClass) return 'This trinket is restricted to another hero class.';
+	if (definition?.limit != null && definition.limit > 0 && otherIds.filter((other) => other === id).length >= definition.limit) return `This trinket is limited to ${definition.limit} per hero.`;
+	return null;
+}
+
 export function canEquipTrinket(id: string, heroClass: string, definitions: readonly TrinketDef[]): boolean {
-	const restriction = definitions.find((entry) => entry.id === id)?.class_restriction;
-	return !restriction || restriction === heroClass;
+	return trinketEquipBlockReason(id, heroClass, definitions) === null;
 }
 
 export function storageItems(estate: EstateData | null): Record<string, unknown> | null {
@@ -31,10 +40,10 @@ export function inventoryTrinkets(estate: EstateData | null): { id: string; amou
 	return [...counts].map(([id, amount]) => ({ id, amount }));
 }
 
-/** Match dismissal: append numbered entries, copying only estate item fields. */
+/** Append complete items without sharing mutable metadata between files. */
 export function returnTrinkets(items: Record<string, unknown>, trinkets: readonly TrinketEntry[]): void {
 	let nextKey = Math.max(-1, ...Object.keys(items).map(Number)) + 1;
-	for (const { id, amount } of trinkets) items[String(nextKey++)] = { id, type: 'trinket', amount };
+	for (const trinket of trinkets) items[String(nextKey++)] = cloneSaveItem(trinket);
 }
 
 /** Validate the whole move before mutating either file. */
@@ -52,9 +61,9 @@ export function equipTrinket(
 	if (!entries) return { ...unchanged, error: 'This hero has unsupported trinket data.' };
 	const previous = hero.trinkets.items[slot] as TrinketEntry | undefined;
 	if ((previous?.id ?? '') === id) return unchanged;
-	if (id && !canEquipTrinket(id, hero.heroClass, definitions)) {
-		return { ...unchanged, error: 'This trinket is restricted to another hero class.' };
-	}
+	const blocked = id ? trinketEquipBlockReason(id, hero.heroClass, definitions,
+		Object.entries(hero.trinkets.items).filter(([key]) => key !== slot).map(([, item]) => (item as TrinketEntry).id)) : null;
+	if (blocked) return { ...unchanged, error: blocked };
 	const needsEstate = !!previous || (!!id && source === 'inventory');
 	const items = storageItems(estate);
 	if (needsEstate && !items) {
@@ -66,13 +75,30 @@ export function equipTrinket(
 	if (id && source === 'inventory' && !match) {
 		return { ...unchanged, error: 'This trinket is no longer in your inventory.' };
 	}
+	const incoming = match ? cloneSaveItem(match[1] as TrinketEntry) : catalogueTrinket(id, items);
 	if (match) {
 		const [key, entry] = match as [string, TrinketEntry];
 		if (entry.amount > 1) entry.amount--;
 		else delete items![key];
 	}
 	if (previous) returnTrinkets(items!, [previous]);
-	if (id) hero.trinkets.items[slot] = { id, type: 'trinket', amount: 1 };
+	if (id) hero.trinkets.items[slot] = { ...incoming, amount: 1 };
 	else delete hero.trinkets.items[slot];
 	return { changed: true, estateChanged: needsEstate };
+}
+
+/** New catalogue items use the current estate schema with empty metadata. */
+export function catalogueTrinket(id: string, items: Record<string, unknown> | null): TrinketEntry {
+	const template = Object.values(items ?? {}).find(isTrinket);
+	const empty = (value: unknown): unknown => {
+		if (Array.isArray(value)) return [];
+		if (value === null) return null;
+		switch (typeof value) {
+			case 'number': return 0;
+			case 'boolean': return false;
+			case 'string': return '';
+			default: return {};
+		}
+	};
+	return { ...Object.fromEntries(Object.entries(template ?? {}).map(([key, value]) => [key, empty(value)])), id, type: 'trinket', amount: 1 };
 }

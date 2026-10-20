@@ -251,7 +251,7 @@
 	// C3: Raid status badges
 	let raidActive = $derived(saveData.raid !== null && saveData.gameInRaid);
 	let raidInconsistent = $derived(
-		(saveData.raid !== null) !== saveData.gameInRaid
+		saveData.gameInRaid && saveData.raid === null
 	);
 
 	// C7: Last backup timestamp
@@ -357,7 +357,7 @@
 		// Ctrl/Cmd+D: Navigate to /raid (only if raid is available)
 		if (mod && e.key === 'd') {
 			e.preventDefault();
-			if (saveData.raid !== null) {
+			if (saveData.gameInRaid) {
 				goto('/raid');
 			}
 		}
@@ -647,10 +647,10 @@
 									<!-- C4: Raid nav with conditional indicator/dim -->
 									<SidebarMenuButton
 										isActive={currentPath === item.href}
-										class={saveData.raid === null ? 'opacity-50' : ''}
+										class={!saveData.gameInRaid ? 'opacity-50' : ''}
 									>
 										{#snippet child({ props })}
-											<a href={item.href} {...props} class:pointer-events-none={saveData.raid === null}>
+											<a href={item.href} {...props} class:pointer-events-none={!saveData.gameInRaid} aria-disabled={!saveData.gameInRaid} tabindex={saveData.gameInRaid ? undefined : -1}>
 												<span class="relative inline-flex">
 													<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={item.label} class="size-10">
 														{#snippet fallback()}<item.icon class="size-10" />{/snippet}

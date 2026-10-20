@@ -25,7 +25,7 @@ export interface HeroReferences {
 	estate: EstateData | null;
 }
 
-/** Validate equipment; only estate trinket fields may be transferred on dismissal. */
+/** Validate equipment before transferring complete items on dismissal. */
 export function equippedTrinkets(hero: HeroBaseRoot): TrinketEntry[] | null {
 	const items = hero.trinkets?.items;
 	if (!items || typeof items !== 'object' || Array.isArray(items)) return null;
@@ -75,7 +75,7 @@ export function livingHeroCount(roster: RosterData): number {
 
 /** Resolve the installed Stage Coach rules against the current save purchases. */
 export function rosterCapacity(game: GameData | null, upgrades: UpgradesData | null, rules: RosterCapacityRules | null): number | null {
-	if (!game || !upgrades || !rules) return null;
+	if (!game || !upgrades || !rules || Object.keys(game.base_root.persistent_ugcs ?? {}).length > 0) return null;
 	const levels = rules.by_mode[game.base_root.game_mode];
 	const dlc = game.base_root.dlc as Record<string, { name?: string; source?: string }> | undefined;
 	if (!levels || !dlc || Object.values(dlc).some((entry) => entry.source !== 'dlc')) return null;
@@ -91,6 +91,7 @@ export function rosterCapacity(game: GameData | null, upgrades: UpgradesData | n
 export function revivalBlockReason(game: GameData | null, roster: RosterData | null, capacity: number | null, count = 1): string | null {
 	if (game?.base_root.inraid) return 'Revival is blocked during a raid because restoring combat and party state is unverified. Return to town first.';
 	if (!game || !roster) return 'Game and roster data must be loaded before revival.';
+	if (Object.keys(game.base_root.persistent_ugcs ?? {}).length > 0) return 'Revival is blocked because enabled mods may change roster capacity.';
 	if (capacity === null) return 'Revival is blocked because roster capacity is unknown. Load the installed Stage Coach capacity data and complete upgrade data.';
 	if (livingHeroCount(roster) + count > capacity) return `Revival needs ${count} free roster slot${count === 1 ? '' : 's'}. The living roster is ${livingHeroCount(roster)}/${capacity}.`;
 	return null;

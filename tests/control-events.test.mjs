@@ -182,7 +182,7 @@ test('fractional HP clicks, keyboard bounds and drags use the actual Bits UI sna
 			store.setHeroHp(guid, value);
 		}));
 		const start = slider.value;
-		assert.equal(start, guid === '1' ? 67 : 40);
+		assert.equal(start, guid === '1' ? 67 : 39);
 		slider.click(); // pointerdown and pointerup with no movement
 		slider.drag(start - 2, start); // pointermove away and back before pointerup
 		assert.deepEqual(writes, []);
@@ -348,7 +348,7 @@ test('old contained thumb geometry reproduces the real-cursor HP loss', () => {
 		const range = { min: 1, max: value, step: 1 };
 		assert.equal(pointerValueAtThumb({ value, ...range }, 300), expected);
 		// Aligned endpoints alone still leave the padded/full-track scale mismatch.
-		assert.notEqual(pointerValueAtThumb({ value, ...alignedSliderRange(range) }, 300), bitsSlider(sliderControl(value, range, () => {})).value);
+		assert.notEqual(pointerValueAtThumb({ value, ...alignedSliderRange(range) }, 300), snapValueToCustomSteps(value, normalizeSteps(1, 1, Math.ceil(value))));
 	}
 });
 
@@ -455,4 +455,21 @@ test('adjusted and ignored commits restore valid HP, stress and torchlight steps
 	}
 	assert.equal(sliderNumberLabel(67.0999984741211), '67.1');
 	assert.equal(sliderNumberLabel(39.5999984741211), '39.6');
+});
+
+test('initial slider value, restore and rerender use the same bounded step without writes', () => {
+	for (const [value, range, expected] of [
+		[39.5999984741211, { min: 1, max: 39.5999984741211, step: 1 }, 39],
+		[67.0999984741211, { min: 1, max: 67.0999984741211, step: 1 }, 67],
+		[0.21, { min: 0.21, max: 0.81, step: 0.1 }, 0.3]
+	]) {
+		const writes = [];
+		const makeControl = () => sliderControl(value, range, (next) => writes.push(next));
+		const control = makeControl();
+		assert.equal(control.value, expected);
+		assert.equal(bitsSlider(control).value, expected);
+		assert.equal(control.restoreValue(), expected);
+		assert.equal(bitsSlider(makeControl()).value, expected);
+		assert.deepEqual(writes, []);
+	}
 });

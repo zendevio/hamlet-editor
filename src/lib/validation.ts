@@ -16,6 +16,7 @@ import {
 	type HeroSummary
 } from '#lib/stores/save-data.svelte.js';
 import type { GameInstall } from '#lib/api/detect.js';
+import { getGameData } from '#lib/stores/game-data.svelte.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
 
 // ── Types ──
@@ -116,67 +117,21 @@ function checkTreatmentConsistency(): ValidationIssue[] {
 	return issues;
 }
 
-/**
- * Check for duplicate trinkets between hero equipment and estate storage.
- * In DD1, each trinket instance should appear in exactly one location.
- */
+/** Inform about limit-one trinkets used by multiple heroes; storage copies are normal. */
 function checkDuplicateTrinkets(): ValidationIssue[] {
-	const issues: ValidationIssue[] = [];
-	const saveData = getSaveData();
-
-	if (!saveData.roster || !saveData.estate) return issues;
-
-	// Collect trinket IDs from estate storage
-	const estateTrinkets = new Map<string, number>();
-	const estateItems = saveData.estate.base_root.trinkets?.items ?? {};
-	for (const [key, value] of Object.entries(estateItems)) {
-		const id = typeof value === 'object' && value !== null && 'id' in value
-			? String((value as Record<string, unknown>).id)
-			: key;
-		estateTrinkets.set(id, (estateTrinkets.get(id) ?? 0) + 1);
-	}
-
-	// Collect trinket IDs from equipped heroes
-	const equippedTrinkets = new Map<string, string[]>(); // trinket ID -> hero names
-	const heroes = getHeroes();
-	for (const hero of heroes) {
-		const raw = getHeroRawData(hero.guid);
-		if (!raw?.trinkets?.items) continue;
-		for (const [, value] of Object.entries(raw.trinkets.items)) {
-			const id = typeof value === 'object' && value !== null && 'id' in value
-				? String((value as Record<string, unknown>).id)
-				: '';
-			if (id) {
-				const list = equippedTrinkets.get(id) ?? [];
-				list.push(hero.name);
-				equippedTrinkets.set(id, list);
-			}
+	const limited = new Set(getGameData().trinkets.filter((entry) => entry.limit === 1).map((entry) => entry.id));
+	const equipped = new Map<string, string[]>();
+	for (const hero of getHeroes()) {
+		const ids = new Set(Object.values(getHeroRawData(hero.guid)?.trinkets?.items ?? {}).map((item) => item && typeof item === 'object' && 'id' in item ? String(item.id) : ''));
+		for (const id of ids) {
+			if (limited.has(id)) equipped.set(id, [...(equipped.get(id) ?? []), hero.name]);
 		}
 	}
-
-	// Check for trinkets appearing in both estate and equipped
-	for (const [trinketId, heroNames] of equippedTrinkets) {
-		if (estateTrinkets.has(trinketId)) {
-			issues.push({
-				severity: 'warning',
-				category: 'Trinkets',
-				message: `Trinket "${trinketId}" is equipped on ${heroNames.join(', ')} AND in estate storage. This may cause duplication in-game.`
-			});
-		}
-	}
-
-	// Check for trinkets equipped on multiple heroes
-	for (const [trinketId, heroNames] of equippedTrinkets) {
-		if (heroNames.length > 1) {
-			issues.push({
-				severity: 'warning',
-				category: 'Trinkets',
-				message: `Trinket "${trinketId}" is equipped on multiple heroes: ${heroNames.join(', ')}.`
-			});
-		}
-	}
-
-	return issues;
+	return [...equipped].filter(([, names]) => names.length > 1).map(([id, names]) => ({
+		severity: 'warning',
+		category: 'Trinkets',
+		message: `For information: trinket "${id}" has a per-hero limit of 1 and is equipped on multiple heroes: ${names.join(', ')}. Separate copies may be legitimate.`
+	}));
 }
 
 // ── DLC Field Injection Guards ──
