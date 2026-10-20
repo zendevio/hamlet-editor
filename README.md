@@ -4,11 +4,7 @@
 
 A save editor for Darkest Dungeon. Edit your heroes, estate, town and raids, with backups and safety checks built in.
 
-[![tests](https://img.shields.io/github/actions/workflow/status/zendevio/hamlet-editor/ci.yml?branch=main&label=tests&logo=github)](https://github.com/zendevio/hamlet-editor/actions/workflows/ci.yml)
-[![downloads](https://img.shields.io/github/downloads/zendevio/hamlet-editor/total?label=downloads)](https://github.com/zendevio/hamlet-editor/releases)
-[![release](https://img.shields.io/github/v/release/zendevio/hamlet-editor?label=release)](https://github.com/zendevio/hamlet-editor/releases/latest)
-[![license](https://img.shields.io/github/license/zendevio/hamlet-editor?label=license)](LICENSE)
-[![platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#download)
+[![tests](https://img.shields.io/github/actions/workflow/status/zendevio/hamlet-editor/ci.yml?branch=main&label=tests&logo=github)](https://github.com/zendevio/hamlet-editor/actions/workflows/ci.yml) [![downloads](https://img.shields.io/github/downloads/zendevio/hamlet-editor/total?label=downloads)](https://github.com/zendevio/hamlet-editor/releases) [![release](https://img.shields.io/github/v/release/zendevio/hamlet-editor?label=release)](https://github.com/zendevio/hamlet-editor/releases/latest) [![license](https://img.shields.io/github/license/zendevio/hamlet-editor?label=license)](LICENSE) [![platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#download)
 
 <img src="docs/media/demo.gif" alt="Selecting a hero, lowering stress, changing gold and saving in Hamlet Editor" width="860">
 
