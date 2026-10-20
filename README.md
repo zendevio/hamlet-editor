@@ -147,6 +147,16 @@ cd src-tauri && cargo test --all-features && cargo test -p ddsavelib
 
 Before a release, the checks in [docs/e2e-checklist.md](docs/e2e-checklist.md) are run against the real game.
 
+## AI usage
+
+I built Hamlet Editor with AI coding assistants. Every design decision was mine to make and review.
+
+- **Building the editor:** Claude Code for researching the save format and the game's data, and for drafting source, tests and documentation from my design decisions.
+- **Testing and hardening for 1.0:** Claude Code coordinated the work, OpenAI Codex implemented fixes and reviewed each change independently, and a Codex agent with computer use played the real game to check that edited saves load, including hero deaths, retreats and backup restores. My campaign was backed up before testing and restored after every run.
+- **Release:** build setup, license review, this README and its screenshots, with the same tools.
+
+The save format work builds on robojumper's open-source editor (see Credits).
+
 ## Credits
 
 - [robojumper](https://github.com/robojumper) for [DarkestDungeonSaveEditor](https://github.com/robojumper/DarkestDungeonSaveEditor) and its Rust save library, which Hamlet Editor includes in a modified form, and for documenting the save format (MIT).
