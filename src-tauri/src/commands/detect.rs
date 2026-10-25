@@ -1,3 +1,4 @@
+use super::error::AppError;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -53,7 +54,7 @@ const DD1_APP_ID: u32 = 262060;
 /// Checks Steam userdata directories and GOG/non-Steam platform paths.
 /// Returns an empty `Vec` (not an error) when nothing is found.
 #[tauri::command]
-pub fn detect_save_locations() -> Result<Vec<SaveLocation>, String> {
+pub fn detect_save_locations() -> Result<Vec<SaveLocation>, AppError> {
     let mut locations: Vec<SaveLocation> = Vec::new();
     let mut seen = HashSet::<PathBuf>::new();
 
@@ -123,7 +124,7 @@ pub fn detect_save_locations() -> Result<Vec<SaveLocation>, String> {
 /// Checks Steam libraries and GOG registry / well-known paths.
 /// Returns an empty `Vec` (not an error) when nothing is found.
 #[tauri::command]
-pub fn detect_game_installations() -> Result<Vec<GameInstall>, String> {
+pub fn detect_game_installations() -> Result<Vec<GameInstall>, AppError> {
     let mut installs: Vec<GameInstall> = Vec::new();
     let mut seen = HashSet::<PathBuf>::new();
 
@@ -168,7 +169,7 @@ pub fn detect_game_installations() -> Result<Vec<GameInstall>, String> {
 ///
 /// Covers Windows, macOS and Linux, including Linux's 15-byte comm name.
 #[tauri::command]
-pub fn is_game_running() -> Result<bool, String> {
+pub fn is_game_running() -> Result<bool, AppError> {
     let mut sys = sysinfo::System::new();
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     Ok(sys
@@ -185,19 +186,17 @@ fn is_game_process(name: &str) -> bool {
 }
 
 pub(crate) fn ensure_game_stopped(
-    detector: impl FnOnce() -> Result<bool, String>,
-) -> Result<(), String> {
+    detector: impl FnOnce() -> Result<bool, AppError>,
+) -> Result<(), AppError> {
     if detector()? {
-        return Err(
-            "Darkest Dungeon is running. Close the game before changing save files.".into(),
-        );
+        return Err(AppError::new("game_running"));
     }
     Ok(())
 }
 
 /// Steam's main client names: steam_osx (macOS), steam.exe (Windows),
 /// steam (Linux). Helpers such as steamwebhelper do not own the storage cache.
-pub fn is_steam_running() -> Result<bool, String> {
+pub fn is_steam_running() -> Result<bool, AppError> {
     let mut sys = sysinfo::System::new();
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     Ok(sys
@@ -232,13 +231,13 @@ pub(crate) fn is_steam_profile(path: &Path) -> bool {
 
 /// Validate that a user-chosen directory looks like a valid DD1 save profile.
 #[tauri::command]
-pub fn validate_save_directory(path: String) -> Result<bool, String> {
+pub fn validate_save_directory(path: String) -> Result<bool, AppError> {
     Ok(is_valid_save_directory(Path::new(&path)))
 }
 
 /// Validate that a user-chosen directory looks like a valid DD1 game installation.
 #[tauri::command]
-pub fn validate_game_directory(path: String) -> Result<bool, String> {
+pub fn validate_game_directory(path: String) -> Result<bool, AppError> {
     let p = PathBuf::from(&path);
     let resolved = resolve_data_root(&p);
     Ok(is_valid_game_directory(&resolved))
@@ -250,14 +249,17 @@ pub fn validate_game_directory(path: String) -> Result<bool, String> {
 /// extract `estatename` and `game_mode`, and `persist.campaign_log.json` to
 /// extract `total_weeks`. Fields are `None` when decoding fails.
 #[tauri::command]
-pub fn list_profiles(save_root: String) -> Result<Vec<ProfileMeta>, String> {
+pub fn list_profiles(save_root: String) -> Result<Vec<ProfileMeta>, AppError> {
     let root = Path::new(&save_root);
     if !root.is_dir() {
-        return Err(format!("Not a directory: {save_root}"));
+        return Err(AppError::new("not_directory").param("path", save_root.clone()));
     }
 
-    let entries = std::fs::read_dir(root)
-        .map_err(|e| format!("Failed to read directory {save_root}: {e}"))?;
+    let entries = std::fs::read_dir(root).map_err(|e| {
+        AppError::new("directory_read")
+            .param("path", save_root.clone())
+            .detail(e)
+    })?;
 
     let mut profiles: Vec<ProfileMeta> = Vec::new();
 
@@ -693,5 +695,31 @@ mod process_name_tests {
         for name in ["steam", "darkest-helper", "other.exe"] {
             assert!(!super::is_game_process(name));
         }
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    #[test]
+    fn invalid_profile_root_and_game_guard_use_protocol_values() {
+        let path = std::env::temp_dir()
+            .join(super::super::transaction::unique_suffix())
+            .display()
+            .to_string();
+        assert_eq!(
+            list_profiles(path.clone()).unwrap_err(),
+            AppError::new("not_directory").param("path", path)
+        );
+        assert_eq!(
+            ensure_game_stopped(|| Ok(true)).unwrap_err(),
+            AppError::new("game_running")
+        );
+        let failure = AppError::new("io_error").detail("fixture detector unavailable");
+        assert_eq!(
+            ensure_game_stopped(|| Err(failure.clone())).unwrap_err(),
+            failure
+        );
     }
 }

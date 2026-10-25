@@ -1,7 +1,13 @@
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { GAME_TEXT_LANGUAGES, GAME_TEXT_LOCALES } from '../../src/lib/data/game-text-languages.js';
 import type {} from '../../src/lib/dev/harness.js';
+// svelte-sonner keeps stacking state (data-front, data-expanded, data-visible)
+// on the toast list item that wraps our alert content. A replaced toast stays
+// in the DOM with data-removed while it animates out, so it is skipped.
+function toastOf(page: Page, content: Locator) {
+	return page.locator('[data-sonner-toast][data-removed="false"]').filter({ has: content });
+}
 async function evidence(info: TestInfo, name: string, body: string | Uint8Array, contentType: string) {
 	const path = info.outputPath(name);
 	await writeFile(path, body);
@@ -755,4 +761,124 @@ test('P1c: path fields retain keyboard focus and empty translated placeholders',
 		}
 		await expect(field).toBeFocused();
 	}
+});
+
+test('S1: a stale save code marks the loaded profile stale without clearing dirty edits', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => {
+		window.__h1!.edit();
+		window.__h1!.plans.push({ command: 'save_profile', fail: { code: 'save_stale', params: {}, detail: 'fixture changed bytes' } });
+	});
+	const before = await snapshot(page);
+	await page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).last().click();
+	const validation = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Pre-Save Validation' }) });
+	await expect.poll(async () => await validation.isVisible() || await page.evaluate(() => window.__h1!.snapshot().stale)).toBe(true);
+	if (await validation.isVisible()) await validation.getByRole('button', { name: 'Save Anyway', exact: true }).click();
+	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().stale)).toBe(true);
+	const after = await snapshot(page);
+	expect(after.dirty).toEqual(before.dirty);
+	expect(after.dirtyFiles).toEqual(before.dirtyFiles);
+	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true }).last()).toBeDisabled();
+	await expect(page.getByRole('alert').filter({ hasText: 'fixture changed bytes' })).toContainText('Save failed');
+	await expect(page.getByRole('alert').filter({ hasText: 'fixture changed bytes' })).not.toContainText('Error:');
+	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'))).toHaveLength(1);
+});
+
+test('S1: a mounted typed error toast re-renders its title and retains the raw detail and paths', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => window.__h1!.plans.push({ command: 'create_backup', fail: {
+		code: 'transaction_rollback', params: { recoveryPath: '/h1/recovery', backupPath: '/h1/safety-backup' },
+		detail: 'fixture OS diagnostic <raw>\nrollback diagnostic'
+	} }));
+	await page.getByTestId('settings-page').getByRole('button', { name: 'Create Backup Now', exact: true }).click();
+	const notice = page.getByRole('alert').filter({ hasText: 'fixture OS diagnostic <raw>' });
+	await expect(notice).toHaveCount(1);
+	await expect(notice).toContainText((await catalog('en'))['settings.backupFailed']);
+	const node = await notice.elementHandle();
+	const raw = notice.getByText('fixture OS diagnostic <raw>\nrollback diagnostic', { exact: true });
+	await expect(raw).toBeVisible();
+	const before = await raw.textContent();
+	const laterFailures: { code: string; params: Record<string, string | number>; detail: string }[] = [
+		{ code: 'transaction_rollback', params: { recoveryPath: '/h1/second-recovery' }, detail: 'second rollback diagnostic' },
+		{ code: 'game_running', params: {}, detail: 'retry blocked by game' }
+	];
+	for (const failure of laterFailures) {
+		await page.evaluate((fail) => window.__h1!.plans.push({ command: 'create_backup', fail }), failure);
+		const create = page.getByTestId('settings-page').getByRole('button', { name: 'Create Backup Now', exact: true });
+		await create.click();
+		await expect(create).toBeEnabled();
+		await expect(page.getByRole('alert').filter({ hasText: failure.detail })).toHaveCount(1);
+	}
+	await page.evaluate(() => window.__h1!.plans.push({ command: 'open_backup_folder', fail: {
+		code: 'backups_open', params: { path: '/h1/backups' }, detail: 'open folder diagnostic'
+	} }));
+	await page.getByTestId('settings-page').getByRole('button', { name: 'Open Backup Folder', exact: true }).click();
+	await expect(toastOf(page, page.getByRole('alert').filter({ hasText: 'open folder diagnostic' }))).toHaveAttribute('data-front', 'true');
+	await expect(notice).toHaveCount(1);
+	await expect(toastOf(page, notice)).toHaveAttribute('data-expanded', 'true');
+	await expect(toastOf(page, notice)).toHaveAttribute('data-visible', 'true');
+	await expect(raw).toBeVisible();
+	await expect(page.getByRole('alert').filter({ hasText: 'second rollback diagnostic' })).toContainText('/h1/second-recovery');
+	expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	await switchEditor(page, 'de');
+	await expect(notice).toContainText((await catalog('de'))['settings.backupFailed']);
+	await expect(notice).toContainText('/h1/recovery');
+	await expect(notice).toContainText('/h1/safety-backup');
+	await expect(raw).toHaveText(before!);
+	expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	expect(await raw.evaluate((element) => getComputedStyle(element).userSelect)).toBe('text');
+});
+
+test('S1: an identical retry returns to the front after another persistent failure', async ({ page }) => {
+	await open(page);
+	const create = page.getByTestId('settings-page').getByRole('button', { name: 'Create Backup Now', exact: true });
+	for (let attempt = 0; attempt < 3; attempt++) {
+		await page.evaluate((index) => window.__h1!.plans.push({ command: 'create_backup', fail: {
+			code: 'game_running', params: {}, detail: `retry diagnostic ${index}`
+		} }), attempt);
+		await create.click();
+		await expect(create).toBeEnabled();
+		const retry = page.getByRole('alert').filter({ hasText: `retry diagnostic ${attempt}` });
+		await expect(retry).toHaveCount(1);
+		await expect(toastOf(page, retry)).toHaveAttribute('data-front', 'true');
+		// data-front alone is not enough: the stack position must move too.
+		await expect(toastOf(page, retry)).toHaveAttribute('data-index', '0');
+		// The drawn position comes from Sonner's height list, not data-index.
+		await expect.poll(() => toastOf(page, retry).evaluate((element) => (element as HTMLElement).style.getPropertyValue('--offset'))).toBe('0px');
+		await expect(retry).toBeVisible();
+		await expect(page.getByRole('alert').filter({ hasText: 'Darkest Dungeon is running. Close the game before changing save files.' })).toHaveCount(1);
+		if (attempt === 2) break;
+		await page.evaluate(() => window.__h1!.plans.push({ command: 'open_backup_folder', fail: {
+			code: 'backups_open', params: { path: '/h1/backups' }, detail: 'intervening folder failure'
+		} }));
+		await page.getByTestId('settings-page').getByRole('button', { name: 'Open Backup Folder', exact: true }).click();
+		const intervening = toastOf(page, page.getByRole('alert').filter({ hasText: 'intervening folder failure' }));
+		await expect(intervening).toHaveAttribute('data-front', 'true');
+		await expect(intervening).toHaveAttribute('data-index', '0');
+	}
+});
+
+test('S1: an unknown typed restore blocker stays disabled after confirmation and locale changes', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => {
+		window.__h1!.edit();
+		window.__h1!.plans.push({ command: 'check_restore', value: {
+			adds: 1, removes: 0, blocked_reason: { code: 'future_blocker', params: {}, detail: 'fixture future refusal' }
+		} });
+	});
+	const before = await snapshot(page);
+	await page.getByTestId('settings-page').getByRole('button', { name: 'Restore', exact: true }).click();
+	const dialog = page.getByRole('dialog');
+	await expect(dialog.getByRole('alert')).toContainText('An unexpected error occurred.');
+	await expect(dialog.getByRole('alert')).toContainText('fixture future refusal');
+	await dialog.getByRole('checkbox').check();
+	await expect(dialog.getByRole('button', { name: 'Restore', exact: true })).toBeDisabled();
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	await switchEditor(page, 'de');
+	await expect(dialog.getByRole('button', { name: (await catalog('de'))['settings.restore'], exact: true })).toBeDisabled();
+	await expect(dialog.getByRole('alert')).toContainText('fixture future refusal');
+	expect(await snapshot(page)).toEqual(before);
+	const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
+	expectSwitchCalls(calls, await persistedSettings(page));
+	expect(calls.filter(({ command }) => ['restore_backup', 'restore_game_backup', 'save_profile'].includes(command))).toEqual([]);
 });

@@ -1,3 +1,4 @@
+use super::error::AppError;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -43,16 +44,24 @@ pub struct TrinketDef {
 
 /// Read mode-specific roster limits and the Shieldbreaker DLC slot bonus.
 #[tauri::command]
-pub fn load_roster_capacity_rules(game_path: String) -> Result<serde_json::Value, String> {
+pub fn load_roster_capacity_rules(game_path: String) -> Result<serde_json::Value, AppError> {
     let root = resolve_data_root(Path::new(&game_path));
     read_roster_capacity_rules(&root)
 }
 
-fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> {
+fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, AppError> {
     let relative = "campaign/town/buildings/stage_coach/stage_coach.building.json";
-    let read = |path: &Path| -> Result<serde_json::Value, String> {
-        serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())
+    let read = |path: &Path| -> Result<serde_json::Value, AppError> {
+        serde_json::from_str(&std::fs::read_to_string(path).map_err(|e| {
+            AppError::new("game_data_read")
+                .param("path", path.display().to_string())
+                .detail(e)
+        })?)
+        .map_err(|e| {
+            AppError::new("game_data_parse")
+                .param("path", path.display().to_string())
+                .detail(e)
+        })
     };
     let mut by_mode = serde_json::Map::new();
     for mode in ["base", "radiant", "new_game_plus", "bloodmoon"] {
@@ -77,7 +86,7 @@ fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> 
             .and_then(|v| v.pointer("/data/roster_size_upgrades"))
             .and_then(|v| v.as_array())
             .filter(|levels| !levels.is_empty())
-            .ok_or("Missing Stage Coach roster capacity data")?;
+            .ok_or(AppError::new("roster_capacity_missing"))?;
         for level in levels {
             if !level["amount"]
                 .as_i64()
@@ -86,7 +95,7 @@ fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> 
                     && (level["upgrade_tree_id"] != "stage_coach.rostersize"
                         || level["upgrade_requirement_code"].as_str().is_none()))
             {
-                return Err("Unsupported Stage Coach roster capacity data".into());
+                return Err(AppError::new("roster_capacity_unsupported"));
             }
         }
         by_mode.insert(mode.into(), levels.clone().into());
@@ -108,7 +117,7 @@ fn read_roster_capacity_rules(root: &Path) -> Result<serde_json::Value, String> 
 /// Reads the base quirk library plus any DLC quirk libraries found in the
 /// game directory. Returns an empty Vec if no files are found.
 #[tauri::command]
-pub fn load_quirk_library(game_path: String) -> Result<Vec<QuirkDef>, String> {
+pub fn load_quirk_library(game_path: String) -> Result<Vec<QuirkDef>, AppError> {
     let data_root = resolve_data_root(Path::new(&game_path));
     let mut quirks: Vec<QuirkDef> = Vec::new();
 
@@ -134,7 +143,7 @@ pub fn load_quirk_library(game_path: String) -> Result<Vec<QuirkDef>, String> {
 /// Reads the base trinket file plus any DLC trinket files found in the
 /// game directory. Returns an empty Vec if no files are found.
 #[tauri::command]
-pub fn load_trinket_library(game_path: String) -> Result<Vec<TrinketDef>, String> {
+pub fn load_trinket_library(game_path: String) -> Result<Vec<TrinketDef>, AppError> {
     let data_root = resolve_data_root(Path::new(&game_path));
     let mut trinkets: Vec<TrinketDef> = Vec::new();
 
@@ -178,7 +187,7 @@ pub fn load_trinket_library(game_path: String) -> Result<Vec<TrinketDef>, String
 ///
 /// Missing or malformed files are silently skipped.
 #[tauri::command]
-pub fn load_class_stats(game_path: String) -> Result<Vec<ClassStats>, String> {
+pub fn load_class_stats(game_path: String) -> Result<Vec<ClassStats>, AppError> {
     let data_root = resolve_data_root(Path::new(&game_path));
     let mut stats: Vec<ClassStats> = Vec::new();
 
@@ -248,7 +257,7 @@ pub fn load_class_stats(game_path: String) -> Result<Vec<ClassStats>, String> {
 ///
 /// Missing or malformed files are silently skipped.
 #[tauri::command]
-pub fn load_class_skills(game_path: String) -> Result<Vec<ClassSkills>, String> {
+pub fn load_class_skills(game_path: String) -> Result<Vec<ClassSkills>, AppError> {
     let data_root = resolve_data_root(Path::new(&game_path));
 
     // ── 1. Collect (class_id, path_to_info_darkest) candidates ──────────────
@@ -578,9 +587,39 @@ mod roster_capacity_tests {
         );
         assert_eq!(
             read_roster_capacity_rules(&root).unwrap_err(),
-            "Unsupported Stage Coach roster capacity data"
+            AppError::new("roster_capacity_unsupported")
         );
         std::fs::remove_dir_all(&root).unwrap();
         assert!(read_roster_capacity_rules(&root).is_err());
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    #[test]
+    fn roster_rule_errors_identify_read_parse_and_schema_failures() {
+        let root = std::env::temp_dir().join(format!(
+            "hamlet-roster-errors-{}",
+            super::super::transaction::unique_suffix()
+        ));
+        let path = root.join("campaign/town/buildings/stage_coach/stage_coach.building.json");
+        let error = read_roster_capacity_rules(&root).unwrap_err();
+        assert_eq!(error.code, "game_data_read");
+        assert_eq!(error.params["path"], path.display().to_string());
+        assert!(error.detail.is_some());
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, b"{").unwrap();
+        let error = read_roster_capacity_rules(&root).unwrap_err();
+        assert_eq!(error.code, "game_data_parse");
+        assert_eq!(error.params["path"], path.display().to_string());
+        assert!(error.detail.is_some());
+        std::fs::write(&path, b"{}").unwrap();
+        assert_eq!(
+            read_roster_capacity_rules(&root).unwrap_err(),
+            AppError::new("roster_capacity_missing")
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

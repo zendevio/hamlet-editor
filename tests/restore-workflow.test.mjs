@@ -84,3 +84,16 @@ test('outcomes pluralize each count and omit zero parts', () => {
 	]) assert.equal(restoreOutcome({ adds, removes, blocked_reason: null }), `This restore ${expected}.`);
 	assert.equal(restoreOutcome(null), '');
 });
+
+test('unknown, malformed and legacy blocker presence keeps restore disabled before any discard or write', async () => {
+	for (const reason of [{ code: 'future_blocker', params: {}, detail: 'raw refusal' }, {}, 'legacy refusal', '', false, 0]) {
+		for (const position of [0, 1]) {
+			const refusal = { ...allowed, blocked_reason: reason };
+			const f = flow(position ? [allowed, refusal] : [refusal]);
+			assert.equal(await f.run(), false);
+			assert.equal(f.calls.includes('restore'), false);
+			assert.equal(f.calls.includes('discard'), false);
+			assert.equal(f.calls.includes('reopen'), true);
+		}
+	}
+});

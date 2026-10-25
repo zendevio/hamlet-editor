@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod backup;
 pub mod detect;
+pub mod error;
 pub mod gamedata;
 pub mod language;
 pub mod mods;

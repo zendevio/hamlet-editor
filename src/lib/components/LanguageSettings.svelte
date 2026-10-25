@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ErrorMessage from '#lib/i18n/ErrorMessage.svelte';
 	import { t, type MessageKey } from '#lib/i18n/index.svelte.js';
 	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
 	import { getSettings, setEditorLanguage, setGameTextLanguage } from '#lib/stores/settings.svelte.js';
@@ -62,7 +63,7 @@
 		<p data-testid="game-text-language-source" class="text-xs text-muted-foreground">{t('settings.resolvedLanguage', { language: GAME_TEXT_LANGUAGES[settings.gameTextLanguage], source: t(sourceKeys[settings.gameTextResolution.source]) })}</p>
 		{#if gameText.error}
 			<p role="alert" data-testid="game-text-error">{t('settings.gameTextFailed', { requested: GAME_TEXT_LANGUAGES[gameText.requestedLanguage], effective: GAME_TEXT_LANGUAGES[gameText.effectiveLanguage] })}</p>
-			<pre class="whitespace-pre-wrap break-all text-xs" data-testid="game-text-diagnostic">{gameText.errorDetail}</pre>
+			<div class="whitespace-pre-wrap break-all text-xs" data-testid="game-text-diagnostic"><ErrorMessage error={gameText.errorCause} /></div>
 		{/if}
 		{#if loading}
 			<p class="text-xs text-muted-foreground" role="status">{t('settings.languagesLoading')}</p>

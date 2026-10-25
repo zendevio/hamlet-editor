@@ -1,3 +1,4 @@
+use super::error::AppError;
 use crate::{NameTable, NameTableState};
 use ddsavelib::{name_hash, File, Unhasher};
 use sha2::{Digest, Sha256};
@@ -7,24 +8,28 @@ use std::path::{Path, PathBuf};
 use tauri::State;
 
 /// Decode without name substitution so ordinary integers stay integers.
-pub(crate) fn decode_save_file(path: String) -> Result<serde_json::Value, String> {
-    let data = std::fs::read(&path).map_err(|e| format!("Failed to read {path}: {e}"))?;
+pub(crate) fn decode_save_file(path: String) -> Result<serde_json::Value, AppError> {
+    let data = std::fs::read(&path).map_err(|e| {
+        AppError::new("file_read")
+            .param("path", path.clone())
+            .detail(e)
+    })?;
     let file = File::try_from_bin(Cursor::new(&data))
-        .map_err(|e| format!("Failed to decode DSON: {e}"))?;
+        .map_err(|e| AppError::new("dson_decode").detail(e))?;
     Ok(file.to_json_value(&Unhasher::<String>::new()))
 }
 
 /// Only upgrade tree IDs need name resolution for editing. Never unhash
 /// arbitrary integers such as hero GUIDs, counters, or treatment slot values.
-fn resolve_upgrade_ids(data: &mut serde_json::Value, names: &[String]) -> Result<(), String> {
+fn resolve_upgrade_ids(data: &mut serde_json::Value, names: &[String]) -> Result<(), AppError> {
     let mut ids = HashMap::new();
     for name in names.iter().filter(|name| name.contains('.')) {
         let hash = name_hash(name);
         if let Some(previous) = ids.insert(hash, name) {
             if previous != name {
-                return Err(format!(
-                    "Ambiguous upgrade name hash: {previous} and {name}"
-                ));
+                return Err(AppError::new("upgrade_ambiguous")
+                    .param("previous", previous.clone())
+                    .param("name", name.clone()));
             }
         }
     }
@@ -35,11 +40,11 @@ fn resolve_upgrade_ids(data: &mut serde_json::Value, names: &[String]) -> Result
         for purchase in purchases.values_mut() {
             let id = purchase
                 .get_mut("tree_id")
-                .ok_or("Upgrade purchase has no tree_id")?;
+                .ok_or(AppError::new("upgrade_tree_missing"))?;
             let hash = id
                 .as_i64()
                 .and_then(|n| i32::try_from(n).ok())
-                .ok_or("Upgrade tree_id is not a DSON hash")?;
+                .ok_or(AppError::new("upgrade_hash_invalid"))?;
             if let Some(name) = ids.get(&hash) {
                 *id = serde_json::Value::String(format!("###{name}"));
             } // Unknown mod hashes remain signed integers and round-trip unchanged.
@@ -48,7 +53,7 @@ fn resolve_upgrade_ids(data: &mut serde_json::Value, names: &[String]) -> Result
     Ok(())
 }
 
-fn restore_upgrade_hashes(data: &mut serde_json::Value, names: &[String]) -> Result<(), String> {
+fn restore_upgrade_hashes(data: &mut serde_json::Value, names: &[String]) -> Result<(), AppError> {
     if let Some(purchases) = data
         .pointer_mut("/base_root/purchases")
         .and_then(|v| v.as_object_mut())
@@ -56,18 +61,16 @@ fn restore_upgrade_hashes(data: &mut serde_json::Value, names: &[String]) -> Res
         for purchase in purchases.values_mut() {
             let id = purchase
                 .get_mut("tree_id")
-                .ok_or("Upgrade purchase has no tree_id")?;
+                .ok_or(AppError::new("upgrade_tree_missing"))?;
             if id.as_i64().is_some_and(|n| i32::try_from(n).is_ok()) {
                 continue;
             }
             let name = id
                 .as_str()
                 .and_then(|s| s.strip_prefix("###"))
-                .ok_or("Upgrade IDs were not resolved. Reload the profile before saving.")?;
+                .ok_or(AppError::new("upgrade_unresolved"))?;
             if !names.iter().any(|n| n == name) {
-                return Err(format!(
-                    "Unknown upgrade tree {name}. Reload game data and the profile before saving."
-                ));
+                return Err(AppError::new("upgrade_unknown").param("name", name));
             }
             *id = serde_json::json!(name_hash(name));
         }
@@ -83,10 +86,11 @@ pub struct LoadedSave {
 }
 
 #[cfg(test)]
-pub(crate) fn encode_save_file(path: String, data: &serde_json::Value) -> Result<(), String> {
-    let file = File::from_json_value(data).map_err(|e| e.to_string())?;
+pub(crate) fn encode_save_file(path: String, data: &serde_json::Value) -> Result<(), AppError> {
+    let file = File::from_json_value(data).map_err(|e| AppError::new("io_error").detail(e))?;
     let mut bytes = Vec::new();
-    file.write_to_bin(&mut bytes).map_err(|e| e.to_string())?;
+    file.write_to_bin(&mut bytes)
+        .map_err(|e| AppError::new("io_error").detail(e))?;
     let path = Path::new(&path);
     super::transaction::apply_changes(
         path.parent().unwrap(),
@@ -97,17 +101,19 @@ pub(crate) fn encode_save_file(path: String, data: &serde_json::Value) -> Result
 
 /// Fingerprint the complete save-file set, including inactive raid/map subfolders
 /// and unsupported codec files. Symlinks cannot authorize writes outside a profile.
-fn profile_fingerprint(root: &Path) -> Result<BTreeMap<PathBuf, [u8; 32]>, String> {
+fn profile_fingerprint(root: &Path) -> Result<BTreeMap<PathBuf, [u8; 32]>, AppError> {
     fn visit(
         root: &Path,
         relative: &Path,
         hashes: &mut BTreeMap<PathBuf, [u8; 32]>,
-    ) -> Result<(), String> {
+    ) -> Result<(), AppError> {
         for entry in std::fs::read_dir(root.join(relative))
-            .map_err(|e| format!("Failed to inspect save files: {e}"))?
+            .map_err(|e| AppError::new("save_inspect").detail(e))?
         {
-            let entry = entry.map_err(|e| e.to_string())?;
-            let kind = entry.file_type().map_err(|e| e.to_string())?;
+            let entry = entry.map_err(|e| AppError::new("io_error").detail(e))?;
+            let kind = entry
+                .file_type()
+                .map_err(|e| AppError::new("io_error").detail(e))?;
             let name = entry.file_name();
             let name = name.to_string_lossy();
             let path = relative.join(name.as_ref());
@@ -115,16 +121,20 @@ fn profile_fingerprint(root: &Path) -> Result<BTreeMap<PathBuf, [u8; 32]>, Strin
                 visit(root, &path, hashes)?;
             } else if super::is_save_file(&name) {
                 if kind.is_symlink() {
-                    return Err(format!(
-                        "Symlinked save file {} is not supported.",
-                        path.display()
-                    ));
+                    return Err(
+                        AppError::new("symlink_save").param("path", path.display().to_string())
+                    );
                 }
                 if !kind.is_file() {
-                    return Err(format!("Cannot fingerprint save {}", path.display()));
+                    return Err(
+                        AppError::new("save_fingerprint").param("path", path.display().to_string())
+                    );
                 }
-                let bytes = std::fs::read(entry.path())
-                    .map_err(|e| format!("Failed to inspect {}: {e}", path.display()))?;
+                let bytes = std::fs::read(entry.path()).map_err(|e| {
+                    AppError::new("path_inspect")
+                        .param("path", path.display().to_string())
+                        .detail(e)
+                })?;
                 hashes.insert(path, Sha256::digest(&bytes).into());
             }
         }
@@ -136,7 +146,7 @@ fn profile_fingerprint(root: &Path) -> Result<BTreeMap<PathBuf, [u8; 32]>, Strin
 }
 
 /// Resolve only relative game-provided raid paths inside the profile.
-pub(crate) fn raid_relative_path(game: &serde_json::Value) -> Result<PathBuf, String> {
+pub(crate) fn raid_relative_path(game: &serde_json::Value) -> Result<PathBuf, AppError> {
     let folder = game
         .pointer("/base_root/raid_save")
         .and_then(|v| v.as_str())
@@ -153,8 +163,11 @@ pub(crate) fn raid_relative_path(game: &serde_json::Value) -> Result<PathBuf, St
 pub fn load_profile(
     profile_path: String,
     state: State<'_, NameTableState>,
-) -> Result<serde_json::Value, String> {
-    let mut table = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
+) -> Result<serde_json::Value, AppError> {
+    let mut table = state
+        .0
+        .lock()
+        .map_err(|e| AppError::new("lock_failed").detail(e))?;
     load_profile_with_table(profile_path, &mut table)
 }
 
@@ -162,28 +175,34 @@ pub fn load_profile(
 pub fn load_profile_with_table(
     profile_path: String,
     table: &mut NameTable,
-) -> Result<serde_json::Value, String> {
+) -> Result<serde_json::Value, AppError> {
     table.loaded_profile = None;
     table.loaded_files.clear();
     table.loaded_fingerprint.clear();
     if table.names.is_empty() {
-        return Err("Name table is not loaded. Load game data before loading a profile.".into());
+        return Err(AppError::new("names_not_loaded"));
     }
     let dir = Path::new(&profile_path);
     if !dir.is_dir() {
-        return Err(format!("Not a directory: {profile_path}"));
+        return Err(AppError::new("not_directory").param("path", profile_path.clone()));
     }
     let fingerprint = profile_fingerprint(dir)?;
     let mut result = serde_json::Map::new();
     let mut snapshots = HashMap::new();
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read directory {profile_path}: {e}"))?;
+    let entries = std::fs::read_dir(dir).map_err(|e| {
+        AppError::new("directory_read")
+            .param("path", profile_path.clone())
+            .detail(e)
+    })?;
     for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
+        let entry = entry.map_err(|e| AppError::new("directory_entry").detail(e))?;
         let name = entry.file_name().to_string_lossy().into_owned();
         if !super::is_save_file(&name)
             || name == "persist.raid.json"
-            || !entry.file_type().map_err(|e| e.to_string())?.is_file()
+            || !entry
+                .file_type()
+                .map_err(|e| AppError::new("io_error").detail(e))?
+                .is_file()
         {
             continue;
         }
@@ -215,13 +234,14 @@ pub fn load_profile_with_table(
         }
     }
     if profile_fingerprint(dir)? != fingerprint {
-        return Err("Save files changed on disk during load; reload the profile.".into());
+        return Err(AppError::new("save_changed_during_load"));
     }
     table.loaded_fingerprint = fingerprint;
-    table.loaded_profile = Some(
-        dir.canonicalize()
-            .map_err(|e| format!("Invalid profile path: {e}"))?,
-    );
+    table.loaded_profile = Some(dir.canonicalize().map_err(|e| {
+        AppError::new("profile_invalid")
+            .param("path", profile_path.clone())
+            .detail(e)
+    })?);
     table.loaded_files = snapshots;
     Ok(serde_json::json!({ "data": result, "name_table_version": table.version }))
 }
@@ -233,10 +253,13 @@ fn load_one(
     names: &[String],
     result: &mut serde_json::Map<String, serde_json::Value>,
     snapshots: &mut HashMap<String, LoadedSave>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let path = dir.join(&relative_path);
-    let bytes =
-        std::fs::read(&path).map_err(|e| format!("Failed to read {}: {e}", path.display()))?;
+    let bytes = std::fs::read(&path).map_err(|e| {
+        AppError::new("file_read")
+            .param("path", path.display().to_string())
+            .detail(e)
+    })?;
     let file = match File::try_from_bin(bytes.as_slice()) {
         Ok(file) => file,
         Err(e) => {
@@ -251,7 +274,9 @@ fn load_one(
                     | "persist.progression.json"
                     | "persist.raid.json"
             ) {
-                return Err(format!("Failed to decode core save {name}: {e}"));
+                return Err(AppError::new("core_save_decode")
+                    .param("name", name)
+                    .detail(e));
             }
             log::warn!("Skipping undecodable save {}: {e}", path.display());
             return Ok(());
@@ -278,8 +303,11 @@ pub fn save_profile(
     data: serde_json::Value,
     name_table_version: u64,
     state: State<'_, NameTableState>,
-) -> Result<(), String> {
-    let mut table = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
+) -> Result<(), AppError> {
+    let mut table = state
+        .0
+        .lock()
+        .map_err(|e| AppError::new("lock_failed").detail(e))?;
     save_profile_with_detector(
         profile_path,
         data,
@@ -295,56 +323,46 @@ pub fn save_profile_with_detector(
     mut data: serde_json::Value,
     name_table_version: u64,
     table: &mut NameTable,
-    detector: impl FnOnce() -> Result<bool, String>,
-) -> Result<(), String> {
+    detector: impl FnOnce() -> Result<bool, AppError>,
+) -> Result<(), AppError> {
     super::detect::ensure_game_stopped(detector)?;
     if table.names.is_empty() || table.version != name_table_version {
-        return Err(
-            "Name table is missing or changed. Reload game data and the profile before saving."
-                .into(),
-        );
+        return Err(AppError::new("names_changed"));
     }
-    let canonical = Path::new(&profile_path)
-        .canonicalize()
-        .map_err(|e| format!("Invalid profile path: {e}"))?;
+    let canonical = Path::new(&profile_path).canonicalize().map_err(|e| {
+        AppError::new("profile_invalid")
+            .param("path", profile_path.clone())
+            .detail(e)
+    })?;
     if table.loaded_profile.as_ref() != Some(&canonical) {
-        return Err(
-            "Profile was not loaded with the current name table. Reload the profile before saving."
-                .into(),
-        );
+        return Err(AppError::new("profile_not_loaded_with_names"));
     }
     if profile_fingerprint(&canonical)? != table.loaded_fingerprint {
-        return Err(
-            "Save files changed on disk since load; reload the profile before saving.".into(),
-        );
+        return Err(AppError::new("save_stale"));
     }
     if let Some(upgrades) = data.get_mut("persist.upgrades.json") {
         restore_upgrade_hashes(upgrades, &table.names)
-            .map_err(|e| format!("persist.upgrades.json: {e}"))?;
+            .map_err(|error| error.param("saveFile", "persist.upgrades.json"))?;
     }
     let obj = data
         .as_object()
-        .ok_or("Expected a JSON object for profile data")?;
-    let loaded_for = |name: &str| -> Result<&LoadedSave, String> {
+        .ok_or(AppError::new("profile_data_invalid"))?;
+    let loaded_for = |name: &str| -> Result<&LoadedSave, AppError> {
         if !super::is_save_file(name)
             || name.contains('/')
             || name.contains('\\')
             || name.contains("..")
         {
-            return Err(format!("Invalid save filename: {name}"));
+            return Err(AppError::new("save_filename_invalid").param("name", name));
         }
         if let Some(loaded) = table.loaded_files.get(name) {
             return Ok(loaded);
         }
         // An existing file omitted at load may be undecodable. Never overwrite it.
         if canonical.join(name).exists() || name == "persist.raid.json" {
-            return Err(format!(
-                "{name} was not decoded at load. Reload the profile before saving."
-            ));
+            return Err(AppError::new("save_not_decoded").param("name", name));
         }
-        Err(format!(
-            "Cannot create save file {name}. Normal saves only overwrite files decoded at load. Reload the profile before saving."
-        ))
+        Err(AppError::new("save_create_refused").param("name", name))
     };
     let mut writes = BTreeMap::new();
     let mut updated = HashMap::new();
@@ -352,13 +370,17 @@ pub fn save_profile_with_detector(
     for (name, value) in obj {
         let loaded = loaded_for(name)?;
         let relative_path = loaded.relative_path.clone();
-        let file = loaded
-            .file
-            .merge_json_value(value)
-            .map_err(|e| format!("Failed to encode {name}: {e}"))?;
+        let file = loaded.file.merge_json_value(value).map_err(|e| {
+            AppError::new("save_encode")
+                .param("name", name.as_str())
+                .detail(e)
+        })?;
         let mut bytes = Vec::new();
-        file.write_to_bin(&mut bytes)
-            .map_err(|e| format!("Failed to encode {name}: {e}"))?;
+        file.write_to_bin(&mut bytes).map_err(|e| {
+            AppError::new("save_encode")
+                .param("name", name.as_str())
+                .detail(e)
+        })?;
         writes.insert(relative_path.clone(), bytes);
         updated.insert(
             name.clone(),
@@ -370,9 +392,7 @@ pub fn save_profile_with_detector(
     }
     // Recheck immediately before committing, after potentially expensive encoding.
     if profile_fingerprint(&canonical)? != table.loaded_fingerprint {
-        return Err(
-            "Save files changed on disk since load; reload the profile before saving.".into(),
-        );
+        return Err(AppError::new("save_stale"));
     }
     // Derive the new fingerprint from the verified snapshot and our exact writes.
     let mut fingerprint = table.loaded_fingerprint.clone();
@@ -391,7 +411,7 @@ fn save_profile_with_table(
     data: serde_json::Value,
     name_table_version: u64,
     table: &mut NameTable,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     save_profile_with_detector(profile_path, data, name_table_version, table, || Ok(false))
 }
 
@@ -459,9 +479,10 @@ mod tests {
         profile.write();
         let original = std::fs::read(profile.upgrades()).unwrap();
         let mut names = NameTable::default();
-        assert!(load_profile_with_table(profile.path(), &mut names)
-            .unwrap_err()
-            .contains("Name table is not loaded"));
+        assert_eq!(
+            load_profile_with_table(profile.path(), &mut names).unwrap_err(),
+            AppError::new("names_not_loaded")
+        );
         names.names = vec!["abbey".into(), "meditation".into()];
         names.version = 1;
         let loaded = load_profile_with_table(profile.path(), &mut names).unwrap();
@@ -475,10 +496,7 @@ mod tests {
         names.names.clear();
         let error =
             save_profile_with_table(profile.path(), edited.clone(), 1, &mut names).unwrap_err();
-        assert_eq!(
-            error,
-            "Name table is missing or changed. Reload game data and the profile before saving."
-        );
+        assert_eq!(error, AppError::new("names_changed"));
         assert_eq!(std::fs::read(profile.upgrades()).unwrap(), original);
         // Incomplete names alone do not block an ordinary numeric-hash edit.
         names.names = vec!["abbey".into(), "meditation".into()];
@@ -513,10 +531,7 @@ mod tests {
             assert!(loaded["data"].get(name).is_none(), "{name}");
             let error = save_profile_with_table(profile.path(), json!({name: {}}), 1, &mut names)
                 .unwrap_err();
-            assert_eq!(
-                error,
-                format!("{name} was not decoded at load. Reload the profile before saving.")
-            );
+            assert_eq!(error, AppError::new("save_not_decoded").param("name", name));
             assert_eq!(std::fs::read(path).unwrap(), b"invalid DSON");
         }
     }
@@ -535,10 +550,12 @@ mod tests {
             let profile = Profile::new();
             std::fs::write(profile.0.join(name), b"invalid DSON").unwrap();
             let error = load_profile_with_table(profile.path(), &mut table()).unwrap_err();
-            assert!(
-                error.starts_with(&format!("Failed to decode core save {name}:")),
-                "{error}"
+            assert_eq!(error.code, "core_save_decode");
+            assert_eq!(
+                error.params,
+                serde_json::from_value(json!({"name": name})).unwrap()
             );
+            assert!(error.detail.is_some());
         }
     }
 
@@ -553,7 +570,7 @@ mod tests {
         let error = load_profile_with_table(profile.path(), &mut table()).unwrap_err();
         assert_eq!(
             error,
-            "Symlinked save file persist.upgrades.json is not supported."
+            AppError::new("symlink_save").param("path", "persist.upgrades.json")
         );
     }
 
@@ -568,18 +585,18 @@ mod tests {
         let unchanged = json!({});
         assert_eq!(
             save_profile_with_table(profile.path(), unchanged.clone(), 0, &mut names).unwrap_err(),
-            "Name table is missing or changed. Reload game data and the profile before saving."
+            AppError::new("names_changed")
         );
         assert_eq!(
             save_profile_with_table(other.path(), unchanged, 1, &mut names).unwrap_err(),
-            "Profile was not loaded with the current name table. Reload the profile before saving."
+            AppError::new("profile_not_loaded_with_names")
         );
         assert!(Path::new(&profile.upgrades()).exists());
         assert!(Path::new(&other.upgrades()).exists());
         names.version += 1;
         assert_eq!(
             save_profile_with_table(profile.path(), json!({}), 1, &mut names).unwrap_err(),
-            "Name table is missing or changed. Reload game data and the profile before saving."
+            AppError::new("names_changed")
         );
     }
 
@@ -622,16 +639,63 @@ mod tests {
         let mut names = table();
         let mut loaded = load_profile_with_table(profile.path(), &mut names).unwrap();
         for (value, expected) in [
-            (json!(1.5), "Upgrade IDs were not resolved. Reload the profile before saving."),
-            (json!("###unknown.tree"), "Unknown upgrade tree unknown.tree. Reload game data and the profile before saving."),
+            (json!(1.5), AppError::new("upgrade_unresolved")),
+            (
+                json!("###unknown.tree"),
+                AppError::new("upgrade_unknown").param("name", "unknown.tree"),
+            ),
         ] {
             loaded["data"]["persist.upgrades.json"]["base_root"]["purchases"]["0"]["tree_id"] =
                 value;
             let original = std::fs::read(profile.upgrades()).unwrap();
-            assert_eq!(save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names).unwrap_err(), format!("persist.upgrades.json: {expected}"));
+            assert_eq!(
+                save_profile_with_table(profile.path(), loaded["data"].clone(), 1, &mut names)
+                    .unwrap_err(),
+                expected.param("saveFile", "persist.upgrades.json")
+            );
             assert_eq!(std::fs::read(profile.upgrades()).unwrap(), original);
             assert!(Path::new(&profile.upgrades()).exists());
         }
+    }
+
+    #[test]
+    fn upgrade_and_input_error_parameters_are_stable() {
+        let mut data = json!({"base_root":{"purchases":{"0":{}}}});
+        assert_eq!(
+            resolve_upgrade_ids(&mut data, &[]).unwrap_err(),
+            AppError::new("upgrade_tree_missing")
+        );
+        data["base_root"]["purchases"]["0"]["tree_id"] = json!(1.5);
+        assert_eq!(
+            resolve_upgrade_ids(&mut data, &[]).unwrap_err(),
+            AppError::new("upgrade_hash_invalid")
+        );
+        let names = vec!["tree.Az".to_owned(), "tree.BE".to_owned()];
+        assert_eq!(name_hash(&names[0]), name_hash(&names[1]));
+        assert_eq!(
+            resolve_upgrade_ids(&mut json!({}), &names).unwrap_err(),
+            AppError::new("upgrade_ambiguous")
+                .param("previous", "tree.Az")
+                .param("name", "tree.BE")
+        );
+        let profile = Profile::new();
+        profile.write();
+        let mut names = table();
+        load_profile_with_table(profile.path(), &mut names).unwrap();
+        assert_eq!(
+            save_profile_with_table(profile.path(), json!([]), 1, &mut names).unwrap_err(),
+            AppError::new("profile_data_invalid")
+        );
+        let missing = profile.0.join("missing.json");
+        let error = decode_save_file(missing.display().to_string()).unwrap_err();
+        assert_eq!(error.code, "file_read");
+        assert_eq!(error.params["path"], missing.display().to_string());
+        assert!(error.detail.is_some());
+        std::fs::write(&missing, b"not DSON").unwrap();
+        let error = decode_save_file(missing.display().to_string()).unwrap_err();
+        assert_eq!(error.code, "dson_decode");
+        assert!(error.params.is_empty());
+        assert!(error.detail.is_some());
     }
 
     /// Reads only game data and the supplied decoded reference. All writes use a temp profile.

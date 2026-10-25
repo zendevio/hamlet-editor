@@ -1,3 +1,4 @@
+use super::error::AppError;
 #[cfg(any(target_os = "macos", test))]
 fn catalog_source(locale: &str) -> Option<&'static str> {
     Some(match locale {
@@ -112,17 +113,19 @@ pub(crate) fn build(
     )
 }
 #[tauri::command]
-pub fn set_native_menu_language(app: tauri::AppHandle, locale: String) -> Result<(), String> {
+pub fn set_native_menu_language(app: tauri::AppHandle, locale: String) -> Result<(), AppError> {
     if ![
         "en", "fr", "de", "es", "it", "pt-BR", "pl", "cs", "ru", "zh-Hans", "ja", "ko",
     ]
     .contains(&locale.as_str())
     {
-        return Err("Unsupported menu locale".into());
+        return Err(AppError::new("menu_locale_unknown").param("locale", locale));
     }
     #[cfg(target_os = "macos")]
-    app.set_menu(build(&app, &locale).map_err(|error| error.to_string())?)
-        .map_err(|error| error.to_string())?;
+    app.set_menu(
+        build(&app, &locale).map_err(|error| AppError::new("menu_update_failed").detail(error))?,
+    )
+    .map_err(|error| AppError::new("menu_update_failed").detail(error))?;
     #[cfg(not(target_os = "macos"))]
     let _ = app;
     Ok(())

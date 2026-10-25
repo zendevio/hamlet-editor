@@ -1,31 +1,15 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { checkCatalogKeys, checkMessageContract, contract } from './i18n-contract.mjs';
 import { IntlMessageFormat } from 'intl-messageformat';
-import { checkSettingsCopy } from './i18n-ratchet.mjs';
+import { checkBaseline, scanCopy } from './i18n-ratchet.mjs';
 
 const root = new URL('../src/lib/i18n/', import.meta.url);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const read = async (file) => JSON.parse(await readFile(new URL(file, root), 'utf8'));
 const en = await read('catalogs/en.json');
 const tags = ['emphasis', 'code', 'link'];
-// The AST comes from the exact same FormatJS parser as the runtime.
-function contract(nodes, params = {}, slots = new Set()) {
-	for (const node of nodes) {
-		if ([2, 3, 4].includes(node.type)) throw new Error('Inline number/date/time formatters are forbidden');
-		if (node.type === 1) params[node.value] ??= 'string | number';
-		if (node.type === 5 || node.type === 6) {
-			params[node.value] = node.type === 6 ? 'number' : 'string';
-			for (const option of Object.values(node.options)) contract(option.value, params, slots);
-		}
-		if (node.type === 8) {
-			assert.ok(tags.includes(node.value), `Unapproved slot: ${node.value}`);
-			slots.add(node.value);
-			contract(node.children, params, slots);
-		}
-	}
-	return { params: Object.fromEntries(Object.entries(params).sort()), slots: [...slots].sort() };
-}
 
 let generated = '// Generated from catalogs/en.json by scripts/i18n.mjs. Do not edit.\n';
 generated += 'export interface MessageParams {\n';
@@ -40,8 +24,12 @@ if (process.argv.includes('--write')) await writeFile(target, generated);
 else assert.equal(await readFile(target, 'utf8'), generated, 'Generated message types are stale. Run pnpm i18n:generate');
 
 if (process.argv.includes('--types-only')) process.exit(0);
-const page = await readFile(new URL('../src/routes/settings/+page.svelte', import.meta.url), 'utf8');
-checkSettingsCopy(page, Object.keys(en));
+const repo = new URL('../', import.meta.url);
+const allowlist = JSON.parse(await readFile(new URL('scripts/i18n-copy-allowlist.json', repo), 'utf8'));
+const baseline = JSON.parse(await readFile(new URL('scripts/i18n-copy-baseline.json', repo), 'utf8'));
+const counts = await scanCopy(repo, Object.keys(en), allowlist);
+for (const [file, literals] of Object.entries(counts)) console.log(`Copy: ${file}: ${literals.length} (baseline ${baseline[file]?.length ?? 0})`);
+checkBaseline(counts, baseline);
 const contexts = await read('contexts.json');
 const status = await read('pilot-status.json');
 const samples = [0, 1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 101, 1.5, 1000000];
@@ -52,10 +40,12 @@ for (const filename of (await readdir(new URL('catalogs/', root))).filter((name)
 	const catalog = JSON.parse(raw);
 	assert.equal(JSON.stringify(catalog, null, '\t') + '\n', raw, `${locale}: catalog import/export round trip`);
 	assert.equal((raw.match(/^\s*"[^"\n]+"\s*:/gm) ?? []).length, Object.keys(catalog).length, `${locale}: duplicate keys`);
-	assert.deepEqual(Object.keys(catalog).sort(), Object.keys(en).sort(), `${locale}: catalog parity`);
+	const missing = checkCatalogKeys(locale, catalog, en);
+	if (missing.length) console.log(`${locale}: ${missing.length} missing keys (English fallback): ${missing.join(', ')}`);
 	for (const [id, message] of Object.entries(catalog)) {
 		assert.ok(message.trim(), `${locale}:${id}: empty message`);
 		assert.ok(!/[\u2014\u200B-\u200F\u202A-\u202E\u2060-\u2069\uE000-\uF8FF\uFFFD]/u.test(message), `${locale}:${id}: unexpected Unicode`);
+		checkMessageContract(locale, id, message, en[id]);
 		const sourceContract = contract(new IntlMessageFormat(en[id], 'en').getAst());
 		const ast = new IntlMessageFormat(message, locale).getAst();
 		if (id.startsWith('native.')) {
@@ -72,8 +62,8 @@ for (const filename of (await readdir(new URL('catalogs/', root))).filter((name)
 		assert.ok(!contexts[id].context.startsWith('Settings pilot:'), `${id}: placeholder context`);
 		assert.deepEqual([...contexts[id].slots].sort(), [...Object.keys(sourceContract.params), ...sourceContract.slots].sort(), `${id}: context slots must match parameters and tags`);
 		if (locale !== 'en') {
-			assert.equal(status[locale][id].sourceHash, hash(en[id]), `${locale}:${id}: stale source`);
-			assert.equal(status[locale][id].translationHash, hash(message), `${locale}:${id}: stale translation`);
+			assert.equal(status[locale]?.[id]?.sourceHash, hash(en[id]), `${locale}:${id}: stale source`);
+			assert.equal(status[locale]?.[id]?.translationHash, hash(message), `${locale}:${id}: stale translation`);
 		}
 		// Mark every branch in a cloned FormatJS AST. ICU itself selects branches;
 		// cartesian witnesses cover nested plurals, exact selectors and selects.
@@ -119,4 +109,4 @@ for (const filename of (await readdir(new URL('catalogs/', root))).filter((name)
 		branchCount += covered.size;
 	}
 }
-console.log(`Catalog parity, syntax, contracts, provenance and ${branchCount} ICU branches passed. Node ${process.version}, ICU ${process.versions.icu}.`);
+console.log(`Catalog known keys, syntax, contracts, provenance and ${branchCount} ICU branches passed. Node ${process.version}, ICU ${process.versions.icu}.`);

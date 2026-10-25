@@ -1,3 +1,4 @@
+use super::error::AppError;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -31,7 +32,7 @@ const DD1_APP_ID: u32 = 262060;
 pub fn scan_mod_directories(
     game_path: String,
     steam_library_path: Option<String>,
-) -> Result<Vec<ModInfo>, String> {
+) -> Result<Vec<ModInfo>, AppError> {
     let mut mods: Vec<ModInfo> = Vec::new();
     let mut seen: HashSet<PathBuf> = HashSet::new();
 
@@ -63,12 +64,15 @@ fn scan_mods_in(
     dir: &Path,
     mods: &mut Vec<ModInfo>,
     seen: &mut HashSet<PathBuf>,
-) -> Result<(), String> {
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read mods directory {}: {e}", dir.display()))?;
+) -> Result<(), AppError> {
+    let entries = std::fs::read_dir(dir).map_err(|e| {
+        AppError::new("mods_read")
+            .param("path", dir.display().to_string())
+            .detail(e)
+    })?;
 
     for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
+        let entry = entry.map_err(|e| AppError::new("directory_entry").detail(e))?;
         let mod_path = entry.path();
 
         if !mod_path.is_dir() {
@@ -92,12 +96,15 @@ fn scan_workshop_in(
     dir: &Path,
     mods: &mut Vec<ModInfo>,
     seen: &mut HashSet<PathBuf>,
-) -> Result<(), String> {
-    let entries = std::fs::read_dir(dir)
-        .map_err(|e| format!("Failed to read workshop directory {}: {e}", dir.display()))?;
+) -> Result<(), AppError> {
+    let entries = std::fs::read_dir(dir).map_err(|e| {
+        AppError::new("workshop_read")
+            .param("path", dir.display().to_string())
+            .detail(e)
+    })?;
 
     for entry in entries {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {e}"))?;
+        let entry = entry.map_err(|e| AppError::new("directory_entry").detail(e))?;
         let mod_path = entry.path();
 
         if !mod_path.is_dir() {
@@ -208,5 +215,33 @@ fn detect_workshop_dir() -> Option<PathBuf> {
         Some(workshop)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    #[test]
+    fn unreadable_mod_roots_preserve_path_and_os_detail() {
+        let root = std::env::temp_dir().join(super::super::transaction::unique_suffix());
+        let mut mods = Vec::new();
+        let mut seen = HashSet::new();
+        for (code, result) in [
+            ("mods_read", scan_mods_in(&root, &mut mods, &mut seen)),
+            (
+                "workshop_read",
+                scan_workshop_in(&root, &mut mods, &mut seen),
+            ),
+        ] {
+            let error = result.unwrap_err();
+            assert_eq!(error.code, code);
+            assert_eq!(
+                error.params,
+                serde_json::from_value(serde_json::json!({"path":root.display().to_string()}))
+                    .unwrap()
+            );
+            assert!(error.detail.is_some());
+        }
     }
 }

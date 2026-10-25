@@ -8,7 +8,8 @@
 	import { goto } from '$app/navigation';
 	import { onMount, setContext, tick, type Component } from 'svelte';
 	import { invoke } from '@tauri-apps/api/core';
-	import { getEditorLocale, t } from '#lib/i18n/index.svelte.js';
+	import { getEditorLocale, t, describeMessage } from '#lib/i18n/index.svelte.js';
+	import { isStaleSaveError, type MessageDescriptor } from '#lib/errors.js';
 	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, createWindowCloseGuard, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
@@ -80,7 +81,7 @@
 	import { createBackup } from '#lib/api/backup.js';
 	import { getGameTextState, requestGameText } from '#lib/stores/game-text.svelte.js';
 	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
-	import { showPersistentError } from '#lib/i18n/notifications.js';
+	import { showPersistentError, showError, dismissError } from '#lib/i18n/notifications.js';
 	import { ensureNameTable } from '#lib/api/names.js';
 	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills, loadRosterCapacityRules } from '#lib/api/gamedata.js';
 	import { scanModDirectories } from '#lib/api/mods.js';
@@ -97,7 +98,10 @@
 	onMount(() => {
 		void initializeSettings().then(async () => {
 			await tick();
-			for (const [index, notice] of settings.startupNotices.entries()) showPersistentError(notice, notice.detail, `settings-startup-${index}`);
+			for (const [index, notice] of settings.startupNotices.entries()) {
+				if (notice.error !== undefined) showError(notice.error, notice, `settings-startup-${index}`);
+				else showPersistentError(notice, notice.detail, `settings-startup-${index}`);
+			}
 		});
 		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1')) {
 			void import('#lib/dev/InvariantFixture.svelte').then((module) => { HarnessFixture = module.default; });
@@ -111,7 +115,7 @@
 	});
 	$effect(() => {
 		if (settings.ready && settings.persistenceFailed) showPersistentError({ id: 'settings.persistenceFailed' }, '', 'settings-persistence');
-		else toast.dismiss('settings-persistence');
+		else dismissError('settings-persistence');
 	});
 
 	// ── Game Running Detection ──
@@ -146,8 +150,7 @@
 				}
 				toast.success('Profile loaded', { description: `Switched to ${loc.profile_id}` });
 			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
-				toast.error(`Failed to switch profile: ${message}`);
+				showError(err, { id: 'error.profileSwitchFailed' });
 			} finally {
 				isProfileLoading = false;
 			}
@@ -163,15 +166,15 @@
 	let notifiedGameTextRequest = 0;
 	$effect(() => {
 		if (!gameText.error) {
-			toast.dismiss('game-text-load');
+			dismissError('game-text-load');
 			return;
 		}
 		if (gameText.failedRequest === notifiedGameTextRequest) return;
 		notifiedGameTextRequest = gameText.failedRequest;
-		showPersistentError({ id: 'settings.gameTextFailed', params: {
+		showError(gameText.errorCause, { id: 'settings.gameTextFailed', params: {
 			requested: GAME_TEXT_LANGUAGES[gameText.requestedLanguage],
 			effective: GAME_TEXT_LANGUAGES[gameText.effectiveLanguage]
-		} }, gameText.errorDetail, 'game-text-load');
+		} }, 'game-text-load');
 	});
 
 	async function initGameData(gamePath: string) {
@@ -229,8 +232,7 @@
 					}
 				})
 				.catch((err) => {
-					const message = err instanceof Error ? err.message : String(err);
-					toast.error(`Failed to load profile: ${message}`);
+					showError(err, { id: 'error.profileLoadFailed' });
 				})
 				.finally(() => {
 					isProfileLoading = false;
@@ -300,13 +302,13 @@
 		if (saveData.isLoading) return 'Loading profile...';
 		if (!saveData.isLoaded) return 'No profile loaded';
 		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) {
-			return 'Paths changed. Reload the profile before saving.';
+			return describeMessage({ id: 'error.profile_paths_changed' });
 		}
-		if (saveData.isStale) return 'Save files may have changed. Reload the profile before saving.';
-		if (gameRunning) return 'DD Running. Close the game before saving.';
-		if (gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
+		if (saveData.isStale) return describeMessage({ id: 'error.profile_stale' });
+		if (gameRunning) return describeMessage({ id: 'error.save_game_running' });
+		if (gameDetectionUncertain) return describeMessage({ id: 'error.game_detection_uncertain' });
 		if (isSaving) return 'Saving...';
-		if (!isDirty) return 'No unsaved changes';
+		if (!isDirty) return describeMessage({ id: 'error.save_no_changes' });
 		return 'Save all changes';
 	});
 
@@ -416,7 +418,7 @@
 
 	// ── Save Flow ──
 
-	function saveBlockReason(): string | null {
+	function saveBlockReason(): MessageDescriptor | null {
 		return profileSaveBlockReason(saveData, settings, {
 			isProfileLoading, gameRunning, gameDetectionUncertain, hasChanges: hasDirtyFiles()
 		});
@@ -442,8 +444,8 @@
 		},
 		saved: () => { clearAllDirty(); toast.success('Saved successfully'); },
 		failed: (error) => {
-			if (String(error).includes('Save files changed on disk')) markProfileStale();
-			toast.error(`Save failed: ${String(error)}`);
+			if (isStaleSaveError(error)) markProfileStale();
+			showError(error, { id: 'error.saveFailed' });
 		},
 		busy: (value) => { isSaving = value; }
 	});
@@ -487,7 +489,7 @@
 	const reloadProfile = createProfileReload({
 		requestDataChange, profilePath: () => settings.savePath,
 		load: loadProfileFromBackend,
-		failed: (error) => toast.error(`Reload failed: ${String(error)}`)
+		failed: (error) => showError(error, { id: 'error.reloadFailed' })
 	});
 
 	function finishUnsaved(choice: UnsavedChoice) {
@@ -555,8 +557,7 @@
 			lastBackupTime = new Date();
 			toast.success('Backup created');
 		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			toast.error(`Backup failed: ${message}`);
+			showError(err, { id: 'error.backupFailed' });
 		}
 	}
 
@@ -593,7 +594,7 @@
 {#if !settings.ready}
 	<div data-testid="startup-shell" class="fixed inset-0 bg-background"></div>
 {:else}
-<Toaster />
+<Toaster expand visibleToasts={Infinity} />
 <ValidationDialog
 	bind:open={showValidation}
 	issues={validationIssues}

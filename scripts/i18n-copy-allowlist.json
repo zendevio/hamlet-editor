@@ -1,0 +1,93 @@
+{
+	"literals": {
+		"Hamlet Editor": "Invariant product brand.",
+		"Steam": "Invariant platform brand."
+	},
+	"files": {
+		"src/routes/settings/+page.svelte": {
+			"dark": "mode-watcher state token.",
+			"v": "Version prefix.",
+			"string": "JavaScript typeof comparison.",
+			"numeric": "Intl.DateTimeFormat option.",
+			"short": "Intl.DateTimeFormat option.",
+			"2-digit": "Intl.DateTimeFormat option.",
+			"field-sizing": "CSS feature name.",
+			"content": "CSS property value.",
+			"auto": "CSS property value.",
+			"px": "CSS length unit.",
+			"loadingdone": "FontFaceSet event name."
+		},
+		"src/lib/errors.ts": {
+			"path": "Protocol parameter or envelope property name.",
+			"name": "Protocol parameter or envelope property name.",
+			"previous": "Protocol parameter or envelope property name.",
+			"gamePath": "Protocol parameter or envelope property name.",
+			"language": "Protocol parameter or envelope property name.",
+			"recoveryPath": "Protocol parameter or envelope property name.",
+			"backupPath": "Protocol parameter or envelope property name.",
+			"locale": "Protocol parameter or envelope property name.",
+			"folder": "Protocol parameter or envelope property name.",
+			"string": "Protocol parameter or envelope property name.",
+			"number": "Protocol parameter or envelope property name.",
+			"object": "Protocol parameter or envelope property name.",
+			"error": "Protocol parameter or envelope property name.",
+			"cause": "Protocol parameter or envelope property name.",
+			"data": "Protocol parameter or envelope property name.",
+			"message": "Protocol parameter or envelope property name.",
+			"error.": "Protocol parameter or envelope property name.",
+			"save_stale": "Stable stale-save protocol code.",
+			"saveFile": "Structured save-file diagnostic context key."
+		},
+		"src/lib/save-workflow.ts": {
+			"hamlet-request-data-change": "Control-flow choice, severity or context identifier.",
+			"cancel": "Control-flow choice, severity or context identifier.",
+			"save": "Control-flow choice, severity or context identifier.",
+			"error": "Control-flow choice, severity or context identifier.",
+			"discard": "Control-flow choice, severity or context identifier."
+		},
+		"src/lib/api/names.ts": {
+			"generate_name_table": "IPC command or game language identifier.",
+			"english": "IPC command or game language identifier.",
+			"load_localization": "IPC command or game language identifier.",
+			"available_game_text_languages": "IPC command or game language identifier.",
+			"set_name_table": "IPC command or game language identifier."
+		},
+		"src/lib/components/SetupWizard.svelte": {
+			"manual": "Installation source identifier passed by the picker."
+		},
+		"src/lib/components/heroes/HeroDetail.svelte": {
+			"positive": "Quirk category identifier.",
+			"negative": "Quirk category identifier.",
+			"_none": "Select sentinel for no affliction or virtue.",
+			"catalogue": "Trinket source identifier."
+		},
+		"src/lib/components/heroes/TrinketPicker.svelte": {
+			"inventory": "Trinket source identifier.",
+			"catalogue": "Trinket source identifier."
+		},
+		"src/lib/components/ui/input-group/input-group-addon.svelte": {
+			"button": "Native element selector for the focus handler.",
+			"input": "Native element selector for the focus handler."
+		},
+		"src/routes/+layout.svelte": {
+			"fix": "Validation-dialog result identifier.",
+			"save": "Unsaved-dialog result identifier.",
+			"cancel": "Unsaved-dialog result identifier.",
+			"discard": "Unsaved-dialog result identifier."
+		},
+		"src/routes/estate/+page.svelte": {
+			"shard": "Persisted currency/item identifier passed to the edit handler.",
+			"crimson_court_invitation_A": "Persisted currency/item identifier passed to the edit handler.",
+			"crimson_court_invitation_B": "Persisted currency/item identifier passed to the edit handler.",
+			"crimson_court_invitation_C": "Persisted currency/item identifier passed to the edit handler.",
+			"the_blood": "Persisted currency/item identifier passed to the edit handler.",
+			"blueprint": "Persisted currency/item identifier passed to the edit handler."
+		}
+	},
+	"patterns": [
+		{
+			"pattern": "^(?:\\.{1,2}/|#lib/|\\$app/|phosphor-svelte/|@tauri-apps/)[^\\s]+$",
+			"reason": "Module path or application import alias."
+		}
+	]
+}

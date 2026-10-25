@@ -1,89 +1,159 @@
 import assert from 'node:assert/strict';
+import { readFile, readdir } from 'node:fs/promises';
 import { parse } from 'svelte/compiler';
+import ts from 'typescript';
 
-// Structural attributes are code/data, never translated copy. Every other
-// string-valued component prop is checked, including future label props.
+// These attributes carry structure, styles or persisted identifiers. All other
+// string-valued props, including new label and accessibility props, count as copy.
 const structuralAttributes = new Set([
-	'class', 'id', 'for', 'type', 'role', 'href', 'lang', 'variant', 'size', 'weight',
-	'data-testid', 'aria-invalid'
+	'class', 'id', 'for', 'type', 'role', 'href', 'src', 'lang', 'variant', 'size', 'weight',
+	'value', 'style', 'key', 'target', 'rel', 'side', 'align', 'orientation', 'dir',
+	'inputmode', 'autocomplete', 'step', 'min', 'max', 'pattern', 'data-testid', 'aria-invalid'
 ]);
-const literalAllowlist = new Map([
-	['Hamlet Editor', 'Product name is invariant.'],
-	['Steam', 'Platform brand is invariant.'],
-	['dark', 'mode-watcher comparison token in the checked switch expression.']
-]);
+const styleCalls = new Set(['cn', 'clsx', 'cva', 'tv']);
+const brands = { 'Hamlet Editor': 'Product name.', Steam: 'Platform brand.' };
+const emptyAllowlist = { literals: brands, files: {}, patterns: [] };
 
-export function checkSettingsCopy(source, messageKeys) {
+function counter(messageKeys, allowlist, filename) {
 	const keys = new Set(messageKeys);
-	function literal(value) {
-		if (typeof value !== 'string' || !/\p{L}/u.test(value)) return;
-		assert.ok(keys.has(value) || literalAllowlist.has(value), `Hardcoded Settings text: ${value.trim()}`);
-	}
-	function walk(node, visit) {
-		if (!node || typeof node !== 'object') return;
-		visit(node);
-		for (const value of Object.values(node)) {
-			if (Array.isArray(value)) value.forEach((child) => walk(child, visit));
-			else if (value && typeof value === 'object') walk(value, visit);
-		}
-	}
-	const bindings = new Map();
-	function expressions(node, seen = new Set()) {
-		walk(node, (entry) => {
-			if (entry.type === 'Identifier' && bindings.has(entry.name) && !seen.has(entry.name)) {
-				expressions(bindings.get(entry.name), new Set([...seen, entry.name]));
+	const found = new Map();
+	return {
+		literal(value, position) {
+			if (typeof value !== 'string' || !/\p{L}/u.test(value)) return;
+			const copy = value.trim();
+			if (keys.has(copy) || Object.hasOwn(brands, copy) ||
+				Object.hasOwn(allowlist.literals ?? {}, copy) ||
+				Object.hasOwn(allowlist.files?.[filename] ?? {}, copy) ||
+				(allowlist.patterns ?? []).some(({ pattern, reason }) => reason && new RegExp(pattern, 'u').test(copy))) return;
+			found.set(position, copy);
+		},
+		get literals() { return [...found.values()]; }
+	};
+}
+
+/** Count syntax occurrences, not words. Logic literals count even when a helper
+ * returns or throws them indirectly; a new file cannot hide English in .ts.
+ * The conservative script scan also counts unlisted protocol ids. Exceptions
+ * belong in the reviewed allowlist, with a reason, rather than a text heuristic.
+ */
+export function countCopy(source, filename, messageKeys = [], allowlist = emptyAllowlist) {
+	const count = counter(messageKeys, allowlist, filename);
+	if (filename.endsWith('.svelte')) {
+		const ast = parse(source, { modern: true });
+		function expression(node) {
+			if (!node || typeof node !== 'object') return;
+			if (node.type === 'TSEnumDeclaration') {
+				for (const member of node.members) expression(member.initializer);
+				return;
 			}
-			if (entry.type === 'Literal') literal(entry.value);
-			if (entry.type === 'TemplateElement') literal(entry.value.cooked ?? entry.value.raw);
-			if (entry.type === 'Text') literal(entry.data);
-		});
-	}
-	function markup(node) {
-		if (!node || typeof node !== 'object') return;
-		if (node.type === 'Text') literal(node.data);
-		if (node.type === 'ConstTag') expressions(node.declaration);
-		if (node.type === 'ExpressionTag') expressions(node.expression);
-		for (const attribute of node.attributes ?? []) {
-			if (attribute.type !== 'Attribute' || structuralAttributes.has(attribute.name)) continue;
-			expressions(attribute.value);
+			if (node.type?.startsWith('TS')) { if (node.expression) expression(node.expression); return; }
+			if (/Import.*|ExportSpecifier/.test(node.type ?? '')) return;
+			if (node.type === 'CallExpression' && styleCalls.has(node.callee?.name)) return;
+			if ((node.type === 'Property' || node.type === 'MethodDefinition') && !node.computed) {
+				expression(node.value, node);
+				return;
+			}
+			if (node.type === 'Literal') count.literal(node.value, node.start);
+			if (node.type === 'TemplateElement') count.literal(node.value.cooked ?? node.value.raw, node.start);
+			for (const [key, value] of Object.entries(node)) {
+				if (['loc', 'typeAnnotation', 'attributes'].includes(key)) continue;
+				if (Array.isArray(value)) value.forEach((entry) => expression(entry, node));
+				else if (value && typeof value === 'object') expression(value, node);
+			}
 		}
-		for (const [key, value] of Object.entries(node)) {
-			if (['attributes', 'expression', 'instance', 'module', 'css'].includes(key)) continue;
-			if (Array.isArray(value)) value.forEach(markup);
-			else if (value && typeof value === 'object') markup(value);
-		}
-	}
-	const ast = parse(source, { modern: true });
-	// Follow copy held in simple script bindings, including rune-backed defaults.
-	walk(ast.instance, (node) => {
-		if (node.type !== 'VariableDeclarator' || node.id.type !== 'Identifier' || !node.init) return;
-		const init = node.init;
-		if (['Literal', 'TemplateLiteral'].includes(init.type) ||
-			(init.type === 'CallExpression' && ['$state', '$derived'].includes(init.callee.name) &&
-				init.arguments.every((argument) => ['Literal', 'TemplateLiteral'].includes(argument.type)))) {
-			bindings.set(node.id.name, init);
-		}
-	});
-	markup(ast.fragment);
-	// Script diagnostics are not UI copy. Check the APIs that display text.
-	walk(ast.instance, (node) => {
-		if (node.type !== 'CallExpression') return;
-		const callee = node.callee;
-		if (callee.name === 'toast' || (callee.type === 'MemberExpression' && callee.object.name === 'toast')) {
-			node.arguments.forEach((argument) => expressions(argument));
-		}
-		if (callee.name === 'open') {
-			for (const argument of node.arguments) {
-				if (argument.type !== 'ObjectExpression') continue;
-				for (const property of argument.properties) {
-					if ((property.key?.name ?? property.key?.value) === 'title') expressions(property.value);
+		function markup(node) {
+			if (!node || typeof node !== 'object') return;
+			if (node.type === 'Text') count.literal(node.data, node.start);
+			if (node.expression) expression(node.expression);
+			if (node.type === 'ConstTag') expression(node.declaration);
+			if (node.type === 'SnippetBlock') node.parameters.forEach(expression);
+			const typeValue = node.attributes?.find((attribute) => attribute.name === 'type')?.value;
+			const inputType = Array.isArray(typeValue) ? typeValue[0] : typeValue;
+			const visibleValue = node.name === 'input' && ['submit', 'button', 'reset'].includes(
+				inputType?.data ?? inputType?.expression?.value);
+			for (const attribute of node.attributes ?? []) {
+				if (['SpreadAttribute', 'OnDirective', 'UseDirective', 'AttachTag', 'TransitionDirective', 'AnimateDirective'].includes(attribute.type)) {
+					expression(attribute.expression);
+					continue;
+				}
+				if (attribute.type !== 'Attribute' || (structuralAttributes.has(attribute.name) && !(attribute.name === 'value' && visibleValue)) ||
+					attribute.name.startsWith('data-') ||
+					(attribute.name === 'name' && /^[a-z]/.test(node.name ?? ''))) continue;
+				for (const entry of Array.isArray(attribute.value) ? attribute.value : [attribute.value]) {
+					if (entry?.type === 'Text') count.literal(entry.data, entry.start);
+					else expression(entry);
 				}
 			}
+			for (const [key, value] of Object.entries(node)) {
+				if (['attributes', 'expression', 'declaration', 'parameters', 'instance', 'module', 'css'].includes(key)) continue;
+				if (Array.isArray(value)) value.forEach(markup);
+				else if (value && typeof value === 'object') markup(value);
+			}
 		}
-		if (callee.name === 'showPersistentError') {
-			// The descriptor's id is a catalog key. The optional third argument
-			// is a structural toast id; only the detail argument is UI copy.
-			node.arguments.slice(0, 2).forEach((argument) => expressions(argument));
+		expression(ast.instance?.content);
+		expression(ast.module?.content);
+		markup(ast.fragment);
+	} else {
+		const ast = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
+		function visit(node) {
+			if (ts.isTypeNode(node) || ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
+			if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && styleCalls.has(node.expression.text)) return;
+			if ((ts.isPropertyAssignment(node) || ts.isMethodDeclaration(node)) && !ts.isComputedPropertyName(node.name)) {
+				if (ts.isPropertyAssignment(node)) visit(node.initializer);
+				else {
+					node.parameters.forEach(visit);
+					if (ts.canHaveDecorators(node)) ts.getDecorators(node)?.forEach(visit);
+					if (node.body) visit(node.body);
+				}
+				return;
+			}
+			if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
+				count.literal(node.text, node.pos);
+			}
+			ts.forEachChild(node, visit);
 		}
+		visit(ast);
+	}
+	return count.literals;
+}
+
+/** Retain the zero-copy Settings pilot gate alongside the repository ratchet. */
+export function checkSettingsCopy(source, messageKeys) {
+	const literals = countCopy(source, 'src/routes/settings/+page.svelte', messageKeys, {
+		...emptyAllowlist, files: { 'src/routes/settings/+page.svelte': { dark: 'mode-watcher token.', 'game-text-load': 'Persistent toast identifier.' } }
 	});
+	assert.equal(literals.length, 0, `Hardcoded Settings text: ${literals.join(' | ')}`);
+}
+
+export function checkBaseline(literals, baseline) {
+	for (const [file, current] of Object.entries(literals)) {
+		const remaining = [...(baseline[file] ?? [])];
+		for (const literal of current) {
+			const index = remaining.indexOf(literal);
+			assert.ok(index >= 0, `New hardcoded copy: ${file}: ${JSON.stringify(literal)}`);
+			remaining.splice(index, 1);
+		}
+		assert.equal(remaining.length, 0,
+			`Hardcoded copy decreased: ${file}: lower the baseline to ${current.length} literals by removing ${JSON.stringify(remaining)}`);
+	}
+	for (const file of Object.keys(baseline)) {
+		assert.ok(Object.hasOwn(literals, file), `Stale hardcoded-copy baseline: ${file}: remove the unscanned file`);
+	}
+}
+
+export async function scanCopy(root, messageKeys, allowlist) {
+	const counts = {};
+	async function visit(directory) {
+		for (const entry of (await readdir(new URL(directory, root), { withFileTypes: true })).sort((a, b) => a.name < b.name ? -1 : 1)) {
+			const file = `${directory}${entry.name}`;
+			if (/^src\/lib\/dev(\/|$)/.test(file) || /(^|\/)(__tests__|tests)(\/|$)/.test(file)) continue;
+			if (entry.isDirectory()) { await visit(`${file}/`); continue; }
+			if (!/\.(svelte|ts)$/.test(file) || /(?:\.d\.ts|\.generated\.|\.(test|spec)\.)/.test(file)) continue;
+			if (file.startsWith('src/lib/i18n/') && !file.endsWith('.svelte')) continue;
+			const source = await readFile(new URL(file, root), 'utf8');
+			counts[file] = countCopy(source, file, messageKeys, allowlist).sort();
+		}
+	}
+	await visit('src/');
+	return counts;
 }

@@ -1,6 +1,11 @@
 import type { RestoreCheck } from '#lib/api/backup.js';
 import type { RequestDataChange } from '#lib/save-workflow.js';
 
+/** Presence, rather than truthiness or a known code, controls this safety gate. */
+export function isRestoreBlocked(check: RestoreCheck): boolean {
+	return check.blocked_reason !== null && check.blocked_reason !== undefined;
+}
+
 export function restoreOutcome(check: RestoreCheck | null): string {
 	if (!check) return '';
 	const parts = [
@@ -23,7 +28,7 @@ export async function runRestore(options: {
 	const preflight = async () => {
 		const check = await options.check();
 		options.checked(check);
-		if (check.blocked_reason) {
+		if (isRestoreBlocked(check)) {
 			options.blocked();
 			throw refused;
 		}

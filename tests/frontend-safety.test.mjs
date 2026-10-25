@@ -262,7 +262,7 @@ test('cancel, blocking errors, failed backup/save and changed path never continu
 		let confirmations = 0;
 		let blocked = kind === 'path';
 		const w = workflow({
-			blocked: () => blocked ? 'Paths changed or game running' : null,
+			blocked: () => blocked ? { id: 'error.profile_paths_changed' } : null,
 			confirm: async () => ++confirmations === 1 && kind === 'error' ? 'save' : 'cancel',
 			backup: async () => {
 				if (kind === 'backup') throw new Error('Backup failed');

@@ -1,3 +1,4 @@
+use super::error::AppError;
 use std::path::{Path, PathBuf};
 
 // ---------------------------------------------------------------------------
@@ -15,22 +16,35 @@ use std::path::{Path, PathBuf};
 /// transparently probes `_osx/Darkest.app/Contents/Resources/data/` under
 /// the same root before giving up.
 #[tauri::command]
-pub fn load_game_asset(game_path: String, asset_relative_path: String) -> Result<Vec<u8>, String> {
+pub fn load_game_asset(
+    game_path: String,
+    asset_relative_path: String,
+) -> Result<Vec<u8>, AppError> {
     let base = PathBuf::from(&game_path);
     let relative = Path::new(&asset_relative_path);
 
     // Primary probe: game_path is already the data root.
     let primary_path = base.join(relative);
     if primary_path.is_file() {
-        let resolved =
-            std::fs::canonicalize(&primary_path).map_err(|e| format!("Asset not found: {e}"))?;
-        let base_canon =
-            std::fs::canonicalize(&base).map_err(|e| format!("Invalid game path: {e}"))?;
+        let resolved = std::fs::canonicalize(&primary_path).map_err(|e| {
+            AppError::new("asset_missing")
+                .param("path", asset_relative_path.clone())
+                .param("gamePath", game_path.clone())
+                .detail(e)
+        })?;
+        let base_canon = std::fs::canonicalize(&base).map_err(|e| {
+            AppError::new("game_path_invalid")
+                .param("path", game_path.clone())
+                .detail(e)
+        })?;
         if !resolved.starts_with(&base_canon) {
-            return Err("Invalid asset path: path traversal detected".to_string());
+            return Err(AppError::new("asset_path_invalid"));
         }
-        return std::fs::read(&resolved)
-            .map_err(|e| format!("Failed to read asset '{}': {}", resolved.display(), e));
+        return std::fs::read(&resolved).map_err(|e| {
+            AppError::new("asset_read")
+                .param("path", resolved.display().to_string())
+                .detail(e)
+        });
     }
 
     // macOS fallback: game_path might be the Steam install root rather than
@@ -40,20 +54,60 @@ pub fn load_game_asset(game_path: String, asset_relative_path: String) -> Result
         let osx_data = base.join("_osx/Darkest.app/Contents/Resources/data");
         let fallback_path = osx_data.join(relative);
         if fallback_path.is_file() {
-            let resolved = std::fs::canonicalize(&fallback_path)
-                .map_err(|e| format!("Asset not found: {e}"))?;
-            let base_canon =
-                std::fs::canonicalize(&base).map_err(|e| format!("Invalid game path: {e}"))?;
+            let resolved = std::fs::canonicalize(&fallback_path).map_err(|e| {
+                AppError::new("asset_missing")
+                    .param("path", asset_relative_path.clone())
+                    .param("gamePath", game_path.clone())
+                    .detail(e)
+            })?;
+            let base_canon = std::fs::canonicalize(&base).map_err(|e| {
+                AppError::new("game_path_invalid")
+                    .param("path", game_path.clone())
+                    .detail(e)
+            })?;
             if !resolved.starts_with(&base_canon) {
-                return Err("Invalid asset path: path traversal detected".to_string());
+                return Err(AppError::new("asset_path_invalid"));
             }
-            return std::fs::read(&resolved)
-                .map_err(|e| format!("Failed to read asset '{}': {}", resolved.display(), e));
+            return std::fs::read(&resolved).map_err(|e| {
+                AppError::new("asset_read")
+                    .param("path", resolved.display().to_string())
+                    .detail(e)
+            });
         }
     }
 
-    Err(format!(
-        "Asset not found: '{}'  (game_path: '{}')",
-        asset_relative_path, game_path
-    ))
+    Err(AppError::new("asset_missing")
+        .param("path", asset_relative_path)
+        .param("gamePath", game_path))
+}
+
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+
+    #[test]
+    fn missing_asset_has_both_requested_paths() {
+        let root = std::env::temp_dir().join(super::super::transaction::unique_suffix());
+        let error = load_game_asset(root.display().to_string(), "missing.png".into()).unwrap_err();
+        assert_eq!(
+            error,
+            AppError::new("asset_missing")
+                .param("path", "missing.png")
+                .param("gamePath", root.display().to_string())
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn asset_traversal_remains_blocked() {
+        let root = std::env::temp_dir().join(super::super::transaction::unique_suffix());
+        std::fs::create_dir(&root).unwrap();
+        std::fs::write(root.join("outside.png"), b"fixture").unwrap();
+        let inside = root.join("game");
+        std::fs::create_dir(&inside).unwrap();
+        let error =
+            load_game_asset(inside.display().to_string(), "../outside.png".into()).unwrap_err();
+        assert_eq!(error, AppError::new("asset_path_invalid"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

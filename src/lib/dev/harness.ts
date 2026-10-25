@@ -7,7 +7,7 @@ export interface ResponsePlan {
 	language?: string;
 	gamePath?: string;
 	delayMs?: number;
-	fail?: string | { kind: string; folder: string; detail: string };
+	fail?: string | { kind: string; folder: string; detail: string } | { code: string; params: Record<string, string | number>; detail: string | null };
 	empty?: boolean;
 	hold?: string;
 	value?: unknown;

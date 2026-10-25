@@ -2,6 +2,7 @@
  * Tauri command wrappers for name table and localization.
  */
 
+import type { MessageDescriptor } from '#lib/errors.js';
 import { invoke } from '@tauri-apps/api/core';
 
 /** Generate all known DSON identifiers from the game installation. */
@@ -31,7 +32,7 @@ let pendingNames: Promise<void> | null = null;
 
 /** Every profile load, including switches and restores, waits for this barrier. */
 export async function ensureNameTable(gamePath: string): Promise<void> {
-	if (!gamePath) throw new Error('Select a game installation before loading a profile.');
+	if (!gamePath) throw { id: 'error.game_install_required' } satisfies MessageDescriptor;
 	if (pendingNames) {
 		await pendingNames;
 		return ensureNameTable(gamePath);
@@ -39,7 +40,7 @@ export async function ensureNameTable(gamePath: string): Promise<void> {
 	if (readyGamePath === gamePath) return;
 	pendingNames = (async () => {
 		const names = await generateNameTable(gamePath);
-		if (names.length === 0) throw new Error('Name table is empty. Check the game installation.');
+		if (names.length === 0) throw { id: 'error.names_install_empty' } satisfies MessageDescriptor;
 		await setNameTableOnBackend(names);
 		readyGamePath = gamePath;
 	})();

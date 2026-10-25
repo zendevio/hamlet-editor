@@ -1,4 +1,5 @@
 use ddsavelib::{File, Unhasher};
+use hamlet_editor_lib::AppError;
 use hamlet_editor_lib::NameTable;
 use hamlet_editor_lib::{backup, save};
 use serde_json::{json, Value};
@@ -66,7 +67,7 @@ impl Sandbox {
         .unwrap();
         (table, value["data"].clone())
     }
-    fn save(&self, table: &mut NameTable, value: Value) -> Result<(), String> {
+    fn save(&self, table: &mut NameTable, value: Value) -> Result<(), AppError> {
         save::save_profile_with_detector(
             self.profile().to_string_lossy().into_owned(),
             value,
@@ -219,8 +220,15 @@ fn encoding_failure_preserves_all_files() {
     data["persist.game.json"]["base_root"]["estatename"] = json!("Must not be written");
     data.as_object_mut().unwrap().remove("persist.raid.json");
     let error = sandbox.save(&mut table, data).unwrap_err();
-    assert!(error.contains("persist.estate.json"), "{error}");
-    assert!(error.contains("base_root.bad_integer"), "{error}");
+    assert_eq!(error.code, "save_encode");
+    assert!(error.params["name"] == "persist.estate.json", "{error}");
+    assert!(
+        error
+            .detail
+            .as_ref()
+            .is_some_and(|detail| detail.contains("base_root.bad_integer")),
+        "{error}"
+    );
     assert_eq!(tree(&sandbox.profile()), before);
 }
 
@@ -372,15 +380,18 @@ fn backup_listing_uses_exact_source_and_keeps_legacy_profile_ids() {
     assert!(backup::list_backups_at(&second.profile(), &first.backups())
         .unwrap()
         .is_empty());
-    assert!(backup::restore_backup_with_detectors(
-        &backup,
-        &second.profile(),
-        &second.backups(),
-        || Ok(false),
-        || Ok(false)
-    )
-    .unwrap_err()
-    .contains("different source"));
+    assert!(
+        backup::restore_backup_with_detectors(
+            &backup,
+            &second.profile(),
+            &second.backups(),
+            || Ok(false),
+            || Ok(false)
+        )
+        .unwrap_err()
+        .code
+            == "backup_wrong_profile"
+    );
     fs::create_dir(first.backups().join("profile_0__2026-01-01__12-00-00")).unwrap();
     fs::create_dir(first.backups().join("profile_1__2026-01-01__12-00-00")).unwrap();
     assert_eq!(
@@ -412,10 +423,7 @@ fn incomplete_backup_manifest_blocks_restore_before_mutation() {
         || Ok(false),
     )
     .unwrap_err();
-    assert_eq!(
-        error,
-        "Backup files do not match the manifest. Restore was not started."
-    );
+    assert_eq!(error, AppError::new("backup_manifest_mismatch"));
     assert_eq!(tree(&sandbox.profile()), before);
     assert_eq!(fs::read_dir(sandbox.backups()).unwrap().count(), count);
 }
@@ -433,7 +441,7 @@ fn all_three_write_commands_refuse_a_running_game_before_any_changes() {
         || Ok(true),
     )
     .unwrap_err();
-    assert!(error.starts_with("Darkest Dungeon is running"));
+    assert!(error == AppError::new("game_running"));
     let error = backup::restore_backup_with_detectors(
         Path::new("missing-backup"),
         &sandbox.profile(),
@@ -442,7 +450,7 @@ fn all_three_write_commands_refuse_a_running_game_before_any_changes() {
         || panic!("Steam detection must not precede the game-running guard"),
     )
     .unwrap_err();
-    assert!(error.starts_with("Darkest Dungeon is running"));
+    assert!(error == AppError::new("game_running"));
     let error = backup::restore_game_backup_with_detectors(
         &sandbox.profile(),
         &sandbox.backups(),
@@ -450,7 +458,7 @@ fn all_three_write_commands_refuse_a_running_game_before_any_changes() {
         || panic!("Steam detection must not precede the game-running guard"),
     )
     .unwrap_err();
-    assert!(error.starts_with("Darkest Dungeon is running"));
+    assert!(error == AppError::new("game_running"));
     assert_eq!(tree(&sandbox.profile()), before);
     assert!(!sandbox.backups().exists());
 }
@@ -500,9 +508,22 @@ fn control_character_save_errors_name_the_file_and_field_without_writing() {
     for name in ["Name\0suffix", "Name\u{1}suffix", "Name\nsuffix"] {
         data["persist.game.json"]["base_root"]["estatename"] = json!(name);
         let error = sandbox.save(&mut table, data.clone()).unwrap_err();
-        assert!(error.contains("persist.game.json"), "{error}");
-        assert!(error.contains("base_root.estatename"), "{error}");
-        assert!(error.contains("control characters or NUL"), "{error}");
+        assert_eq!(error.code, "save_encode");
+        assert!(error.params["name"] == "persist.game.json", "{error}");
+        assert!(
+            error
+                .detail
+                .as_ref()
+                .is_some_and(|detail| detail.contains("base_root.estatename")),
+            "{error}"
+        );
+        assert!(
+            error
+                .detail
+                .as_ref()
+                .is_some_and(|detail| detail.contains("control characters or NUL")),
+            "{error}"
+        );
     }
     assert_eq!(tree(&sandbox.profile()), before);
 }
@@ -539,10 +560,7 @@ fn disk_changes_file_addition_removal_and_inactive_subfolder_changes_block_all_w
         let before = tree(&sandbox.profile());
         data["persist.game.json"]["base_root"]["estatename"] = json!("Must not overwrite the game");
         let error = sandbox.save(&mut table, data).unwrap_err();
-        assert!(
-            error.contains("Save files changed on disk since load; reload"),
-            "{mode}: {error}"
-        );
+        assert!(error == AppError::new("save_stale"), "{mode}: {error}");
         assert_eq!(tree(&sandbox.profile()), before, "{mode}");
     }
 }
@@ -615,7 +633,7 @@ fn core_decode_failure_is_visible_and_clears_write_authorization() {
         )
         .unwrap_err();
         assert!(
-            error.contains(name) && error.contains("Failed to decode core save"),
+            error.params["name"] == name && error.code == "core_save_decode",
             "{error}"
         );
         assert!(table.loaded_profile.is_none());
@@ -636,7 +654,10 @@ fn profile_save_refuses_deletion_requests_before_writing() {
                 json!({"_deleted": [name], "persist.game.json": data["persist.game.json"]}),
             )
             .unwrap_err();
-        assert!(error.contains("Invalid save filename: _deleted"), "{error}");
+        assert!(
+            error == AppError::new("save_filename_invalid").param("name", "_deleted"),
+            "{error}"
+        );
         assert_eq!(tree(&sandbox.profile()), before);
     }
 }
@@ -747,7 +768,7 @@ fn inactive_raid_is_ignored_but_active_raid_still_resolves_the_subfolder() {
         .unwrap_err();
     assert_eq!(
         error,
-        "persist.raid.json was not decoded at load. Reload the profile before saving."
+        AppError::new("save_not_decoded").param("name", "persist.raid.json")
     );
     assert_eq!(fs::read(raid_path).unwrap(), bytes);
     sandbox.activate_raid();
@@ -803,7 +824,7 @@ fn undecodable_inactive_raids_are_ignored_and_active_decode_errors_remain_fatal(
         )
         .unwrap_err();
         assert!(
-            error.starts_with("Failed to decode core save persist.raid.json:"),
+            error.code == "core_save_decode" && error.params["name"] == "persist.raid.json",
             "{error}"
         );
     }
@@ -938,7 +959,7 @@ fn editor_restore_checks_steam_before_safety_backup_or_mutation() {
                 },
             );
             if steam_running && change != "overwrite" {
-                assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+                assert!(result.unwrap_err() == AppError::new("steam_restore_blocked"));
                 assert_eq!(tree(&sandbox.profile()), before);
                 assert!(!sandbox.backups().exists());
             } else {
@@ -992,7 +1013,7 @@ fn game_restore_checks_creates_but_allows_overwrites_and_preserves_extra_files()
                 },
             );
             if creates && steam_running {
-                assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+                assert!(result.unwrap_err() == AppError::new("steam_restore_blocked"));
                 assert_eq!(tree(&sandbox.profile()), before);
                 assert!(!sandbox.backups().exists());
             } else {
@@ -1019,7 +1040,9 @@ fn normal_save_refuses_missing_files_before_writing_anything() {
     data["persist.new_optional.json"] = json!({"__revision_dont_touch": 1, "base_root": {}});
     data["persist.roster.json"]["base_root"]["test_field"] = json!(1);
     let error = sandbox.save(&mut table, data).unwrap_err();
-    assert!(error.starts_with("Cannot create save file persist.new_optional.json."));
+    assert!(
+        error == AppError::new("save_create_refused").param("name", "persist.new_optional.json")
+    );
     assert_eq!(tree(&sandbox.profile()), before);
 }
 
@@ -1056,10 +1079,7 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
         )
         .unwrap();
         assert_eq!((check.adds, check.removes), (1, 0));
-        assert!(check
-            .blocked_reason
-            .unwrap()
-            .starts_with("Quit Steam completely"));
+        assert!(check.blocked_reason.unwrap().code == "steam_restore_blocked");
         let stopped = backup::check_restore_with_detectors(
             selected,
             &sandbox.profile(),
@@ -1076,7 +1096,7 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
                     selected,
                     &sandbox.profile(),
                     || Ok(false),
-                    || Err("Steam detector failed".into()),
+                    || Err(AppError::new("io_error").detail("Steam detector failed")),
                 )
                 .map(|_| ())
             } else if game_backup {
@@ -1084,7 +1104,7 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
                     &sandbox.profile(),
                     &sandbox.backups(),
                     || Ok(false),
-                    || Err("Steam detector failed".into()),
+                    || Err(AppError::new("io_error").detail("Steam detector failed")),
                 )
             } else {
                 backup::restore_backup_with_detectors(
@@ -1092,10 +1112,13 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
                     &sandbox.profile(),
                     &sandbox.backups(),
                     || Ok(false),
-                    || Err("Steam detector failed".into()),
+                    || Err(AppError::new("io_error").detail("Steam detector failed")),
                 )
             };
-            assert_eq!(result.unwrap_err(), "Steam detector failed");
+            assert_eq!(
+                result.unwrap_err(),
+                AppError::new("io_error").detail("Steam detector failed")
+            );
             assert_eq!(tree(&sandbox.profile()), before);
             assert!(!sandbox.backups().exists());
         }
@@ -1106,7 +1129,7 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
             || panic!("game guard first"),
         )
         .unwrap_err();
-        assert!(error.starts_with("Darkest Dungeon is running"));
+        assert!(error == AppError::new("game_running"));
         if !game_backup {
             fs::remove_file(snapshot.join("persist.roster.json")).unwrap();
             assert_eq!(
@@ -1117,7 +1140,7 @@ fn preflight_and_restore_share_checks_without_preflight_writes() {
                     || panic!("validation first")
                 )
                 .unwrap_err(),
-                "Backup files do not match the manifest. Restore was not started."
+                AppError::new("backup_manifest_mismatch")
             );
         }
         assert_eq!(tree(&sandbox.profile()), before);
@@ -1212,7 +1235,7 @@ fn unfiltered_game_fixture_requires_steam_stopped_when_restored_as_legacy_snapsh
             || Ok(steam_running),
         );
         if steam_running {
-            assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+            assert!(result.unwrap_err() == AppError::new("steam_restore_blocked"));
             assert_eq!(tree(&sandbox.profile()), before);
             assert!(!sandbox.backups().exists());
         } else {
@@ -1262,7 +1285,18 @@ fn preflight_validates_transaction_targets_before_safety_backup() {
             || panic!("validation precedes Steam"),
         )
         .unwrap_err();
-        assert!(error.starts_with("Save target is not a file:"), "{error}");
+        assert!(
+            error.code == "save_target_invalid"
+                && error.params["path"]
+                    == sandbox
+                        .profile()
+                        .canonicalize()
+                        .unwrap()
+                        .join("persist.roster.json")
+                        .display()
+                        .to_string(),
+            "{error}"
+        );
         let result = if game_backup {
             backup::restore_game_backup_with_detectors(
                 &sandbox.profile(),
@@ -1322,7 +1356,7 @@ fn steam_guard_uses_supplied_steam_path_to_external_profile() {
                 || Ok(true),
             )
         };
-        assert!(result.unwrap_err().starts_with("Quit Steam completely"));
+        assert!(result.unwrap_err() == AppError::new("steam_restore_blocked"));
         assert_eq!(tree(&sandbox.profile()), before);
         assert!(!sandbox.backups().exists());
     }
@@ -1344,7 +1378,7 @@ fn preflight_rejects_non_utf8_profile_id_without_writes() {
         || Ok(false),
         || panic!("invalid ID must fail first"),
     );
-    assert_eq!(check.unwrap_err(), "Invalid profile ID");
+    assert_eq!(check.unwrap_err(), AppError::new("profile_id_invalid"));
     assert_eq!(tree(&destination), before);
     assert!(!sandbox.backups().exists());
 }

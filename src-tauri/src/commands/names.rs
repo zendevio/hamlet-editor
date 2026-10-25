@@ -1,3 +1,4 @@
+use super::error::AppError;
 use crate::NameTableState;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -33,12 +34,10 @@ const HARDCODED_EVENT_NAMES: &[&str] = &[
 /// 15 file patterns, plus 10 hardcoded event names. Returns a sorted,
 /// deduplicated Vec<String>.
 #[tauri::command]
-pub fn generate_name_table(game_path: String) -> Result<Vec<String>, String> {
+pub fn generate_name_table(game_path: String) -> Result<Vec<String>, AppError> {
     let data_root = resolve_data_root(Path::new(&game_path));
     if !is_data_root(&data_root) {
-        return Err(format!(
-            "Game data not found at {game_path}. Select a valid game installation."
-        ));
+        return Err(AppError::new("game_data_missing").param("path", game_path));
     }
     let mut names: HashSet<String> = HashSet::new();
 
@@ -75,9 +74,9 @@ pub const GAME_TEXT_LANGUAGES: &[&str] = &[
 pub fn load_localization(
     game_path: String,
     language: String,
-) -> Result<HashMap<String, String>, String> {
+) -> Result<HashMap<String, String>, AppError> {
     if !GAME_TEXT_LANGUAGES.contains(&language.as_str()) {
-        return Err(format!("Unknown game text language: {language}"));
+        return Err(AppError::new("game_language_unknown").param("language", language));
     }
     let files = localization_files(&resolve_data_root(Path::new(&game_path)));
     let mut english = HashMap::new();
@@ -164,15 +163,21 @@ fn is_arena_table(path: &Path) -> bool {
 /// Store the name table in Tauri managed state so that subsequent
 /// `load_profile` calls can resolve upgrade tree hashes.
 #[tauri::command]
-pub fn set_name_table(names: Vec<String>, state: State<'_, NameTableState>) -> Result<(), String> {
-    let mut guard = state.0.lock().map_err(|e| format!("Lock error: {e}"))?;
+pub fn set_name_table(
+    names: Vec<String>,
+    state: State<'_, NameTableState>,
+) -> Result<(), AppError> {
+    let mut guard = state
+        .0
+        .lock()
+        .map_err(|e| AppError::new("lock_failed").detail(e))?;
     guard.version += 1;
     guard.loaded_profile = None;
     guard.loaded_files.clear();
     guard.loaded_fingerprint.clear();
     guard.names = names;
     if guard.names.is_empty() {
-        return Err("Name table is empty. Load game data before loading a profile.".to_string());
+        return Err(AppError::new("names_empty"));
     }
     Ok(())
 }
@@ -706,7 +711,7 @@ mod tests {
         );
         assert_eq!(
             load_localization(path, "unknown".into()).unwrap_err(),
-            "Unknown game text language: unknown"
+            AppError::new("game_language_unknown").param("language", "unknown")
         );
         std::fs::remove_dir_all(dir).unwrap();
         assert_eq!(
@@ -747,6 +752,9 @@ mod tests {
     #[test]
     fn invalid_game_directory_does_not_produce_a_seed_only_table() {
         let error = generate_name_table("/nonexistent/hamlet-game-data".to_string()).unwrap_err();
-        assert!(error.contains("Game data not found"));
+        assert_eq!(
+            error,
+            AppError::new("game_data_missing").param("path", "/nonexistent/hamlet-game-data")
+        );
     }
 }

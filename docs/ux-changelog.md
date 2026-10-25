@@ -4,6 +4,7 @@ User-facing changes and the reasons for them.
 
 | Date | Change | Why | Commit |
 | --- | --- | --- | --- |
+| 2026-10-25 | Save and restore failures use stable error codes, keep selectable raw diagnostics, and retain recovery and safety-backup paths. Error toasts and restore blockers refresh with the editor language; unknown restore blockers still refuse restore. | Remove the Save failed: Error prefix duplication and preserve recovery information while translating errors. Full wording changes are listed below. | Pending S1 |
 | 2026-10-25 | Fallback quirk choices match base and DLC game data; hero chip tooltips retain raw IDs. Language selection stays visible during detection and labels unavailable languages. Campaign localization takes precedence over arena tables, and empty translations preserve fallback text. | Keep degraded-data choices valid, make translated quirks identifiable, and avoid blank language selections or PvP titles in campaign displays. | e8fb311 |
 | 2026-10-25 | Quirks use installed-game categories, names and description tooltips. The hero quirk picker searches translated names and IDs. Settings offers installed game text languages with English fallback; class, building and district names prefer game text. | Correct Corvid's Eye classification and make Resolution discoverable as 戒酒. Language changes refresh display strings without reloading or editing saves. | e8fb311 |
 | 2026-10-20 | Town upgrade tiers no longer show a warning icon on every purchased tier; switching a tier off shows a short message naming the higher tiers turned off with it. Resolve level and backup labels use a middle dot instead of an em dash. | The icons made a fully upgraded town look broken; the note only matters when a tier is switched off. | e4b06aa |
@@ -35,3 +36,67 @@ User-facing changes and the reasons for them.
 | 2026-10-19 | Wallet, invitations, blood and blueprints accept only whole amounts from 0 to 2147483647 and display inline errors; missing entries are created with verified types. Hero names trim surrounding spaces, use an editor limit of 32 Unicode characters, and reject controls and invisible formatting. Living heroes cannot be edited below 1 HP. | Prevent invalid values and unsafe names from reaching save data. | 7fc077b |
 | 2026-10-19 | Dismissal explains and blocks treatment, party, upgrade and other save references. Revival, including batch revival, is unavailable until a complete dead-hero transition is verified. Crimson Curse stages can only replace one existing stage through the curse selector. | Preserve references and prevent partial revival or new curse injection. | 7fc077b |
 | 2026-10-19 | Switching profiles or save/game paths with edits asks Save, Discard or Cancel. Save & Close uses normal validation, save blocks and optional auto-backup. A failed auto-backup aborts saving and keeps edits. | Prevent silent edit loss and ensure close/switch flows honor the same save protections. | 7fc077b |
+
+## S1 typed-error wording changes (2026-10-25)
+
+Catalog keys added in S1 are English-only during P2. Existing translated pilot text remains unchanged. Error titles, complete reasons and raw diagnostics render as separate blocks. Raw OS and ddsavelib text is unchanged. The table includes newly described fallback errors even where an existing API consumer suppresses the error. All error messages not listed here retain their English wording.
+
+Save, reload, backup, profile switch/load, game/profile path and open-folder error toasts now stay open until closed instead of auto-dismissing. Failures with the same operation, code and parameters reuse one toast with the latest diagnostic and return to the front on retry. Recovery-file, safety-backup and kept-copy notices each keep their own toast until dismissed. Toasts stay expanded so later notices do not collapse recovery information. Rollback failures also log every failed file and recovery location through the existing application log plugin in debug and release builds. Startup settings and game-text failures keep their existing notice and add a complete typed or generic reason before the raw diagnostic.
+
+| Previous rendering | Current rendering | Reason or detail |
+| --- | --- | --- |
+| Save failed: Error: {reason} | Save failed | The complete reason is rendered below the title, without an Error prefix. Save guards throw descriptors. |
+| Save failed: {reason} | Save failed | Typed backend errors render their complete localized reason below the title, with raw detail separately selectable. |
+| Failed to switch profile: {reason} | Failed to switch profile | The complete localized reason and raw diagnostic appear below the title. |
+| Failed to load profile: {reason} | Failed to load profile | The complete localized reason and raw diagnostic appear below the title. |
+| Reload failed: {reason} | Reload failed | The complete localized reason and raw diagnostic appear below the title. |
+| Backup failed: {reason} | Backup failed | The complete localized reason and raw diagnostic appear below the title. |
+| {raw diagnostic} or [object Object] | An unexpected error occurred. | Unknown codes, malformed shapes and legacy failures show this message plus their unchanged raw diagnostic or serialized value. |
+| {raw filesystem diagnostic} | An I/O operation failed. | Previously unlabelled I/O diagnostics now have a complete message; raw detail follows. |
+| Lock error: {detail} | Could not access the name table. | Raw lock diagnostic follows. |
+| Invalid profile path: {detail}; Invalid profile: {detail}; Invalid profile {path}: {detail} | Invalid profile: {path} | The selected path remains visible and raw OS detail follows. |
+| Failed to read directory {path}: {detail} | Failed to read directory {path}. | Raw OS detail is separate and selectable. |
+| Failed to read {path}: {detail} (restore directory reads) | Failed to read directory {path}. | Directory reads from backup folders now identify the operation; raw OS detail follows. |
+| Failed to read directory entry: {detail} | Failed to read a directory entry. | Raw OS detail is separate and selectable. |
+| Failed to read {path}: {detail} | Failed to read {path}. | Raw OS detail is separate and selectable. |
+| Failed to inspect save files: {detail} | Failed to inspect save files. | Raw OS detail is separate and selectable. |
+| Failed to inspect {path}: {detail} | Failed to inspect {path}. | Raw OS detail is separate and selectable. |
+| Cannot fingerprint save {path} | Cannot fingerprint save {path}. | Adds a final period. |
+| Failed to decode DSON: {detail} | Failed to decode DSON. | Untranslated ddsavelib detail follows. |
+| Failed to decode core save {name}: {detail} | Failed to decode core save {name}. | Untranslated ddsavelib detail follows. |
+| Failed to encode {name}: {detail} | Failed to encode {name}. | Untranslated ddsavelib detail follows. |
+| persist.upgrades.json: {upgrade error} | {upgrade error} / The error occurred in persist.upgrades.json. | The complete upgrade error remains unchanged; its filename is retained as a separate structured sentence. |
+| Failed to stage saves: {detail} | Failed to stage saves. | Raw OS detail follows. |
+| Save transaction failed for {path}: {detail} | Save transaction failed for {path}. | Raw OS detail follows. |
+| {error}; rollback failed: {rollback errors}. Recovery files: {path} | Save transaction failed and rollback could not complete. Recovery files: {path} | Original and rollback diagnostics retain every failed filename on separate lines; recovery files remain on disk. |
+| Save transaction failed for {path}. (backup creation) | Failed to create backup {path}. | Identifies the failed backup operation; original transaction diagnostics and file paths remain in the raw detail. |
+| Save transaction failed and rollback could not complete. Recovery files: {path} (backup creation) | Backup creation failed and cleanup could not complete. Recovery files: {recoveryPath} | Names the backup operation. The excluded incomplete directory remains on disk for recovery and cannot be listed or restored. |
+| (backup publish rename failed immediately) | Failed to create backup {path}. / Recovery files: {recoveryPath} | Transient access and sharing failures retry three times with short backoff. If publishing still fails, the complete unlisted snapshot stays at the reported recovery location and is logged. |
+| (partial backup could be listed or restored) | Incomplete backup cannot be restored: {path} | Direct restore attempts, including aliases, refuse unpublished recovery directories. |
+| (recovery paths shown only by known error contracts) | Recovery files: {recoveryPath} | A separate copyable line preserves recovery paths when the reason does not already include them, including unknown or malformed errors. Each recovery path appears once in the structured reason and recovery lines. Generic diagnostics also retain supplied params. |
+| (no retained safety-backup location in restore failure) | Pre-restore safety backup: {backupPath} | Restore failures retain and show the structured safety-backup location. |
+| Failed to resolve app local data dir: {detail} | Failed to resolve app local data directory. | Expanded abbreviation; raw platform diagnostic follows. |
+| {raw backup-manifest serialization diagnostic} | Could not create the backup manifest. | Raw serialization diagnostic follows. |
+| Failed to create backups directory: {detail} | Failed to create backups directory. | Raw OS detail follows. |
+| Failed to create backup {path}: {detail} | Failed to create backup {path}. | Raw OS detail follows. |
+| Failed to read backups: {detail} | Failed to read backups. | Raw OS detail follows. |
+| Failed to open backups directory {path}: {detail} | Failed to open backups directory {path}. | Raw platform diagnostic follows. |
+| Invalid backup manifest: {detail} | Invalid backup manifest. | Raw JSON diagnostic follows. |
+| Failed to read backup manifest: {detail} | Failed to read backup manifest. | Raw OS detail follows. |
+| Asset not found: {detail}; Asset not found: '{path}'  (game_path: '{gamePath}') | Asset not found: {path} (game path: {gamePath}) | Both paths remain structured; raw OS detail follows when available. |
+| Invalid game path: {detail} | Invalid game path: {path} | Adds the selected path; raw OS detail follows. |
+| Failed to read asset '{path}': {detail} | Failed to read asset {path}. | Raw OS detail follows. |
+| {raw roster-data read diagnostic} | Failed to read game data {path}. | Adds operation and path; raw OS detail follows. |
+| {raw roster-data parse diagnostic} | Failed to parse game data {path}. | Adds operation and path; raw JSON detail follows. |
+| Failed to read mods directory {path}: {detail} | Failed to read mods directory {path}. | Raw OS detail follows. |
+| Failed to read workshop directory {path}: {detail} | Failed to read workshop directory {path}. | Raw OS detail follows. |
+| {raw language-evidence task diagnostic} | Could not collect language settings. | Raw task diagnostic follows when displayed; existing evidence fallback stays. |
+| Unsupported menu locale | Unsupported menu locale: {locale} | Includes the rejected locale; menu failures remain developer diagnostics in the existing consumer. |
+| {raw native-menu diagnostic} | Could not update the application menu. | Raw platform diagnostic follows when displayed. |
+| {raw settings I/O diagnostic} | Could not read or recover settings in {folder}. | Existing startup notice remains; operation and folder precede the unchanged raw diagnostic. |
+| Could not read or recover settings in . | An unexpected error occurred. | If app data resolution supplies an empty folder, show the generic reason and original diagnostic. |
+| Settings read deadline elapsed | Settings read deadline elapsed. | Adds a period; the startup notice keeps the settings folder. |
+| Settings exceed the validation size limit; recovery refused | Settings exceed the validation size limit; recovery refused. | Adds a period; recovery remains refused. |
+| Settings changed during the corruption check; recovery refused | Settings changed during the corruption check; recovery refused. | Adds a period; recovery remains refused. |
+| Settings fingerprint changed or file is valid; recovery refused | Settings fingerprint changed or file is valid; recovery refused. | Adds a period; recovery remains refused. |
+| A live settings store exists; recovery refused | A live settings store exists; recovery refused. | Adds a period; recovery remains refused. |

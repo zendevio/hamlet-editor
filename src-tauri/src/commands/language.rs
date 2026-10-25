@@ -1,3 +1,4 @@
+use super::error::AppError;
 use serde::Serialize;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -318,10 +319,10 @@ fn collect(game: PathBuf) -> LanguageEvidence {
     }
 }
 #[tauri::command]
-pub async fn collect_language_evidence(game_path: String) -> Result<LanguageEvidence, String> {
+pub async fn collect_language_evidence(game_path: String) -> Result<LanguageEvidence, AppError> {
     tauri::async_runtime::spawn_blocking(move || collect(PathBuf::from(game_path)))
         .await
-        .map_err(|error| error.to_string())
+        .map_err(|error| AppError::new("language_evidence_failed").detail(error))
 }
 
 #[cfg(test)]

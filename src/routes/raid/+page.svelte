@@ -31,6 +31,7 @@
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
 	import ArrowDownIcon from 'phosphor-svelte/lib/ArrowDownIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
+	import { showError } from '#lib/i18n/notifications.js';
 	import { toast } from 'svelte-sonner';
 	import { createBackup } from '#lib/api/backup.js';
 	import { getSettings } from '#lib/stores/settings.svelte.js';
@@ -145,7 +146,7 @@
 			await createBackup(settings.savePath);
 			toast.success('Backup created');
 		} catch (err) {
-			toast.error('Backup failed', { description: String(err) });
+			showError(err, { id: 'error.backupFailed' });
 		}
 	}
 

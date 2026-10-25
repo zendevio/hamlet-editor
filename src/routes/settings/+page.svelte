@@ -1,9 +1,10 @@
 <script lang="ts">
+	import ErrorMessage from '#lib/i18n/ErrorMessage.svelte';
 	import Message from '#lib/i18n/Message.svelte';
 	import LanguageSettings from '#lib/components/LanguageSettings.svelte';
 	import { getEditorLocale, t } from '#lib/i18n/index.svelte.js';
 	import { formatDate, formatNumber } from '#lib/i18n/intl.js';
-	import { showPersistentError } from '#lib/i18n/notifications.js';
+	import { showError } from '#lib/i18n/notifications.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import {
 		Card,
@@ -40,7 +41,7 @@
 		setProfileId,
 		setAutoBackup
 	} from '#lib/stores/settings.svelte.js';
-	import { runRestore } from '#lib/restore-workflow.js';
+	import { runRestore, isRestoreBlocked } from '#lib/restore-workflow.js';
 	import { withCurrentProfile } from '#lib/profiles.js';
 	import { getSaveData, loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
@@ -204,7 +205,7 @@
 				gamePathValid = null;
 			}
 		} catch (err) {
-			toast.error(t('settings.gameLoadFailed'), { description: String(err) });
+			showError(err, { id: 'settings.gameLoadFailed' });
 		}
 	}
 
@@ -217,7 +218,7 @@
 				savePathValid = null;
 			}
 		} catch (err) {
-			toast.error(t('settings.profileLoadFailed'), { description: String(err) });
+			showError(err, { id: 'settings.profileLoadFailed' });
 		}
 	}
 
@@ -247,7 +248,7 @@
 				toast.success(t('settings.profileLoaded'), { description: t('settings.profileSwitched', { profile: loc.profile_id }) });
 			}
 		} catch (err) {
-			toast.error(t('settings.profileFailed'), { description: String(err) });
+			showError(err, { id: 'settings.profileFailed' });
 		}
 	}
 
@@ -273,9 +274,7 @@
 			toast.success(t('settings.backupCreated'));
 			await loadBackupList();
 		} catch (err) {
-			toast.error(t('settings.backupFailed'), {
-				description: String(err)
-			});
+			showError(err, { id: 'settings.backupFailed' });
 		} finally {
 			creatingBackup = false;
 		}
@@ -285,9 +284,7 @@
 		try {
 			await openBackupFolder();
 		} catch (err) {
-			toast.error(t('settings.openBackupFailed'), {
-				description: String(err)
-			});
+			showError(err, { id: 'settings.openBackupFailed' });
 		}
 	}
 
@@ -301,7 +298,7 @@
 		try {
 			restoreCheck = await checkRestore(backup.path, settings.savePath);
 		} catch (err) {
-			showPersistentError({ id: 'settings.restoreUnavailable' }, String(err));
+			showError(err, { id: 'settings.restoreUnavailable' });
 			return;
 		} finally {
 			checkingRestore = false;
@@ -327,7 +324,7 @@
 				restoreConfirmChecked = false;
 			}
 		} catch (err) {
-			showPersistentError({ id: 'settings.restoreUnavailable' }, String(err));
+			showError(err, { id: 'settings.restoreUnavailable' });
 		} finally {
 			checkingRestore = false;
 		}
@@ -353,7 +350,7 @@
 			});
 			await loadBackupList();
 		} catch (err) {
-			showPersistentError({ id: 'settings.restoreFailed' }, String(err));
+			showError(err, { id: 'settings.restoreFailed' });
 		} finally {
 			restoringBackup = null;
 			if (!restoreDialogOpen) restoreTarget = null;
@@ -367,7 +364,7 @@
 		try {
 			gameRestoreCheck = await checkRestore(null, settings.savePath);
 		} catch (err) {
-			showPersistentError({ id: 'settings.restoreUnavailable' }, String(err));
+			showError(err, { id: 'settings.restoreUnavailable' });
 			return;
 		} finally {
 			checkingRestore = false;
@@ -395,7 +392,7 @@
 			});
 			await loadBackupList();
 		} catch (err) {
-			showPersistentError({ id: 'settings.restoreFailed' }, String(err));
+			showError(err, { id: 'settings.restoreFailed' });
 		} finally {
 			restoringGameBackup = false;
 			restoreGameBackupConfirmChecked = false;
@@ -854,8 +851,8 @@
 			</DialogDescription>
 		</DialogHeader>
 
-		{#if restoreCheck?.blocked_reason}
-			<p role="alert" class="text-sm text-destructive">{t('settings.blockedDiagnostic', { detail: restoreCheck.blocked_reason })}</p>
+		{#if restoreCheck && isRestoreBlocked(restoreCheck)}
+			<div role="alert" class="text-sm text-destructive"><ErrorMessage error={restoreCheck.blocked_reason} blocked /></div>
 			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(false)}>{t('settings.checkAgain')}</Button>
 		{/if}
 
@@ -889,7 +886,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={checkingRestore || !restoreConfirmChecked || !restoreCheck || !!restoreCheck.blocked_reason}
+				disabled={checkingRestore || !restoreConfirmChecked || !restoreCheck || isRestoreBlocked(restoreCheck)}
 				onclick={handleRestore}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
@@ -913,8 +910,8 @@
 			</DialogDescription>
 		</DialogHeader>
 
-		{#if gameRestoreCheck?.blocked_reason}
-			<p role="alert" class="text-sm text-destructive">{t('settings.blockedDiagnostic', { detail: gameRestoreCheck.blocked_reason })}</p>
+		{#if gameRestoreCheck && isRestoreBlocked(gameRestoreCheck)}
+			<div role="alert" class="text-sm text-destructive"><ErrorMessage error={gameRestoreCheck.blocked_reason} blocked /></div>
 			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(true)}>{t('settings.checkAgain')}</Button>
 		{/if}
 
@@ -939,7 +936,7 @@
 			<Button
 				variant="destructive"
 				size="sm"
-				disabled={checkingRestore || !restoreGameBackupConfirmChecked || !gameRestoreCheck || !!gameRestoreCheck.blocked_reason}
+				disabled={checkingRestore || !restoreGameBackupConfirmChecked || !gameRestoreCheck || isRestoreBlocked(gameRestoreCheck)}
 				onclick={handleRestoreGameBackup}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />

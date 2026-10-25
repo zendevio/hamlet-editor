@@ -1,3 +1,4 @@
+use super::error::AppError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::Read;
@@ -31,22 +32,16 @@ pub struct SettingsRead {
     values: serde_json::Map<String, serde_json::Value>,
     folder: String,
     fingerprint: Option<Fingerprint>,
-    detail: String,
+    error: Option<AppError>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct SettingsReadError {
-    kind: &'static str,
-    folder: String,
-    detail: String,
-}
-
-fn failure(path: &Path, detail: impl ToString) -> SettingsReadError {
-    SettingsReadError {
-        kind: "io_error",
-        folder: path.parent().unwrap_or(path).to_string_lossy().into_owned(),
-        detail: detail.to_string(),
-    }
+fn failure(path: &Path, detail: impl ToString) -> AppError {
+    AppError::new("settings_io")
+        .param(
+            "folder",
+            path.parent().unwrap_or(path).to_string_lossy().into_owned(),
+        )
+        .detail(detail.to_string())
 }
 
 // Hash the entire file while bounding the JSON buffer, including oversized files.
@@ -85,13 +80,13 @@ fn read_settings_file(
     path: &Path,
     deadline: Instant,
     pause: impl FnOnce(),
-) -> Result<SettingsRead, SettingsReadError> {
+) -> Result<SettingsRead, AppError> {
     let mut result = SettingsRead {
         status: ReadStatus::Missing,
         values: Default::default(),
         folder: path.parent().unwrap_or(path).to_string_lossy().into_owned(),
         fingerprint: None,
-        detail: String::new(),
+        error: None,
     };
     let (bytes, fingerprint) = match snapshot(path) {
         Ok(snapshot) => snapshot,
@@ -99,12 +94,15 @@ fn read_settings_file(
         Err(error) => return Err(failure(path, error)),
     };
     if Instant::now() >= deadline {
-        return Err(failure(path, "Settings read deadline elapsed"));
+        return Err(AppError::new("settings_deadline").param(
+            "folder",
+            path.parent().unwrap_or(path).to_string_lossy().into_owned(),
+        ));
     }
     if fingerprint.size > MAX_BYTES as u64 {
-        return Err(failure(
-            path,
-            "Settings exceed the validation size limit; recovery refused",
+        return Err(AppError::new("settings_size").param(
+            "folder",
+            path.parent().unwrap_or(path).to_string_lossy().into_owned(),
         ));
     }
     if let Some(values) = object(&bytes) {
@@ -115,12 +113,15 @@ fn read_settings_file(
     pause();
     let (again, current) = snapshot(path).map_err(|error| failure(path, error))?;
     if Instant::now() >= deadline {
-        return Err(failure(path, "Settings read deadline elapsed"));
+        return Err(AppError::new("settings_deadline").param(
+            "folder",
+            path.parent().unwrap_or(path).to_string_lossy().into_owned(),
+        ));
     }
     if bytes != again || fingerprint != current || object(&again).is_some() {
-        return Err(failure(
-            path,
-            "Settings changed during the corruption check; recovery refused",
+        return Err(AppError::new("settings_changed").param(
+            "folder",
+            path.parent().unwrap_or(path).to_string_lossy().into_owned(),
         ));
     }
     result.status = ReadStatus::Corrupt;
@@ -128,12 +129,12 @@ fn read_settings_file(
     Ok(result)
 }
 
-fn recover_settings_file(path: &Path, expected: &Fingerprint) -> Result<String, SettingsReadError> {
+fn recover_settings_file(path: &Path, expected: &Fingerprint) -> Result<String, AppError> {
     let (bytes, current) = snapshot(path).map_err(|error| failure(path, error))?;
     if &current != expected || current.size > MAX_BYTES as u64 || object(&bytes).is_some() {
-        return Err(failure(
-            path,
-            "Settings fingerprint changed or file is valid; recovery refused",
+        return Err(AppError::new("settings_fingerprint").param(
+            "folder",
+            path.parent().unwrap_or(path).to_string_lossy().into_owned(),
         ));
     }
     // Reserve a fresh directory atomically. rename cannot overwrite an existing
@@ -155,7 +156,7 @@ fn recover_settings_file(path: &Path, expected: &Fingerprint) -> Result<String, 
     ))
 }
 
-fn settings_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, SettingsReadError> {
+fn settings_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, AppError> {
     app.path()
         .app_data_dir()
         .map(|folder| folder.join("settings.json"))
@@ -174,7 +175,7 @@ pub async fn read_settings(app: tauri::AppHandle) -> SettingsRead {
                 values: store.entries().into_iter().collect(),
                 folder: path.parent().unwrap().to_string_lossy().into_owned(),
                 fingerprint: None,
-                detail: String::new(),
+                error: None,
             });
         }
         let error_path = path.clone();
@@ -186,12 +187,17 @@ pub async fn read_settings(app: tauri::AppHandle) -> SettingsRead {
         .map_err(|error| failure(&error_path, error))?
     }
     .await;
-    result.unwrap_or_else(|error: SettingsReadError| SettingsRead {
+    result.unwrap_or_else(|error: AppError| SettingsRead {
         status: ReadStatus::IoError,
         values: Default::default(),
-        folder: error.folder,
+        folder: error
+            .params
+            .get("folder")
+            .and_then(|value| value.as_str())
+            .unwrap_or("")
+            .to_owned(),
         fingerprint: None,
-        detail: error.detail,
+        error: Some(error),
     })
 }
 
@@ -199,12 +205,15 @@ pub async fn read_settings(app: tauri::AppHandle) -> SettingsRead {
 pub async fn recover_corrupt_settings(
     app: tauri::AppHandle,
     fingerprint: Fingerprint,
-) -> Result<String, SettingsReadError> {
+) -> Result<String, AppError> {
     let path = settings_path(&app)?;
     if app.get_store("settings.json").is_some() {
-        return Err(failure(
-            &path,
-            "A live settings store exists; recovery refused",
+        return Err(AppError::new("settings_live").param(
+            "folder",
+            path.parent()
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .into_owned(),
         ));
     }
     let error_path = path.clone();
@@ -224,7 +233,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         dir
     }
-    fn read(path: &Path) -> Result<SettingsRead, SettingsReadError> {
+    fn read(path: &Path) -> Result<SettingsRead, AppError> {
         read_settings_file(path, Instant::now() + READ_TIMEOUT, || {
             std::thread::sleep(RECHECK_PAUSE)
         })
@@ -250,7 +259,9 @@ mod tests {
         let file = dir.join("settings.json");
         let bytes = format!("{{\"large\":\"{}\"}}", "x".repeat(MAX_BYTES));
         std::fs::write(&file, &bytes).unwrap();
-        assert!(read(&file).is_err());
+        let error = read(&file).unwrap_err();
+        assert_eq!(error.code, "settings_size");
+        assert_eq!(error.params["folder"], dir.display().to_string());
         let (_, fingerprint) = snapshot(&file).unwrap();
         assert!(recover_settings_file(&file, &fingerprint).is_err());
         assert_eq!(std::fs::read_to_string(&file).unwrap(), bytes);
@@ -287,7 +298,8 @@ mod tests {
                 std::fs::write(&file, replacement).unwrap()
             })
             .unwrap_err();
-            assert!(error.detail.contains("changed during"));
+            assert_eq!(error.code, "settings_changed");
+            assert_eq!(error.params["folder"], dir.display().to_string());
             assert_eq!(std::fs::read(&file).unwrap(), replacement);
             assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         }
@@ -300,7 +312,9 @@ mod tests {
         std::fs::write(&file, b"{").unwrap();
         let corrupt = read(&file).unwrap();
         std::fs::write(&file, b"[").unwrap();
-        assert!(recover_settings_file(&file, &corrupt.fingerprint.unwrap()).is_err());
+        let error = recover_settings_file(&file, &corrupt.fingerprint.unwrap()).unwrap_err();
+        assert_eq!(error.code, "settings_fingerprint");
+        assert_eq!(error.params["folder"], dir.display().to_string());
         assert_eq!(std::fs::read(&file).unwrap(), b"[");
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         std::fs::remove_dir_all(dir).unwrap();
@@ -310,10 +324,15 @@ mod tests {
         let dir = temp_dir();
         let file = dir.join("settings.json");
         std::fs::create_dir(&file).unwrap();
-        assert!(read(&file).is_err());
+        let error = read(&file).unwrap_err();
+        assert_eq!(error.code, "settings_io");
+        assert_eq!(error.params["folder"], dir.display().to_string());
+        assert!(error.detail.is_some());
         std::fs::remove_dir(&file).unwrap();
         std::fs::write(&file, b"{").unwrap();
-        assert!(read_settings_file(&file, Instant::now(), || {}).is_err());
+        let error = read_settings_file(&file, Instant::now(), || {}).unwrap_err();
+        assert_eq!(error.code, "settings_deadline");
+        assert_eq!(error.params["folder"], dir.display().to_string());
         assert_eq!(std::fs::read(&file).unwrap(), b"{");
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         std::fs::remove_dir_all(dir).unwrap();

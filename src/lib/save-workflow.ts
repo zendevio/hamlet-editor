@@ -1,3 +1,5 @@
+import type { MessageDescriptor } from '#lib/errors.js';
+
 /** One save pipeline for toolbar, Save & Close, and pending profile/path changes. */
 export interface SaveIssue {
 	severity: 'error' | 'warning';
@@ -35,13 +37,13 @@ export function profileSaveBlockReason(data: {
 	isLoaded: boolean; isLoading: boolean; isStale: boolean; profilePath: string; gamePath: string;
 }, settings: { savePath: string; gamePath: string }, state: {
 	isProfileLoading: boolean; gameRunning: boolean; gameDetectionUncertain: boolean; hasChanges: boolean;
-}): string | null {
-	if (!data.isLoaded || data.isLoading || state.isProfileLoading) return 'Load a profile before saving.';
-	if (data.profilePath !== settings.savePath || data.gamePath !== settings.gamePath) return 'Paths changed. Reload the profile before saving.';
-	if (data.isStale) return 'Save files may have changed. Reload the profile before saving.';
-	if (state.gameRunning) return 'DD Running. Close the game before saving.';
-	if (state.gameDetectionUncertain) return 'Unable to detect game status. Save blocked as precaution.';
-	if (!state.hasChanges) return 'No unsaved changes';
+}): MessageDescriptor | null {
+	if (!data.isLoaded || data.isLoading || state.isProfileLoading) return { id: 'error.profile_not_loaded' };
+	if (data.profilePath !== settings.savePath || data.gamePath !== settings.gamePath) return { id: 'error.profile_paths_changed' };
+	if (data.isStale) return { id: 'error.profile_stale' };
+	if (state.gameRunning) return { id: 'error.save_game_running' };
+	if (state.gameDetectionUncertain) return { id: 'error.game_detection_uncertain' };
+	if (!state.hasChanges) return { id: 'error.save_no_changes' };
 	return null;
 }
 
@@ -69,7 +71,7 @@ export function createGameStoppedObserver(onStopped: () => void) {
 }
 
 export function createSaveWorkflow<T extends SaveIssue>(options: {
-	blocked: () => string | null;
+	blocked: () => MessageDescriptor | null;
 	validate: () => T[];
 	confirm: (issues: T[]) => Promise<ValidationChoice>;
 	backup: () => Promise<void>;
@@ -86,7 +88,7 @@ export function createSaveWorkflow<T extends SaveIssue>(options: {
 		try {
 			const assertUnblocked = () => {
 				const reason = options.blocked();
-				if (reason) throw new Error(reason);
+				if (reason) throw reason;
 			};
 			assertUnblocked();
 			let issues = options.validate();

@@ -1,6 +1,6 @@
 mod commands;
 
-pub use commands::{backup, save};
+pub use commands::{backup, error::AppError, save};
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -55,13 +55,11 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_menu(commands::native_menu::build(app.handle(), "en")?)?;
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
 
             // Optional startup window mode for test runs:
             // HAMLET_WINDOW=maximized | fullscreen. Unset keeps the configured size.

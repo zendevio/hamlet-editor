@@ -806,5 +806,657 @@
 		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
 		"tone": "Clear and factual, with the timeout result and persistence behavior.",
 		"slots": []
+	},
+	"error.io_error": {
+		"context": "Fallback for filesystem operations without a more specific action.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.lock_failed": {
+		"context": "Internal state lock failure. Raw lock diagnostic is shown separately.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_invalid": {
+		"context": "Profile directory cannot be resolved.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.not_directory": {
+		"context": "Selected profile root is not a directory.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.directory_read": {
+		"context": "Directory enumeration failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.directory_entry": {
+		"context": "Directory iterator or entry metadata failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.file_read": {
+		"context": "Reading a save file or backup tree failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_inspect": {
+		"context": "Fingerprinting a profile failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.path_inspect": {
+		"context": "Inspecting a save target or fingerprint file failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.symlink_save": {
+		"context": "Fingerprinting refuses a symlinked save.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_fingerprint": {
+		"context": "Fingerprinting refuses a nonregular save.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.dson_decode": {
+		"context": "DSON decoding failed; unchanged codec diagnostic follows.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.core_save_decode": {
+		"context": "A core save cannot be decoded; loading is refused.",
+		"slots": [
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_encode": {
+		"context": "Encoding edited save data failed.",
+		"slots": [
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.upgrade_ambiguous": {
+		"context": "Two upgrade names hash to the same value.",
+		"slots": [
+			"previous",
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.upgrade_tree_missing": {
+		"context": "Malformed upgrade purchase lacks its identifier.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.upgrade_hash_invalid": {
+		"context": "Malformed upgrade identifier in a loaded save.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.upgrade_unresolved": {
+		"context": "Saving requires resolved or valid numeric upgrade identifiers.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.upgrade_unknown": {
+		"context": "Unknown named upgrade is refused.",
+		"slots": [
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.names_not_loaded": {
+		"context": "Profile load requires a name table.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.names_changed": {
+		"context": "Name table version guard during save.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_not_loaded_with_names": {
+		"context": "Profile provenance guard during save.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_changed_during_load": {
+		"context": "Concurrent filesystem changes detected while loading.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_stale": {
+		"context": "Concurrent filesystem changes detected before saving. Also marks the frontend profile stale.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_data_invalid": {
+		"context": "Save payload must be a JSON object.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_filename_invalid": {
+		"context": "Save payload contains an unsafe or unsupported filename.",
+		"slots": [
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_not_decoded": {
+		"context": "Saving refuses files omitted or undecodable at load.",
+		"slots": [
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_create_refused": {
+		"context": "Normal saving may only overwrite loaded files.",
+		"slots": [
+			"name"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.relative_path_invalid": {
+		"context": "Save path traversal guard.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_path_symlink": {
+		"context": "Save target symlink guard.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_target_invalid": {
+		"context": "Save target type guard.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_parent_invalid": {
+		"context": "Save parent type guard.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.transaction_conflict": {
+		"context": "Invalid transaction plan.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.transaction_stage": {
+		"context": "Preparing a transaction staging directory failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.transaction_io": {
+		"context": "Writing or syncing a transaction failed; raw OS diagnostic follows.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.transaction_rollback": {
+		"context": "Rollback failed. Preserve and show the recovery directory; raw OS diagnostics follow.",
+		"slots": [
+			"recoveryPath"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.safety_backup": {
+		"context": "Retained backup location shown with an unsuccessful restore.",
+		"slots": [
+			"backupPath"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_id_invalid": {
+		"context": "Profile folder has no valid UTF-8 identifier.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.app_data_path": {
+		"context": "App backup directory resolution failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_empty": {
+		"context": "Cannot create an empty backup.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_manifest_encode": {
+		"context": "Backup metadata serialization failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backups_create": {
+		"context": "Creating the backups root failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_create": {
+		"context": "Creating a backup destination failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backups_read": {
+		"context": "Listing the backups root failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.steam_restore_blocked": {
+		"context": "Steam guard for restores that change the file set.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_backup_empty": {
+		"context": "Game backup contains no restorable files.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_wrong_profile": {
+		"context": "Manifest provenance guard.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.legacy_backup_wrong_profile": {
+		"context": "Legacy backup provenance guard.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_manifest_mismatch": {
+		"context": "Backup completeness guard.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.restore_backup_empty": {
+		"context": "Selected backup contains no save files.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backups_open": {
+		"context": "File manager failed to open the backup directory.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_manifest_invalid": {
+		"context": "Backup manifest JSON parsing failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_manifest_read": {
+		"context": "Reading backup manifest bytes failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.backup_symlink": {
+		"context": "Backup refuses to follow save symlinks.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_running": {
+		"context": "Backend guard before any save or restore.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_data_missing": {
+		"context": "Identifier generation requires a valid game data root.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_language_unknown": {
+		"context": "Rejected language protocol value.",
+		"slots": [
+			"language"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.names_empty": {
+		"context": "Rejected empty name table.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.asset_missing": {
+		"context": "Game asset is absent or cannot be resolved.",
+		"slots": [
+			"path",
+			"gamePath"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_path_invalid": {
+		"context": "Asset game root cannot be resolved.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.asset_path_invalid": {
+		"context": "Asset is outside the selected installation.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.asset_read": {
+		"context": "Reading image bytes failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_data_read": {
+		"context": "Reading roster game data failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_data_parse": {
+		"context": "Parsing roster game data failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.roster_capacity_missing": {
+		"context": "Roster rules lack capacity levels.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.roster_capacity_unsupported": {
+		"context": "Roster rules contain unsupported values.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.mods_read": {
+		"context": "Reading the local mods directory failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.workshop_read": {
+		"context": "Reading Steam Workshop mod directories failed.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.language_evidence_failed": {
+		"context": "Background language evidence task failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.menu_locale_unknown": {
+		"context": "Native menu command received an unsupported locale.",
+		"slots": [
+			"locale"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.menu_update_failed": {
+		"context": "Creating or installing the native menu failed.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.settings_io": {
+		"context": "Settings filesystem failure; raw OS diagnostic is shown.",
+		"slots": [
+			"folder"
+		],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.settings_deadline": {
+		"context": "Bounded settings read expired.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.settings_size": {
+		"context": "Oversized settings cannot be safely recovered.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.settings_changed": {
+		"context": "Concurrent settings edit prevents recovery.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.settings_fingerprint": {
+		"context": "Fingerprint guard prevents recovery of changed or valid settings.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.settings_live": {
+		"context": "Recovery cannot race a live plugin store.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_not_loaded": {
+		"context": "Save guard before a complete profile has loaded.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_paths_changed": {
+		"context": "Save paths differ from the loaded profile.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.profile_stale": {
+		"context": "Previously detected stale profile.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_game_running": {
+		"context": "Frontend game-running save guard.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_detection_uncertain": {
+		"context": "Uncertain process detection blocks saving.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.save_no_changes": {
+		"context": "Save guard when no files are dirty.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.game_install_required": {
+		"context": "Name table barrier requires a game installation.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.names_install_empty": {
+		"context": "Name generator returned an empty identifier list.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.unexpected": {
+		"context": "Unknown code, legacy string, malformed or missing diagnostic. Raw detail remains copyable.",
+		"slots": [],
+		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
+		"tone": "Clear, factual safety diagnostic."
+	},
+	"error.saveFailed": {
+		"context": "Title of a persistent save failure toast; the full typed error follows.",
+		"slots": [],
+		"lengthHint": "Short title or complete blocked message; wrapping allowed.",
+		"tone": "Direct, factual."
+	},
+	"error.profileSwitchFailed": {
+		"context": "Title of a persistent profile-switch failure toast.",
+		"slots": [],
+		"lengthHint": "Short title or complete blocked message; wrapping allowed.",
+		"tone": "Direct, factual."
+	},
+	"error.profileLoadFailed": {
+		"context": "Title of a persistent initial profile-load failure toast.",
+		"slots": [],
+		"lengthHint": "Short title or complete blocked message; wrapping allowed.",
+		"tone": "Direct, factual."
+	},
+	"error.reloadFailed": {
+		"context": "Title of a persistent profile reload failure toast.",
+		"slots": [],
+		"lengthHint": "Short title or complete blocked message; wrapping allowed.",
+		"tone": "Direct, factual."
+	},
+	"error.backupFailed": {
+		"context": "Title of a persistent backup failure toast.",
+		"slots": [],
+		"lengthHint": "Short title or complete blocked message; wrapping allowed.",
+		"tone": "Direct, factual."
+	},
+	"error.saveFile": {
+		"context": "Save-file context retained for upgrade errors, separate from the raw codec diagnostic.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "Complete short sentence with a verbatim filename.",
+		"tone": "Factual."
+	},
+	"error.backup_rollback": {
+		"context": "Backup snapshot creation failed and rollback or cleanup left an excluded recovery directory on disk. The original profile was not changed.",
+		"slots": [
+			"recoveryPath"
+		],
+		"lengthHint": "May wrap; preserve paths verbatim.",
+		"tone": "Clear, factual recovery diagnostic."
+	},
+	"error.backup_incomplete": {
+		"context": "Restore refused an unpublished backup directory, which may contain an incomplete snapshot or transaction recovery files.",
+		"slots": [
+			"path"
+		],
+		"lengthHint": "May wrap; preserve paths verbatim.",
+		"tone": "Clear, factual recovery diagnostic."
+	},
+	"error.recovery_files": {
+		"context": "Copyable recovery directory retained with any error, including an unknown or malformed error code.",
+		"slots": [
+			"recoveryPath"
+		],
+		"lengthHint": "May wrap; preserve paths verbatim.",
+		"tone": "Clear, factual recovery diagnostic."
 	}
 }

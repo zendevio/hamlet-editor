@@ -62,7 +62,8 @@ export async function openBackupFolder(): Promise<string> {
 export interface RestoreCheck {
 	adds: number;
 	removes: number;
-	blocked_reason: string | null;
+	// Unknown and legacy blockers also disable restore. Only null/undefined means clear.
+	blocked_reason: unknown;
 }
 
 /** Read-only validation. A null backup path selects the game's backup. */

@@ -174,10 +174,10 @@ test('layout reload controller uses real stale Save block and Discard/Cancel cho
             }),
             validate: () => [], confirm: async () => 'save', backup: async () => {},
             write: async () => { writes++; }, saved: store.clearAllDirty,
-            failed: (error) => errors.push(String(error)), busy: () => {}
+            failed: (error) => errors.push(error), busy: () => {}
         });
         assert.equal(await save(), false);
-        assert.match(errors[0], /Save files may have changed. Reload the profile before saving./);
+        assert.deepEqual(errors[0], { id: 'error.profile_stale' });
         assert.equal(writes, 0);
         assert.equal(store.hasDirtyFiles(), true);
         const guard = createUnsavedGuard({

@@ -1,3 +1,4 @@
+import { decodeError } from '#lib/errors.js';
 import { invoke } from '@tauri-apps/api/core';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
 import { setEditorLocale } from '#lib/i18n/index.svelte.js';
@@ -14,7 +15,7 @@ let evidence = $state<{ path: string | null; value: LanguageEvidence }>({ path: 
 let pendingEditor = $state<Resolution | undefined>();
 let ready = $state(false);
 let persistenceFailed = $state(false);
-type StartupNotice = MessageDescriptor & { detail?: string };
+type StartupNotice = MessageDescriptor & { detail?: string; error?: unknown };
 let startupNotices = $state<StartupNotice[]>([]);
 let startupElapsedMs = $state(0);
 let launchFallback = $state(false);
@@ -36,7 +37,7 @@ function applyLocale() { setEditorLocale(GAME_TEXT_LOCALES[editor.language]); }
 
 // Plugin-store 2.5 silently ignores initial JSON read errors. The Rust read
 // validates the file instead, before this launch ever enables the single writer.
-interface SettingsRead { status: 'ok' | 'missing' | 'corrupt' | 'io_error'; values: Record<string, unknown>; folder: string; fingerprint: { size: number; hash: string } | null; detail: string }
+interface SettingsRead { status: 'ok' | 'missing' | 'corrupt' | 'io_error'; values: Record<string, unknown>; folder: string; fingerprint: { size: number; hash: string } | null; error?: unknown; detail?: string }
 let validatedRead: { raw: Record<string, unknown>; loaded: Settings; notice?: MessageDescriptor } | undefined;
 let readFailure: StartupNotice | undefined;
 const bootstrap = createBootstrap(async (signal, deadline) => {
@@ -46,7 +47,7 @@ const bootstrap = createBootstrap(async (signal, deadline) => {
 	try {
 		result = await invoke<SettingsRead>('read_settings');
 		if (expired()) throw new Error('Startup deadline elapsed');
-		if (result.status === 'io_error') throw { kind: 'io_error', folder: result.folder, detail: result.detail };
+		if (result.status === 'io_error') throw result.error ?? { code: 'settings_io', params: { folder: result.folder }, detail: result.detail };
 		if (result.status === 'corrupt') {
 			if (!result.fingerprint) throw new Error('Corrupt settings fingerprint missing');
 			const copy = await invoke<string>('recover_corrupt_settings', { fingerprint: result.fingerprint });
@@ -54,11 +55,12 @@ const bootstrap = createBootstrap(async (signal, deadline) => {
 		}
 	} catch (error) {
 		if (!expired()) {
-			const failure = error as { folder?: string; detail?: string } | null;
+			const decoded = decodeError(error);
+			const folder = decoded.params.folder;
 			readFailure = {
-				...(failure?.folder ? { id: 'startup.settingsUnreadable' as const, params: { folder: failure.folder } }
+				...(folder ? { id: 'startup.settingsUnreadable' as const, params: { folder } }
 					: { id: 'startup.settingsReadFailed' as const }),
-				detail: failure?.detail ?? String(error)
+				detail: decoded.detail, error
 			};
 		}
 		throw error;

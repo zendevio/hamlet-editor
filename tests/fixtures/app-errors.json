@@ -1,0 +1,524 @@
+[
+	{
+		"code": "io_error",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "lock_failed",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_invalid",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "not_directory",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "directory_read",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "directory_entry",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "file_read",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_inspect",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "path_inspect",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "symlink_save",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_fingerprint",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "dson_decode",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "core_save_decode",
+		"params": {
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_encode",
+		"params": {
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "upgrade_ambiguous",
+		"params": {
+			"previous": "fixture-previous",
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "upgrade_tree_missing",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "upgrade_hash_invalid",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "upgrade_unresolved",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "upgrade_unknown",
+		"params": {
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "names_not_loaded",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "names_changed",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_not_loaded_with_names",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_changed_during_load",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_stale",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_data_invalid",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_filename_invalid",
+		"params": {
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_not_decoded",
+		"params": {
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_create_refused",
+		"params": {
+			"name": "fixture-name"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "relative_path_invalid",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_path_symlink",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_target_invalid",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_parent_invalid",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "transaction_conflict",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "transaction_stage",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "transaction_io",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "transaction_rollback",
+		"params": {
+			"recoveryPath": "fixture-recoveryPath"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_id_invalid",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "app_data_path",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_empty",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_manifest_encode",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backups_create",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_create",
+		"params": {
+			"path": "fixture-path",
+			"recoveryPath": "/fixture/unpublished-backup"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backups_read",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "steam_restore_blocked",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_backup_empty",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_wrong_profile",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "legacy_backup_wrong_profile",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_manifest_mismatch",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "restore_backup_empty",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backups_open",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_manifest_invalid",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_manifest_read",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_symlink",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_running",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_data_missing",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_language_unknown",
+		"params": {
+			"language": "fixture-language"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "names_empty",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "asset_missing",
+		"params": {
+			"path": "fixture-path",
+			"gamePath": "fixture-gamePath"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_path_invalid",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "asset_path_invalid",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "asset_read",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_data_read",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_data_parse",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "roster_capacity_missing",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "roster_capacity_unsupported",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "mods_read",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "workshop_read",
+		"params": {
+			"path": "fixture-path"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "language_evidence_failed",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "menu_locale_unknown",
+		"params": {
+			"locale": "fixture-locale"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "menu_update_failed",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "settings_io",
+		"params": {
+			"folder": "fixture-folder"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "settings_deadline",
+		"params": {
+			"folder": "fixture-folder"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "settings_size",
+		"params": {
+			"folder": "fixture-folder"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "settings_changed",
+		"params": {
+			"folder": "fixture-folder"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "settings_fingerprint",
+		"params": {
+			"folder": "fixture-folder"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "settings_live",
+		"params": {
+			"folder": "fixture-folder"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_not_loaded",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_paths_changed",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "profile_stale",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_game_running",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_detection_uncertain",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "save_no_changes",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "game_install_required",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "names_install_empty",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "unexpected",
+		"params": {},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_rollback",
+		"params": {
+			"recoveryPath": "/fixture/recovery"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	},
+	{
+		"code": "backup_incomplete",
+		"params": {
+			"path": "/fixture/incomplete"
+		},
+		"detail": "raw diagnostic <unchanged>"
+	}
+]

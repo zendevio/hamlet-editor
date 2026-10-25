@@ -1,3 +1,4 @@
+import { decodeError } from '#lib/errors.js';
 import { loadLocalization } from '#lib/api/names.js';
 import { setNameTable, getGameData } from './game-data.svelte.js';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
@@ -8,6 +9,7 @@ let requestedLanguage = $state<GameLanguage>('english');
 let loading = $state(false);
 let error = $state(false);
 let errorDetail = $state('');
+let errorCause = $state<unknown>();
 let failedRequest = $state(0);
 
 export function getGameTextState() {
@@ -20,6 +22,7 @@ export function getGameTextState() {
 		get loading() { return loading; },
 		get error() { return error; },
 		get errorDetail() { return errorDetail; },
+		get errorCause() { return errorCause; },
 		get failedRequest() { return failedRequest; }
 	};
 }
@@ -31,6 +34,7 @@ export function requestGameText(gamePath: string, language: string): () => void 
 	requestedLanguage = requested;
 	error = false;
 	errorDetail = '';
+	errorCause = undefined;
 	loading = Boolean(gamePath);
 	if (gamePath) {
 		loadLocalization(gamePath, requested).then((table) => {
@@ -40,7 +44,8 @@ export function requestGameText(gamePath: string, language: string): () => void 
 			setNameTable(nonempty, requested, gamePath);
 		}).catch((cause: unknown) => {
 			if (request !== revision) return;
-			errorDetail = String(cause);
+			errorCause = cause;
+			errorDetail = decodeError(cause).detail;
 			failedRequest = request;
 			error = true;
 		}).finally(() => {
