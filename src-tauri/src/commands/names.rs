@@ -69,12 +69,25 @@ pub const GAME_TEXT_LANGUAGES: &[&str] = &[
     "koreana",
 ];
 
-/// Load display text with per-key English fallback, outside the main thread.
+#[derive(serde::Serialize, Debug)]
+pub struct LocalizationTables {
+    pub table: HashMap<String, String>,
+    pub english: Option<HashMap<String, String>>,
+}
+
+// Keep in sync with English search consumers in save-labels.ts and data/quirks.ts.
+const SEARCH_ALIAS_PREFIXES: &[&str] = &[
+    "str_quirk_name_",
+    "hero_class_name_",
+    "str_inventory_title_trinket",
+];
+
+/// Load display text and English search aliases together, outside the main thread.
 #[tauri::command(async)]
 pub fn load_localization(
     game_path: String,
     language: String,
-) -> Result<HashMap<String, String>, AppError> {
+) -> Result<LocalizationTables, AppError> {
     if !GAME_TEXT_LANGUAGES.contains(&language.as_str()) {
         return Err(AppError::new("game_language_unknown").param("language", language));
     }
@@ -98,10 +111,25 @@ pub fn load_localization(
             }
         }
     }
+    let search_english = (language != "english").then(|| {
+        arena_english
+            .iter()
+            .chain(english.iter())
+            .filter(|(key, _)| {
+                SEARCH_ALIAS_PREFIXES
+                    .iter()
+                    .any(|prefix| key.starts_with(prefix))
+            })
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect()
+    });
     arena_english.extend(arena_translated);
     arena_english.extend(english);
     arena_english.extend(translated);
-    Ok(arena_english)
+    Ok(LocalizationTables {
+        table: arena_english,
+        english: search_english,
+    })
 }
 
 /// Discover supported installed language blocks outside the main thread.
@@ -674,35 +702,54 @@ mod tests {
         .unwrap();
         let path = dir.to_string_lossy().to_string();
         let chinese = load_localization(path.clone(), "schinese".into()).unwrap();
-        assert_eq!(chinese["str_quirk_name_resolution"], "戒酒");
+        assert_eq!(chinese.table["str_quirk_name_resolution"], "戒酒");
         assert_eq!(
-            chinese["str_quirk_description_resolution"],
+            chinese.table["str_quirk_description_resolution"],
             "在城镇从不饮酒。"
         );
-        assert_eq!(chinese["english_only"], "English fallback");
-        assert_eq!(chinese["brackets"], "[quoted] text");
-        assert_eq!(chinese["dlc_only"], "扩展");
-        assert_eq!(chinese["campaign_title"], "战役");
-        assert_eq!(chinese["campaign_fallback"], "Campaign fallback");
-        assert_eq!(chinese["dlc_title"], "战役扩展");
-        assert_eq!(chinese["arena_only"], "Arena fallback");
-        assert_eq!(chinese["empty_preserves"], "Nonempty");
-        assert_eq!(chinese["multiline"], "first line\nsecond line");
-        assert_eq!(chinese["after_malformed"], "Still intact");
-        assert!(!chinese.contains_key("malformed"));
-        assert!(!chinese.contains_key("unclosed"));
-        assert!(!chinese.contains_key("arena_priority"));
-        let japanese = load_localization(path.clone(), "japanese".into()).unwrap();
-        assert_eq!(japanese["str_quirk_name_resolution"], "禁酒");
+        assert_eq!(chinese.table["english_only"], "English fallback");
+        assert_eq!(chinese.table["brackets"], "[quoted] text");
+        assert_eq!(chinese.table["dlc_only"], "扩展");
+        assert_eq!(chinese.table["campaign_title"], "战役");
+        assert_eq!(chinese.table["campaign_fallback"], "Campaign fallback");
+        assert_eq!(chinese.table["dlc_title"], "战役扩展");
+        assert_eq!(chinese.table["arena_only"], "Arena fallback");
+        assert_eq!(chinese.table["empty_preserves"], "Nonempty");
+        assert_eq!(chinese.table["multiline"], "first line\nsecond line");
+        assert_eq!(chinese.table["after_malformed"], "Still intact");
+        assert!(!chinese.table.contains_key("malformed"));
+        assert!(!chinese.table.contains_key("unclosed"));
+        assert!(!chinese.table.contains_key("arena_priority"));
+        let aliases = chinese.english.as_ref().unwrap();
+        assert!(!aliases.contains_key("campaign_title"));
+        assert!(!aliases.contains_key("str_dialogue_test"));
+        assert!(!aliases.contains_key("str_quirk_description_resolution"));
         assert_eq!(
-            japanese["str_quirk_description_resolution"],
+            aliases["str_quirk_name_resolution"],
+            "Resolution DLC fallback"
+        );
+        assert_eq!(aliases["hero_class_name_crusader"], "Campaign class");
+        assert_eq!(
+            aliases["str_inventory_title_trinketarena_only"],
+            "Arena trinket"
+        );
+        assert!(aliases.keys().all(|key| SEARCH_ALIAS_PREFIXES
+            .iter()
+            .any(|prefix| key.starts_with(prefix))));
+        let japanese = load_localization(path.clone(), "japanese".into()).unwrap();
+        assert_eq!(japanese.table["str_quirk_name_resolution"], "禁酒");
+        assert_eq!(
+            japanese.table["str_quirk_description_resolution"],
             "In town, will never Drink."
         );
-        assert_eq!(japanese["dlc_only"], "DLC fallback");
+        assert_eq!(japanese.table["dlc_only"], "DLC fallback");
         let english = load_localization(path.clone(), "english".into()).unwrap();
-        assert_eq!(english["campaign_title"], "Campaign English");
+        assert!(english.english.is_none());
+        assert!(serde_json::to_value(&english).unwrap()["english"].is_null());
+        assert_eq!(english.table["str_dialogue_test"], "Dialogue text");
+        assert_eq!(english.table["campaign_title"], "Campaign English");
         assert_eq!(
-            english["str_quirk_name_resolution"],
+            english.table["str_quirk_name_resolution"],
             "Resolution DLC fallback"
         );
         assert_eq!(

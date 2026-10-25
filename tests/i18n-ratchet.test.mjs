@@ -91,6 +91,20 @@ test('P2 catalogs report missing keys but reject unknown keys and incompatible p
 	}
 });
 
+test('only the exact-one English revival title omits its unreachable cardinal one category', async () => {
+	const { requiredPluralCategories } = await import('../scripts/i18n-contract.mjs');
+	const node = { value: 'count', pluralType: 'cardinal', offset: 0, options: { '=1': {}, other: {} } };
+	assert.deepEqual(requiredPluralCategories('en', 'heroes.reviveTitle', node), ['other']);
+	for (const locale of ['ru', 'fr']) {
+		assert.deepEqual(requiredPluralCategories(locale, 'heroes.reviveTitle', node), new Intl.PluralRules(locale).resolvedOptions().pluralCategories);
+	}
+	for (const [id, changed] of [
+		['unrelated.count', node], ['heroes.reviveTitle', { ...node, value: 'other' }],
+		['heroes.reviveTitle', { ...node, offset: 1 }], ['heroes.reviveTitle', { ...node, options: { other: {} } }],
+		['heroes.reviveTitle', { ...node, pluralType: 'ordinal' }]
+	]) assert.ok(requiredPluralCategories('en', id, changed).includes('one'));
+});
+
 test('CSS APIs and native names are structural, while component name labels count', async () => {
 	const { countCopy } = await import('../scripts/i18n-ratchet.mjs');
 	assert.equal(countCopy('<input name="hero-name" /><WalletCard name="Gold" />', 'src/Wallet.svelte').length, 1);

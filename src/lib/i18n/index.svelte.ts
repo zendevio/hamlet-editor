@@ -1,3 +1,4 @@
+import { formatNumber } from './intl.js';
 import en from './catalogs/en.json';
 import de from './catalogs/de.json';
 import ru from './catalogs/ru.json';
@@ -28,12 +29,17 @@ export function t<K extends MessageKey>(id: K, ...args: Arguments<K>): string {
 	return translator.text(locale, id, args[0] as Params | undefined);
 }
 
+function displayParams(params: Params = {}): Params {
+	return Object.fromEntries(Object.entries(params).map(([key, value]) =>
+		[key, key.endsWith('Text') && typeof value === 'number' ? formatNumber(value) : value]));
+}
+
 export function describeMessage(descriptor: MessageDescriptor): string {
-	return translator.text(locale, descriptor.id, descriptor.params);
+	return translator.text(locale, descriptor.id, displayParams(descriptor.params));
 }
 
 export function richMessage<K extends MessageKey>(id: K, params: MessageParams[K]) {
-	return translator.format(locale, id, params as Params);
+	return translator.format(locale, id, displayParams(params as Params));
 }
 
 /** Compatibility for logic owned by later slices that still returns English. */

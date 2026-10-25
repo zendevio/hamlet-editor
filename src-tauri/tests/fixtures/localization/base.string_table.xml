@@ -1,5 +1,7 @@
 <root>
 <language  id="english" >
+<entry id="hero_class_name_crusader"><![CDATA[Campaign class]]></entry>
+<entry id="str_dialogue_test"><![CDATA[Dialogue text]]></entry>
 <entry id="str_quirk_name_resolution"><![CDATA[Resolution]]></entry>
 <entry id="str_quirk_description_resolution"><![CDATA[In town, will never Drink.]]></entry>
 <entry id="english_only"><![CDATA[English fallback]]></entry>

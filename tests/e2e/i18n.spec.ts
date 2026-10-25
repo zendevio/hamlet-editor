@@ -1206,3 +1206,154 @@ for (const [errors, warnings] of [[1, 1], [2, 2], [0, 1], [0, 2]]) {
 		expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['save_profile', 'create_backup'].includes(command)))).toEqual([]);
 	});
 }
+
+test('S3: hero, quirk picker and trinket picker stay mounted through real editor and game language switches', async ({ page }, info) => {
+	await page.goto('/heroes?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => window.__h1!.edit());
+	const heroes = page.getByTestId('heroes-page');
+	const row = heroes.getByTestId('hero-row-96');
+	await row.click();
+	await expect(row).toHaveClass(/bg-accent/);
+	const detail = page.getByTestId('hero-detail');
+	await detail.getByRole('button', { name: 'Add Positive', exact: true }).click();
+	const quirkPicker = page.getByTestId('quirk-picker');
+	await quirkPicker.getByPlaceholder('Search quirks...').fill('warrior');
+	await expect(quirkPicker.getByText('english:warrior-of-light', { exact: true })).toBeVisible();
+	await detail.getByTestId('trinket-picker-trigger').first().click();
+	const trinketPicker = page.getByTestId('trinket-picker');
+	await expect(trinketPicker).toBeVisible();
+	const nodes = await Promise.all([heroes, row, detail, quirkPicker, trinketPicker].map((locator) => locator.elementHandle()));
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of allLocales) {
+		await switchEditor(page, locale);
+		const messages = await catalog(['en', 'de', 'ru', 'ja'].includes(locale) ? locale : 'en');
+		await expect(page.locator('label[for=game-text-language]')).toHaveText(messages['settings.gameLanguage']);
+		await expect(detail.getByText('english:crusader', { exact: true })).toBeVisible();
+		await expect(quirkPicker.getByText('english:warrior-of-light', { exact: true })).toBeVisible();
+		expect(await snapshot(page)).toEqual(before);
+	}
+	for (const language of gameLanguages) {
+		await switchGame(page, language);
+		const locale = GAME_TEXT_LOCALES[language as keyof typeof GAME_TEXT_LOCALES];
+		for (const name of ['crusader', 'quick-reflexes', 'smite', 'encourage']) {
+			await expect(detail.getByText(`${language}:${name}`, { exact: true })).toBeVisible();
+			await expect(detail.getByText(`${language}:${name}`, { exact: true })).toHaveAttribute('lang', locale);
+		}
+		// Both pickers survive the game-text switch with their current query and live results.
+		await expect(quirkPicker.getByText(`${language}:warrior-of-light`, { exact: true })).toBeVisible();
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+		const trinketSearch = trinketPicker.getByPlaceholder('Search trinkets...');
+		await trinketSearch.fill(`${language}:trinket-a`);
+		await expect(trinketPicker.getByText(`${language}:trinket-a`, { exact: true })).toBeVisible();
+		await expect(trinketPicker.getByText(`${language}:trinket-a`, { exact: true })).toHaveAttribute('lang', locale);
+		await trinketSearch.fill('no-such-trinket');
+		await expect(trinketPicker.getByText('No trinket found.', { exact: true })).toBeVisible();
+		// Groups without matches are hidden, not left as empty headings.
+		await expect(trinketPicker.getByText('In your inventory', { exact: true })).toHaveCount(0);
+		await expect(trinketPicker.getByText('Add new from catalogue', { exact: true })).toHaveCount(0);
+		await trinketSearch.fill('trinket');
+		await expect(trinketSearch).toHaveValue('trinket');
+		// The open popover traps focus, so the quirk search is only reachable once it is dismissed.
+		await trinketSearch.press('Escape');
+		await expect(trinketPicker).toHaveCount(0);
+		// The spaced English alias occurs in neither the hyphenated display fixture nor the raw id.
+		const quirkQuery = language === 'english' ? 'warrior' : 'Warrior of Light';
+		const quirkSearch = quirkPicker.getByPlaceholder('Search quirks...');
+		await quirkSearch.fill(quirkQuery);
+		await expect(quirkSearch).toHaveValue(quirkQuery);
+		await expect(quirkSearch).toBeFocused();
+		await expect(quirkPicker.getByText(`${language}:warrior-of-light`, { exact: true })).toBeVisible();
+		await expect(quirkPicker.getByText(`${language}:warrior-of-light`, { exact: true })).toHaveAttribute('lang', locale);
+		// Reopen the trinket picker so the next switch again happens with both pickers open.
+		await detail.getByTestId('trinket-picker-trigger').first().click();
+		await expect(trinketPicker).toBeVisible();
+		await expect(trinketPicker.getByPlaceholder('Search trinkets...')).toHaveValue('');
+		nodes[4] = await trinketPicker.elementHandle();
+		await expect(row).toHaveClass(/bg-accent/);
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+	expect(await persistedSettings(page)).toEqual(persisted);
+	await evidence(info, 's3-heroes-open-pickers.aria.txt', await heroes.ariaSnapshot(), 'text/plain');
+});
+
+test('S3: class sorting flips after a game-text switch while the same hero row stays selected', async ({ page }) => {
+	await page.goto('/heroes?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => window.__h1!.edit());
+	const heroes = page.getByTestId('heroes-page');
+	const row = heroes.getByTestId('hero-row-96');
+	await row.click();
+	const search = heroes.getByRole('textbox', { name: 'Search heroes by name or class', exact: true });
+	await search.fill('96');
+	await expect(heroes.locator('[data-testid^="hero-row-"]')).toHaveCount(0);
+	await search.fill('');
+	await heroes.getByRole('combobox').filter({ hasText: 'Sort: Name' }).click();
+	await page.getByRole('option', { name: 'Class', exact: true }).click();
+	const before = await snapshot(page);
+	const crusader = before.heroes.find((hero) => hero.id === '96')!;
+	expect(crusader.heroClass).toBe('crusader');
+	// The harness fixture has no vestal (its first hero becomes unknown_mod_class); occultist is
+	// a single, unedited hero whose English label sorts after english:crusader.
+	const occultists = before.heroes.filter((hero) => hero.heroClass === 'occultist');
+	expect(occultists).toHaveLength(1);
+	const occultist = occultists[0];
+	const order = () => heroes.locator('[data-testid^="hero-row-"]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-testid')));
+	const englishOrder = await order();
+	expect(englishOrder).toContain(`hero-row-${crusader.id}`);
+	expect(englishOrder).toContain(`hero-row-${occultist.id}`);
+	expect(englishOrder.indexOf(`hero-row-${crusader.id}`)).toBeLessThan(englishOrder.indexOf(`hero-row-${occultist.id}`));
+	// The guid-only query above empties and rebuilds the list, so take the node after it.
+	await expect(row).toHaveClass(/bg-accent/);
+	const selectedNode = await row.elementHandle();
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	await page.evaluate(() => window.__h1!.plans.push({ command: 'load_localization', language: 'japanese', value: {
+		table: { ...window.__h1!.gameNames(), hero_class_name_crusader: 'Zulu', hero_class_name_occultist: 'Alpha' },
+		english: { hero_class_name_crusader: 'Crusader', hero_class_name_occultist: 'Occultist' }
+	} }));
+	await switchGame(page, 'japanese');
+	await expect.poll(async () => {
+		const japaneseOrder = await order();
+		return japaneseOrder.indexOf(`hero-row-${occultist.id}`) >= 0 && japaneseOrder.indexOf(`hero-row-${occultist.id}`) < japaneseOrder.indexOf(`hero-row-${crusader.id}`);
+	}).toBe(true);
+	await expect(heroes.getByTestId(`hero-row-${occultist.id}`).getByText('Alpha', { exact: true })).toBeVisible();
+	await expect(row.getByText('Zulu', { exact: true })).toBeVisible();
+	await expect(row).toHaveClass(/bg-accent/);
+	expect(await selectedNode!.evaluate((element) => element.isConnected && element === document.querySelector('[data-testid="hero-row-96"]'))).toBe(true);
+	expect(await snapshot(page)).toEqual(before);
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+});
+
+test('S3: IME Enter and keyCode 229 retain the hero name draft without committing data', async ({ page }) => {
+	await page.goto('/heroes?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await page.evaluate(() => window.__h1!.edit());
+	await page.getByTestId('hero-row-96').click();
+	const detail = page.getByTestId('hero-detail');
+	await detail.getByRole('button', { name: 'Reynauld', exact: true }).click();
+	const input = detail.getByRole('textbox', { name: 'Hero name', exact: true });
+	await input.fill('名前の途中');
+	const before = await snapshot(page);
+	const node = await input.elementHandle();
+	for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+		await input.dispatchEvent('keydown', { key: 'Enter', bubbles: true, ...init });
+		await expect(input).toHaveValue('名前の途中');
+		expect(await snapshot(page)).toEqual(before);
+		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	await input.press('Enter');
+	await expect(input).toHaveCount(0);
+	const after = await snapshot(page);
+	const expected = structuredClone(before.data);
+	const roster = expected.roster as { base_root: { heroes: Record<string, { hero_file_data: { raw_data: { base_root: { actor: { name: string } } } } }> } };
+	const selected = before.heroes.find((hero) => hero.name === 'Reynauld')!;
+	roster.base_root.heroes[selected.id].hero_file_data.raw_data.base_root.actor.name = '名前の途中';
+	expect(after.data).toEqual(expected);
+});

@@ -1923,5 +1923,993 @@
 		"lengthHint": "Short action button; keep close to the English length.",
 		"tone": "Direct imperative naming the destructive action.",
 		"slots": []
+	},
+	"hero.safety.dismissDead": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal for a dead hero: retain its roster record to preserve the grave. No removal happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissLastHero": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when this is the only living hero. Recruit another first so the estate can venture; no removal happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissTreatment": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal for a hero in treatment or still assigned to a town slot. Release treatment first; no removal happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissParty": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal for a hero in the active raid party. Return to town before dismissal; no removal happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissRaid": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal while a raid is active, even if this hero is outside the raid party. No removal happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissReferences": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when related profile files are missing, preventing safe reference cleanup. Reload the complete profile; no removal happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissTrinkets": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when equipped trinkets cannot safely be returned to estate storage. Unequip first; no removal or transfer happens.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.dismissPartyShape": {
+		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when the saved last-party list has an unsupported structure. No hero or party reference is removed.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.reviveRaid": {
+		"context": "Hero detail/revival dialog or action error toast. Revival refusal during a raid: restoring combat and party state is unverified. Return to town first; no hero is revived.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.reviveData": {
+		"context": "Hero detail/revival dialog or action error toast. Revival refusal when game or roster data is not loaded. Both are needed for safety checks; no hero is revived.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.reviveMods": {
+		"context": "Hero detail/revival dialog or action error toast. Revival refusal when enabled mods may change the roster capacity. The editor cannot verify the limit; no hero is revived.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.reviveCapacity": {
+		"context": "Hero detail/revival dialog or action error toast. Revival refusal when the capacity cannot be determined from installed Stage Coach rules and profile upgrades. No hero is revived.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.safety.capacity": {
+		"context": "Hero detail/revival dialog or action error toast. Revival refusal when selected dead heroes exceed free living-roster slots. count selects slot grammar; countText, livingText and capacityText are Intl-formatted quantities. No hero is revived.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"capacityText",
+			"count",
+			"countText",
+			"livingText"
+		]
+	},
+	"hero.trinket.definition": {
+		"context": "Trinket picker disabled-item explanation or action error toast. Equipping is refused because the item definition is absent and its class restriction cannot be checked. No item moves.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.trinket.class": {
+		"context": "Trinket picker disabled-item explanation or action error toast. Equipping is refused because this trinket is restricted to another hero class. No item moves.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.trinket.dead": {
+		"context": "Trinket picker disabled-item explanation or action error toast. Equip or unequip is refused for a dead hero. Revive them in town first; no item moves.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.trinket.shape": {
+		"context": "Trinket picker disabled-item explanation or action error toast. Equip or unequip is refused because saved hero trinket data has an unsupported structure. No item moves.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.trinket.estate": {
+		"context": "Trinket picker disabled-item explanation or action error toast. Inventory transfer is refused without valid estate storage. Load the estate file; neither hero equipment nor inventory changes.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.trinket.inventory": {
+		"context": "Trinket picker disabled-item explanation or action error toast. Transfer is refused because the requested owned trinket is no longer in estate inventory. No item is created or moved.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"hero.trinket.limit": {
+		"context": "Equip refusal shown below a trinket or in an error toast when its per-hero quantity limit is reached. count selects the entire quantity phrase; countText is Intl-formatted. Per hero is invariant in English; inflect the whole phrase around the trinket quantity in translation. No item is moved.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"input.control": {
+		"context": "Inline hero/estate name validation: rejects control and invisible formatting characters. Draft remains editable; invalid text is not committed.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"input.reserved": {
+		"context": "Inline hero/estate name validation: ### is a literal reserved save-identifier prefix and must not be translated. Draft remains editable; invalid text is not committed.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"input.integer": {
+		"context": "Whole integer input validation. Both inclusive bounds are formatted numbers at render.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"maxText",
+			"minText"
+		]
+	},
+	"input.nameLength": {
+		"context": "Name length validation, Unicode code points. count is the inclusive maximum.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"validation.gearRank": {
+		"context": "Pre-save invalid equipment rank. kind is a select identifier; translate whole weapon/armour branches. heroClass is resolved from its raw id at render.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"heroClass",
+			"kind",
+			"name",
+			"rankText",
+			"emphasis"
+		]
+	},
+	"validation.townMissing": {
+		"context": "Pre-save refusal for a missing town file.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": []
+	},
+	"validation.treatmentMismatch": {
+		"context": "Pre-save consistency warning. heroClass is resolved from its raw id at render.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"heroClass",
+			"name",
+			"emphasis"
+		]
+	},
+	"validation.missingHero": {
+		"context": "Town reference warning. building/activity are localized game entity names; guid is an untranslated diagnostic id.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"activity",
+			"building",
+			"guid",
+			"slotText",
+			"emphasis"
+		]
+	},
+	"validation.curseDlc": {
+		"context": "Pre-save warning when Crimson Court DLC is absent but a hero has a curse quirk. name is verbatim user data or the person placeholder heroes.unnamedHero. quirk is the nominative game name; emphasis sets game language. quirkId is the exact untranslated save id and must remain visible even if the name cannot resolve. Warning does not alter data.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"name",
+			"quirk",
+			"quirkId",
+			"emphasis"
+		]
+	},
+	"validation.shardDlc": {
+		"context": "DLC warning. shard is the literal save currency id; amountText is formatted at render.",
+		"lengthHint": "Allow wrapping in the hero pane or safety message.",
+		"tone": "Neutral, factual editor guidance.",
+		"slots": [
+			"amountText"
+		]
+	},
+	"heroes.levelShort": {
+		"context": "Short resolve level badge. Lv abbreviates level; use a locale-appropriate short form. levelText is an Intl-formatted number.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"levelText"
+		]
+	},
+	"heroes.resolve": {
+		"context": "Resolve level option. Lv is a short form of level. emphasis wraps the game title with its effective game-text lang.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"levelText",
+			"title",
+			"emphasis"
+		]
+	},
+	"heroes.resolveXp": {
+		"context": "Resolve option with XP threshold. Lv means level; XP means experience points. emphasis wraps game title with its own lang; numeric slots are Intl-formatted.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"levelText",
+			"title",
+			"xpText",
+			"emphasis"
+		]
+	},
+	"heroes.selected": {
+		"context": "Hero multi-selection summary; both values are Intl-formatted numbers.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"countText",
+			"totalText"
+		]
+	},
+	"heroes.shown": {
+		"context": "Filtered hero count. A count badge does not require a plural noun.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"countText"
+		]
+	},
+	"heroes.batchSelected": {
+		"context": "Selected hero count in batch detail pane. count is a numeric plural selector; countText is formatted.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"heroes.reviveTitle": {
+		"context": "Revival confirmation dialog title. Only exact count =1 may show the verbatim user name; all other counts show the formatted quantity. countText is Intl-formatted. Confirms restoring selected dead heroes in memory; Save writes to disk and Discard undoes.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"count",
+			"countText",
+			"name"
+		]
+	},
+	"heroes.sort": {
+		"context": "Hero sort trigger. sort values are internal identifiers. HP is the short form of hit points, never the raw id Hp.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"sort"
+		]
+	},
+	"heroes.afflictionOption": {
+		"context": "Affliction/virtue option. name is a game name in a nominative slot; emphasis provides the effective game-text lang. kind is an internal category.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"kind",
+			"name",
+			"emphasis"
+		]
+	},
+	"heroes.afflictionThreshold": {
+		"context": "Stress warning. name is the current game affliction name, or catalogued none-set fallback. emphasis sets the game name language, or the editor language for the none-set fallback.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"name",
+			"emphasis"
+		]
+	},
+	"heroes.positiveCount": {
+		"context": "Positive quirk count badge; numeric count only.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"countText"
+		]
+	},
+	"heroes.negativeCount": {
+		"context": "Negative and disease quirk count badge; numeric count only.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"countText"
+		]
+	},
+	"heroes.addQuirk": {
+		"context": "Quirk picker heading. category selects a complete label, not a sentence fragment.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"category"
+		]
+	},
+	"heroes.combatCount": {
+		"context": "Combat skill count badge. limited is yes only for a loaded, editable skill list. Counts are formatted.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"countText",
+			"limited",
+			"maxText"
+		]
+	},
+	"heroes.campingCount": {
+		"context": "Camping skill count badge; countText is formatted.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"countText"
+		]
+	},
+	"heroes.rank": {
+		"context": "Equipment rank option; rankText is formatted.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"rankText"
+		]
+	},
+	"heroes.baseHp": {
+		"context": "Armour help. HP is the short form of hit points; hpText is formatted.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"hpText"
+		]
+	},
+	"heroes.dismissDescription": {
+		"context": "Hero detail warning before opening dismissal confirmation. name is a verbatim user name in a nominative slot. Removal changes memory first; Discard can undo before Save, but not after saving.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"name"
+		]
+	},
+	"heroes.dismissName": {
+		"context": "Destructive hero-detail button opening confirmation, not performing removal yet. name is verbatim user data. Confirmation removes the hero in memory and Save makes it permanent.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"name"
+		]
+	},
+	"heroes.dismissQuestion": {
+		"context": "Dismissal confirmation dialog title for one hero. name is verbatim user data. Final Dismiss removes this hero; Cancel keeps them.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"name"
+		]
+	},
+	"heroes.portrait": {
+		"context": "Portrait alternative text; name is verbatim user input.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"name"
+		]
+	},
+	"heroes.removeQuirk": {
+		"context": "Accessible remove button on a hero quirk. Removes the quirk in memory immediately; Save writes it to disk and Discard can undo.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.lockQuirk": {
+		"context": "Quirk lock accessible label. name is a game name; locked selects a whole action label.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"locked",
+			"name"
+		]
+	},
+	"heroes.skillAction": {
+		"context": "Skill toggle accessible label. name is the game skill name in nominative slot.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": [
+			"name",
+			"selected"
+		]
+	},
+	"heroes.unlockQuirkTitle": {
+		"context": "Quirk lock tooltip action.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.lockQuirkTitle": {
+		"context": "Quirk lock tooltip action.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.noneSet": {
+		"context": "Stress threshold warning fallback when no affliction id is set.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.none": {
+		"context": "Affliction/Virtue select option and empty trigger: the hero has neither condition. Choosing it clears the condition in memory. Refers to a condition, not a person.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.visited": {
+		"context": "Death's Door historical flag enabled.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.never": {
+		"context": "Death's Door historical flag disabled.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.unknown": {
+		"context": "Blood Curse select fallback when no current state is available. Refers only to an unknown state, never a person.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.revivalApplied": {
+		"context": "Informational toast after town revival.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.revivalAppliedHelp": {
+		"context": "Informational toast description after town revival.",
+		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
+		"tone": "Neutral editor UI.",
+		"slots": []
+	},
+	"heroes.selectTrinket": {
+		"context": "Empty trinket picker trigger, inviting selection from inventory or catalogue. Opening the picker does not equip an item.",
+		"lengthHint": "Short picker label.",
+		"tone": "Neutral.",
+		"slots": []
+	},
+	"heroes.inventoryHeading": {
+		"context": "Trinket picker group heading for items already owned in estate storage. Choosing one transfers it to the hero in memory.",
+		"lengthHint": "Short picker label.",
+		"tone": "Neutral.",
+		"slots": []
+	},
+	"heroes.catalogueHeading": {
+		"context": "Trinket picker group heading for adding a new item from game definitions rather than transferring owned stock. Save writes the edit to disk.",
+		"lengthHint": "Short picker label.",
+		"tone": "Neutral.",
+		"slots": []
+	},
+	"heroes.healAll": {
+		"context": "Batch toolbar action: raises each selected living hero to base class maximum HP while retaining any higher HP. Skips dead heroes; edits memory until Save and can be undone with Discard.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.healAllHelp": {
+		"context": "Batch Heal All tooltip: states the HP target, preserves higher HP and excludes dead heroes. Does not revive anyone.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.clearStress": {
+		"context": "Hero detail or batch toolbar action: sets stress to zero for the current or selected heroes in memory. Discard can undo before Save.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.clearStressHelp": {
+		"context": "Batch Clear Stress tooltip: applies zero stress to every selected hero; does not remove quirks or revive heroes.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.setLevel": {
+		"context": "Batch toolbar resolve-level select trigger. Choosing a level updates selected heroes in memory; not a skill or equipment level.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.revive": {
+		"context": "Batch toolbar button opens the revival review dialog; in that dialog the same label confirms restoring the selected dead heroes after safety checks. Changes remain in memory until Save; Discard undoes.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.reviveHelp": {
+		"context": "Batch Revive tooltip: opens the town revival review and checks free roster capacity before any mutation.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.heroName": {
+		"context": "Accessible name of the editable hero-name textbox. User-entered names remain verbatim and are never translated.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.reset": {
+		"context": "Hero detail Reset button: reverts this hero's unsaved edits from the loaded snapshot; not a reset of the entire profile or game.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.resetHelp": {
+		"context": "Hero Reset tooltip: all unsaved changes for this hero are reverted. Does not save or reload the whole profile.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.vitals": {
+		"context": "Hero detail section heading for HP, stress, resolve level and condition controls. A noun heading, not an action.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.hp": {
+		"context": "Hero list sort option and hero-detail health label. HP abbreviates hit points; use a compact translated short form.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.healHelp": {
+		"context": "Heal to Max tooltip for one hero: uses base class maximum, excludes buffs and keeps existing higher HP. The edit can be discarded before Save.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.healToMax": {
+		"context": "Hero detail action raising this living hero to base class maximum HP while keeping higher HP. Changes memory only until Save; Discard can undo.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.stress": {
+		"context": "Hero detail stat label and list sort option for stress. Noun, not a command.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.afflictionVirtue": {
+		"context": "Hero detail condition select label covering both negative afflictions and positive virtues. Use game glossary vocabulary.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.clear": {
+		"context": "Button beside the Affliction/Virtue label: clears the current condition in memory. Refers only to that condition, not all hero data.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.deathsDoor": {
+		"context": "Hero detail label for the historical Death's Door flag. Uses the game term for a hero reaching zero HP.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.historicalFlag": {
+		"context": "Badge beside Death's Door marking a historical record rather than current combat state.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.deathsDoorHelp": {
+		"context": "Help below the Death's Door historical switch. Distinguish having reached the condition previously from the current gameplay condition.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.quirks": {
+		"context": "Hero detail section heading for positive and negative personality traits. Use the game glossary term, not skills.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.addPositive": {
+		"context": "Hero quirk-section button opening a picker of positive quirks. Opening does not change data; selecting adds a quirk in memory.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.diseases": {
+		"context": "Hero detail subheading for disease quirks. Diseases share the negative-quirk limit.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.addNegative": {
+		"context": "Hero quirk-section button opening a picker of negative quirks and diseases. Selecting adds one in memory until Save; Discard can undo.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.diseaseLimitHelp": {
+		"context": "Help in the negative-quirk section: diseases consume the same five available negative-quirk slots.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.closeQuirkPicker": {
+		"context": "Accessible name of the quirk picker close button. Closes the picker without adding a quirk.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.searchQuirks": {
+		"context": "Quirk picker search placeholder. Matches displayed names, English aliases and raw ids; typing only filters choices.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noQuirksFound": {
+		"context": "Quirk picker empty search result. No available quirk matches the current search/category.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.skills": {
+		"context": "Hero detail section heading for combat and camping skills. A noun heading, not an action.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.fixedSkillSet": {
+		"context": "Hero detail note for a class whose combat skills cannot be toggled. Its skill set is fixed by class rules.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.combatLimit": {
+		"context": "Disabled combat-skill tooltip when four skills are already selected. Deselect one before selecting another; no fifth skill is added.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.combatMinimum": {
+		"context": "Disabled skill-toggle tooltip when deselecting would leave zero combat skills. At least one must stay selected; the action is blocked.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.clickToDeselect": {
+		"context": "Tooltip on a currently selected combat skill. Clicking removes it from the active set in memory, subject to the minimum skill guard.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.clickToSelect": {
+		"context": "Tooltip on an unselected combat skill. Clicking adds it to the active set in memory, subject to the four-skill limit.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noCombatSkillsSelected": {
+		"context": "Hero detail note when the hero has no selected combat skills. Describes saved state, not search results.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.skillsReadOnly": {
+		"context": "Hero detail note when skill definitions are unavailable. Saved skills can be read; loading game data is required before editing.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noCampingSkillsSelected": {
+		"context": "Hero detail note when no camping skills are selected. Describes saved state, not missing definitions.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.equipment": {
+		"context": "Hero detail section heading for weapon rank, armour rank and trinkets. A noun heading.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.weaponMax4": {
+		"context": "Hero detail weapon-rank input label. Four is the maximum allowed upgrade rank, not an item quantity.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.armourMax4": {
+		"context": "Hero detail armour-rank input label. Four is the maximum allowed upgrade rank, not an item quantity.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.trinkets": {
+		"context": "Hero detail equipment subheading for two accessory slots. Use the game glossary term for trinkets.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.slot1": {
+		"context": "Label for the first equipped trinket slot. Slot number identifies a location, not a quantity.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.empty": {
+		"context": "Italic placeholder for an unequipped trinket slot on a dead hero. Refers to an empty equipment slot, not a roster or person.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.slot2": {
+		"context": "Label for the second equipped trinket slot. Slot number identifies a location, not a quantity.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.trinketsDeadHelp": {
+		"context": "Hero detail help for a dead hero: trinket changes are blocked until town revival. Does not offer to revive or move items automatically.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.bloodCurse": {
+		"context": "Hero detail section heading for Crimson Curse stage controls, visible for a cursed hero with Crimson Court installed. Use the game glossary.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.currentState": {
+		"context": "Blood Curse select label. State means the current curse stage, not general hero status or save status.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.curseHelp": {
+		"context": "Blood Curse help: selecting a stage replaces the existing curse quirk, never adds a second stage. Changes are in memory until Save; Discard undoes.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.actions": {
+		"context": "Hero detail section heading grouping revive and dismiss actions. A noun heading.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.reviveHero": {
+		"context": "Hero detail button opening the revival confirmation dialog for this dead hero. No data changes until that dialog's Revive action.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.reviveConsequences": {
+		"context": "Help below the Revive Hero button. Revival requires being in town and a free roster slot; skill upgrades lost at death remain lost.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.dismissHero": {
+		"context": "Hero detail destructive-action section heading. Dismissal removes a living hero from the roster after explicit confirmation.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.dismissDialogHelp": {
+		"context": "Dismissal confirmation dialog warning: final Dismiss removes the living hero from the roster in memory; Discard can undo before Save. Saving makes removal permanent.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.dismissConfirm": {
+		"context": "Required acknowledgement checkbox in dismissal dialog. Must be checked to enable Dismiss. Warns that after Save roster removal cannot be undone; checking alone changes no hero data.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.cancel": {
+		"context": "Dismissal and revival dialog Cancel button. Closes the dialog without dismissing or reviving any hero and preserves existing unsaved edits.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.dismiss": {
+		"context": "Final destructive button in dismissal dialog after acknowledgement and safety checks. Removes the selected living hero and its references in memory; Discard can undo before Save, but saving makes removal permanent.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.searchHeroes": {
+		"context": "Hero list search placeholder. Matches hero user names, displayed/English class names and raw class ids, not hero guids. Typing filters without changing data.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.toggleFilters": {
+		"context": "Hero list filter-panel toggle accessible label and tooltip. Opens or hides status/class filters without changing their choices or hero data.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.name": {
+		"context": "Hero list sort option for user-entered names. Noun label; names sort in editor language.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.status": {
+		"context": "Hero list sort option for roster status, such as available, party, treatment or dead. Not save-file status.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.class": {
+		"context": "Hero list sort option for hero class names. Noun label; entity names sort in game-text language.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.level": {
+		"context": "Hero list sort option for resolve level. Not equipment rank or skill upgrade level.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.clearFilters": {
+		"context": "Hero list empty-state button that clears search, status filters and class filters. Restores the unfiltered view without changing heroes; title case in English.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noHeroesMatchYourFilters": {
+		"context": "Hero list empty state when the current search and filters hide every hero. Does not mean the roster itself is empty.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.reviveDescription": {
+		"context": "Revival confirmation dialog consequences for all selected dead heroes. Restores living status, full class HP and clears combat effects, retaining stress, quirks, selected skills and history. Skill upgrades lost at death are not restored. Final Revive edits memory only; Save writes to disk and Discard undoes.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.searchTrinkets": {
+		"context": "Trinket picker search placeholder. Matches displayed game names, English aliases and raw ids by normalized substring in collation order. Typing does not equip anything.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noTrinketFound": {
+		"context": "Trinket picker empty search state when no inventory or catalogue entry matches. No item is created or equipped.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.unequipToInventory": {
+		"context": "Trinket picker action moving the equipped item into estate inventory in memory. Save writes the transfer to disk; Discard restores both hero equipment and inventory.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noProfile": {
+		"context": "Heroes page empty-state title when no save profile is loaded. Does not mean a loaded roster has no heroes.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.noProfileHelp": {
+		"context": "Heroes page empty-state instructions for configuring a save location in Settings, then selecting a profile. No profile data is changed by this message.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.loadMock": {
+		"context": "Development-only Heroes page button loading synthetic fixture data for editing. Not a real save profile.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.batchHelp": {
+		"context": "Heroes page guidance when multiple heroes are selected. Toolbar actions apply to the selected set in memory until Save; Discard can undo.",
+		"lengthHint": "Allow wrapping in the hero pane or dialog.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.selectHero": {
+		"context": "Heroes page empty detail-pane prompt when no hero is active. Clicking a list row selects a hero for viewing/editing without changing save data.",
+		"lengthHint": "Compact control or section label.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.removeQuirkAction": {
+		"context": "Quirk remove accessible action. name is the game quirk name in a nominative slot.",
+		"lengthHint": "Compact accessible label.",
+		"tone": "Neutral.",
+		"slots": [
+			"name"
+		]
+	},
+	"controls.sliderSaved": {
+		"context": "Slider caption when the displayed whole step differs from a saved fractional value; both numeric text values are Intl-formatted.",
+		"lengthHint": "Short inline caption.",
+		"tone": "Factual.",
+		"slots": [
+			"valueText",
+			"savedText"
+		]
+	},
+	"heroes.statusFilter": {
+		"context": "Hero status filter category caption, with colon.",
+		"lengthHint": "Short filter control.",
+		"tone": "Neutral.",
+		"slots": []
+	},
+	"heroes.classFilter": {
+		"context": "Hero class filter category caption, with colon.",
+		"lengthHint": "Short filter control.",
+		"tone": "Neutral.",
+		"slots": []
+	},
+	"heroes.clearFiltersInline": {
+		"context": "Inline filter reset button; preserve sentence case.",
+		"lengthHint": "Short filter control.",
+		"tone": "Neutral.",
+		"slots": []
+	},
+	"heroes.curseState": {
+		"context": "Hero detail Blood Curse badge, select trigger and options. state is the raw disease_vampire_* quirk id; other means an unrecognized state. Translate editor state names using str_quirk_name_disease_vampire_* as the game glossary source. Passive means sated. Do not use combat notification wording or punctuation.",
+		"lengthHint": "Compact hero control; allow wrapping in help and dialogs.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": [
+			"state"
+		]
+	},
+	"heroes.unnamedHero": {
+		"context": "Pre-save Crimson Curse DLC warning only: placeholder for a hero whose saved actor name is empty. Refers to a person, not an unknown curse state; do not change the saved name.",
+		"lengthHint": "Compact hero control; allow wrapping in help and dialogs.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
+	},
+	"heroes.searchHeroesByNameOrClass": {
+		"context": "Accessible name of the hero list search textbox. Search covers hero names and classes, including English class aliases and raw class ids; not hero guids.",
+		"lengthHint": "Compact hero control; allow wrapping in help and dialogs.",
+		"tone": "Neutral, factual editor UI.",
+		"slots": []
 	}
 }

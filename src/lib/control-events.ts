@@ -1,3 +1,5 @@
+import { formatNumber } from '#lib/i18n/intl.js';
+import { t } from '#lib/i18n/index.svelte.js';
 /** Ignore controlled-value echoes before calling a store mutation. */
 export function commitChangedValue<T>(current: T, next: T, commit: (value: T) => void): boolean {
 	if (Object.is(current, next)) return false;
@@ -51,14 +53,15 @@ function snappedSliderValue(value: number, { min, max, step }: SliderRange): num
 
 /** Display fractional save values and limits consistently. */
 export function sliderNumberLabel(value: number): string {
-	return !Number.isFinite(value) || Number.isInteger(value) ? String(value) : value.toFixed(1);
+	return !Number.isFinite(value) ? String(value) : formatNumber(value === 0 ? 0 : value, Number.isInteger(value) ? {} : { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 /** Never label the current value with a step above the real maximum. */
 export function sliderValueLabel(value: number, range: SliderRange): string {
 	const snapped = snappedSliderValue(value, alignedSliderRange(range));
 	if (snapped > range.max || snapped < range.min) return sliderNumberLabel(value);
-	return snapped === value ? String(snapped) : `${snapped} (saved: ${sliderNumberLabel(value)})`;
+	const stepLabel = Number.isFinite(snapped) ? formatNumber(snapped === 0 ? 0 : snapped, { maximumFractionDigits: 20 }) : String(snapped);
+	return snapped === value ? stepLabel : t('controls.sliderSaved', { valueText: stepLabel, savedText: sliderNumberLabel(value) });
 }
 
 /** Preserve saved fractions when a click or drag finishes on the starting step. */

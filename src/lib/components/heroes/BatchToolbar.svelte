@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatNumber } from '#lib/i18n/intl.js';
+	import ResolveLabel from './ResolveLabel.svelte';
 	import { parseInteger } from '#lib/input-validation.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Separator } from '#lib/components/ui/separator/index.js';
@@ -17,8 +20,7 @@
 	import {
 		healHeroToMax,
 		setHeroStress,
-		setHeroLevel,
-		RESOLVE_LEVEL_NAMES
+		setHeroLevel
 	} from '#lib/stores/save-data.svelte.js';
 
 	let {
@@ -62,7 +64,7 @@
 
 <div class="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
 	<span class="text-muted-foreground shrink-0 text-[11px] font-medium">
-		{selectedHeroes.length} of {totalCount} selected
+		{t('heroes.selected', { countText: formatNumber(selectedHeroes.length), totalText: formatNumber(totalCount) })}
 	</span>
 
 	{#if selectedHeroes.length > 0}
@@ -73,10 +75,10 @@
 			<TooltipTrigger>
 				<Button variant="outline" size="sm" class="h-7 gap-1.5 text-[11px]" onclick={handleHealAll}>
 					<HeartIcon size={12} class="text-red-500" />
-					Heal All
+					{t('heroes.healAll')}
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Raise HP to the class base max, keeping higher HP (skips dead heroes)</TooltipContent>
+			<TooltipContent>{t('heroes.healAllHelp')}</TooltipContent>
 		</Tooltip>
 
 		<!-- Clear Stress -->
@@ -89,10 +91,10 @@
 					onclick={handleClearStress}
 				>
 					<BrainIcon size={12} class="text-yellow-500" />
-					Clear Stress
+					{t('heroes.clearStress')}
 				</Button>
 			</TooltipTrigger>
-			<TooltipContent>Set stress to 0 for all selected heroes</TooltipContent>
+			<TooltipContent>{t('heroes.clearStressHelp')}</TooltipContent>
 		</Tooltip>
 
 		<!-- Set Level -->
@@ -100,13 +102,13 @@
 			<SelectTrigger class="h-7 w-30 text-[11px]">
 				<div class="flex items-center gap-1">
 					<ArrowUpIcon size={12} />
-					<span>Set Level</span>
+					<span>{t('heroes.setLevel')}</span>
 				</div>
 			</SelectTrigger>
 			<SelectContent>
 				{#each Array(7) as _, i}
 					<SelectItem value={String(i)}>
-						Lv {i} · {RESOLVE_LEVEL_NAMES[i]}
+						<ResolveLabel level={i} />
 					</SelectItem>
 				{/each}
 			</SelectContent>
@@ -123,10 +125,10 @@
 						onclick={() => (revivalOpen = true)}
 					>
 						<HeartIcon size={12} class="text-green-500" />
-						Revive
+						{t('heroes.revive')}
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent>Review town revival and roster capacity</TooltipContent>
+				<TooltipContent>{t('heroes.reviveHelp')}</TooltipContent>
 			</Tooltip>
 		{/if}
 	{/if}

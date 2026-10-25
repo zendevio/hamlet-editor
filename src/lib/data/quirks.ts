@@ -6,6 +6,8 @@
  * and to populate the inline "Add Quirk" picker.
  */
 
+import { matchesSearch } from '#lib/search.js';
+import { localizeEnglish } from '#lib/stores/game-data.svelte.js';
 import { snakeToTitle } from '#lib/utils.js';
 import { getGameData, localize } from '#lib/stores/game-data.svelte.js';
 
@@ -290,6 +292,7 @@ export function quirkDescription(id: string): string {
 }
 
 export function matchesQuirkSearch(id: string, name: string, search: string): boolean {
-	const query = search.trim().toLowerCase();
-	return id.toLowerCase().includes(query) || name.toLowerCase().includes(query);
+	// Search aliases: str_quirk_name_, hero_class_name_, str_inventory_title_trinket.
+	// Keep in sync with SEARCH_ALIAS_PREFIXES in src-tauri/src/commands/names.rs and save-labels.ts.
+	return matchesSearch(search, name, localizeEnglish(`str_quirk_name_${id}`, snakeToTitle(id)), id);
 }

@@ -12,7 +12,7 @@ import type { ClassSkills, ClassStats, QuirkDef, TrinketDef, RosterCapacityRules
 
 // ── State ──
 
-let display = $state<{ table: Record<string, string>; language: keyof typeof GAME_TEXT_LOCALES; gamePath: string }>({ table: {}, language: 'english', gamePath: '' });
+let display = $state<{ table: Record<string, string>; english: Record<string, string>; language: keyof typeof GAME_TEXT_LOCALES; gamePath: string }>({ table: {}, english: {}, language: 'english', gamePath: '' });
 let localizationLoaded = $state(false);
 let quirks = $state<QuirkDef[]>([]);
 let trinkets = $state<TrinketDef[]>([]);
@@ -60,9 +60,14 @@ export function localize(key: string, fallback = snakeToTitle(key)): string {
 	return display.table[key]?.trim() ? display.table[key] : fallback;
 }
 
+/** English aliases share the active table's path and revision, including on races. */
+export function localizeEnglish(key: string, fallback = snakeToTitle(key)): string {
+	return display.english[key]?.trim() ? display.english[key] : fallback;
+}
+
 /** Replace the entire name table (e.g. after loading game strings). */
-export function setNameTable(table: Record<string, string>, language: keyof typeof GAME_TEXT_LOCALES = 'english', gamePath = '') {
-	display = { table, language, gamePath };
+export function setNameTable(table: Record<string, string>, language: keyof typeof GAME_TEXT_LOCALES = 'english', gamePath = '', english: Record<string, string> = language === 'english' ? table : {}) {
+	display = { table, english, language, gamePath };
 	localizationLoaded = true;
 }
 
@@ -117,7 +122,7 @@ export function getMaxHp(heroClass: string, armourRank: number): number | null {
 
 /** Reset localization state (e.g. when game install is cleared). */
 export function resetGameData() {
-	display = { table: {}, language: 'english', gamePath: '' };
+	display = { table: {}, english: {}, language: 'english', gamePath: '' };
 	localizationLoaded = false;
 	quirks = [];
 	trinkets = [];

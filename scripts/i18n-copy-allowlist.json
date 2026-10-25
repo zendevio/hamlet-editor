@@ -59,11 +59,61 @@
 			"positive": "Quirk category identifier.",
 			"negative": "Quirk category identifier.",
 			"_none": "Select sentinel for no affliction or virtue.",
-			"catalogue": "Trinket source identifier."
+			"catalogue": "Trinket source identifier.",
+			"Enter": "Keyboard event identifiers.",
+			"Escape": "Keyboard event identifiers.",
+			"abomination": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"abusive": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"berserk": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"color_madness": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"depressed": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"disease": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"disease_vampire_": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"fearful": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"irrational": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"masochistic": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"paranoid": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"selfish": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
+			"yes": "ICU select discriminator, never displayed directly.",
+			"no": "ICU select discriminator, never displayed directly.",
+			"virtue": "ICU select discriminator, never displayed directly.",
+			"border-amber-500/20 bg-amber-500/10": "Quirk visual style class tokens.",
+			"border-green-500/20 bg-green-500/5": "Quirk visual style class tokens.",
+			"border-red-500/20 bg-red-500/5": "Quirk visual style class tokens.",
+			"raid/skill_attributes/skill_attribute_heal.png": "Game icon asset path.",
+			"raid/skill_attributes/skill_attribute_stress.png": "Game icon asset path."
 		},
 		"src/lib/components/heroes/TrinketPicker.svelte": {
 			"inventory": "Trinket source identifier.",
-			"catalogue": "Trinket source identifier."
+			"catalogue": "Trinket source identifier.",
+			"ancestors_candle": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_coat": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_lantern": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_map": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_pen": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_pistol": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_scroll": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_signet_ring": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"ancestors_tentacle_idol": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"berserk_charm": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_cannon": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_crew": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_flesh": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_hag": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_necromancer": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_prophet": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_siren": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_tassle": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"boss_wilbur": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"collector_1": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"collector_2": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"collector_3": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"dazzling_charm": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"feather_crystal": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"focus_ring": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"legendary_bracer": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"sun_ring": "Fallback trinket catalogue id; labels resolve via the game table or readable id.",
+			"unequip": "Stable internal command id and English search alias for the unequip action."
 		},
 		"src/lib/components/ui/input-group/input-group-addon.svelte": {
 			"button": "Native element selector for the focus handler.",
@@ -237,7 +287,22 @@
 			"camping_trainer": "Game entity localization key, prefix or id for the existing namespace fallback.",
 			"hero_class_name_": "Game entity localization key, prefix or id for the existing namespace fallback.",
 			"survivalist": "Game entity localization key, prefix or id for the existing namespace fallback.",
-			"town_name_": "Game entity localization key, prefix or id for the existing namespace fallback."
+			"town_name_": "Game entity localization key, prefix or id for the existing namespace fallback.",
+			"str_resolve_": "Verified game localization key namespace or virtue id.",
+			"combat_skill_name_": "Verified game localization key namespace or virtue id.",
+			"camping_skill_name_": "Verified game localization key namespace or virtue id.",
+			"str_inventory_title_trinket": "Verified game localization key namespace or virtue id.",
+			"str_virtue_name_": "Verified game localization key namespace or virtue id.",
+			"str_affliction_name_": "Verified game localization key namespace or virtue id.",
+			"town_activity_name_": "Verified game localization key namespace or virtue id.",
+			"courageous": "Verified game localization key namespace or virtue id.",
+			"focused": "Verified game localization key namespace or virtue id.",
+			"powerful": "Verified game localization key namespace or virtue id.",
+			"vigorous": "Verified game localization key namespace or virtue id.",
+			"stalwart": "Verified game localization key namespace or virtue id.",
+			"Hopeless": "English game-entity fallback moved from HeroDetail; used only when game tables lack the key.",
+			"Rapturous": "English game-entity fallback moved from HeroDetail; used only when game tables lack the key.",
+			"Refracted": "English game-entity fallback moved from HeroDetail; used only when game tables lack the key."
 		},
 		"src/lib/stores/save-data.svelte.ts": {
 			"bg-gray-500": "Fallback status dot CSS class.",
@@ -265,7 +330,77 @@
 			"stalwart": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
 			"string": "JavaScript typeof comparison.",
 			"vigorous": "Game data id, field name or prefix used by safety logic; never displayed as a label."
-		}
+		},
+		"src/lib/components/heroes/HeroList.svelte": {
+			"name": "Internal sort field identifier."
+		},
+		"src/routes/heroes/+page.svelte": {
+			"horizontal": "Resizable pane direction token."
+		},
+		"src/lib/hero-order.ts": {
+			"class": "Internal sort field identifier.",
+			"hp": "Internal sort field identifier.",
+			"level": "Internal sort field identifier.",
+			"name": "Internal sort field identifier.",
+			"stress": "Internal sort field identifier."
+		},
+		"src/lib/hero-safety.ts": {
+			"object": "JavaScript type check.",
+			"string": "JavaScript type check.",
+			"###stage_coach.rostersize": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"stage_coach.rostersize": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"disease_vampire_": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"disease_vampire_blood_lust": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"disease_vampire_crave": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"disease_vampire_passive": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"disease_vampire_wasting": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"dlc": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"roster.building_name": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"roster.status": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"shieldbreaker": "Save field, item type, upgrade, DLC or quirk identifier; never a display label.",
+			"trinket": "Save field, item type, upgrade, DLC or quirk identifier; never a display label."
+		},
+		"src/lib/input-validation.ts": {
+			"number": "JavaScript type check.",
+			"string": "JavaScript type check."
+		},
+		"src/lib/search.ts": {
+			"NFD": "Unicode normalization form or case-fold replacement.",
+			"NFKC": "Unicode normalization form or case-fold replacement.",
+			"ss": "Unicode normalization form or case-fold replacement.",
+			"σ": "Unicode normalization form or case-fold replacement.",
+			"NFC": "Unicode normalization form after preserving script-specific marks.",
+			"l": "Unicode accent/case-fold replacement, never rendered as UI copy.",
+			"o": "Unicode accent/case-fold replacement, never rendered as UI copy.",
+			"d": "Unicode accent/case-fold replacement, never rendered as UI copy."
+		},
+		"src/lib/trinkets.ts": {
+			"boolean": "JavaScript type check.",
+			"number": "JavaScript type check.",
+			"object": "JavaScript type check.",
+			"string": "JavaScript type check.",
+			"inventory": "Save field or item/source identifier.",
+			"roster.status": "Save field or item/source identifier.",
+			"trinket": "Save field or item/source identifier."
+		},
+		"src/lib/validation.ts": {
+			"armour": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"disease_vampire_": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"error": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"object": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"persist.estate.json": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"persist.roster.json": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"shard": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"warning": "Validation severity, gear kind, save file or game item/quirk identifier.",
+			"weapon": "Validation severity, gear kind, save file or game item/quirk identifier."
+		},
+		"src/lib/data/quirks.ts": {
+			"str_quirk_name_": "Game quirk localization namespace for displayed and English search names."
+		},
+		"src/lib/stores/game-data.svelte.ts": {
+			"english": "Effective game-text language id and default English alias map discriminator."
+		},
+		"src/lib/control-events.ts": {}
 	},
 	"patterns": [
 		{

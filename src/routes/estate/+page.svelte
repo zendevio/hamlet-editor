@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { describeActionMessage, type ActionMessage } from '#lib/i18n/index.svelte.js';
+	import { describeMessage, type MessageDescriptor } from '#lib/i18n/index.svelte.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { validateHeroName } from '#lib/input-validation.js';
 	import { WALLET_MAX } from '#lib/estate.js';
@@ -53,7 +53,7 @@
 	// D6: Estate name
 	let estateNameValue = $state('');
 	let estateNameEditing = $state(false);
-	let estateNameError = $state<ActionMessage>('');
+	let estateNameError = $state<MessageDescriptor | null>(null);
 	let estateNameAtStart = '';
 
 	$effect(() => {
@@ -70,15 +70,15 @@
 			return;
 		}
 		if (estateNameValue === estateNameAtStart) {
-			estateNameError = '';
+			estateNameError = null;
 			estateNameEditing = false;
 			return;
 		}
 		const parsed = validateHeroName(estateNameValue);
-		estateNameError = parsed.error ?? '';
+		estateNameError = parsed.error ?? null;
 		if (parsed.error !== undefined) return;
 		commitChangedValue(current, parsed.value, (name) => {
-			estateNameError = setEstateName(name) ?? '';
+			estateNameError = setEstateName(name) ?? null;
 		});
 		if (!estateNameError) estateNameEditing = false;
 	}
@@ -89,7 +89,7 @@
 		}
 		if (e.key === 'Escape') {
 			estateNameValue = saveData.game?.base_root?.estatename ?? '';
-			estateNameError = '';
+			estateNameError = null;
 			estateNameEditing = false;
 			(e.target as HTMLElement)?.blur();
 		}
@@ -238,7 +238,7 @@
 							aria-invalid={!!estateNameError}
 							class="h-9 text-sm"
 						/>
-						{#if estateNameError}<p class="mt-1 text-xs text-destructive">{describeActionMessage(estateNameError)}</p>{/if}
+						{#if estateNameError}<p class="mt-1 text-xs text-destructive">{describeMessage(estateNameError)}</p>{/if}
 					</div>
 				</div>
 				{#if hasColorOfMadness && estateData?.endless_wave_highscore !== undefined}

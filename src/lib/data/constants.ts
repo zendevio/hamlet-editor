@@ -77,11 +77,11 @@ export const RESOLVE_XP_THRESHOLDS = [0, 2, 8, 14, 24, 36, 48];
 
 /** Level title names. */
 export const RESOLVE_LEVEL_NAMES = [
-	'Novice',
+	'Seeker',
 	'Apprentice',
-	'Journeyman',
+	'Adventurer',
 	'Veteran',
-	'Champion',
+	'Master',
 	'Champion',
 	'Legend'
 ];

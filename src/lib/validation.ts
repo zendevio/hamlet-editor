@@ -1,4 +1,4 @@
-import { heroClassName } from '#lib/save-labels.js';
+import type { MessageDescriptor } from '#lib/i18n/messages.generated.js';
 /**
  * Pre-save cross-file validation.
  *
@@ -24,8 +24,8 @@ export type { GameInstall };
 
 export interface ValidationIssue {
 	severity: ValidationSeverity;
-	category: string;
-	message: string;
+	category: MessageDescriptor;
+	message: MessageDescriptor;
 	/** If set, calling this function auto-fixes the issue. */
 	fix?: () => void;
 }
@@ -62,8 +62,8 @@ function checkGearRanks(): ValidationIssue[] {
 			if (Number.isInteger(rank) && rank >= 0 && rank <= 4) continue;
 			issues.push({
 				severity: 'error',
-				category: 'Gear Rank',
-				message: `${hero.name} (${heroClassName(hero.heroClass)}): ${kind} rank ${rank} must be a whole number from 0 to 4.`
+				category: { id: 'validation.category.gear' },
+				message: { id: 'validation.gearRank', params: { name: hero.name, heroClass: hero.heroClass, kind, rankText: rank } }
 			});
 		}
 	}
@@ -78,8 +78,8 @@ function checkTreatmentConsistency(): ValidationIssue[] {
 		if (heroes.some((hero) => hero.status === 2)) {
 			issues.push({
 				severity: 'error',
-				category: 'Treatment',
-				message: 'Town data is missing. Reload the profile before changing treatment.'
+				category: { id: 'validation.category.treatment' },
+				message: { id: 'validation.townMissing' }
 			});
 		}
 		return issues;
@@ -93,8 +93,8 @@ function checkTreatmentConsistency(): ValidationIssue[] {
 		) {
 			issues.push({
 				severity: 'warning',
-				category: 'Treatment',
-				message: `${hero.name} (${heroClassName(hero.heroClass)}): roster treatment status and town slot assignments disagree. Release treatment to clear both.`,
+				category: { id: 'validation.category.treatment' },
+				message: { id: 'validation.treatmentMismatch', params: { name: hero.name, heroClass: hero.heroClass } },
 				fix: () => releaseHeroFromTreatment(hero.guid)
 			});
 		}
@@ -105,8 +105,8 @@ function checkTreatmentConsistency(): ValidationIssue[] {
 		if (knownHeroes.has(guid)) continue;
 		issues.push({
 			severity: 'warning',
-			category: 'Treatment',
-			message: `${buildingName} ${activityType} slot ${Number(slotIndex) + 1} references missing hero ${guid}.`,
+			category: { id: 'validation.category.treatment' },
+			message: { id: 'validation.missingHero', params: { building: buildingName, activity: activityType, slotText: Number(slotIndex) + 1, guid } },
 			fix: () => releaseHeroFromTreatment(guid)
 		});
 	}
@@ -136,7 +136,7 @@ function checkTreatmentConsistency(): ValidationIssue[] {
  *
  * @param data        - The combined dirty save data keyed by filename.
  * @param gameInstall - Detected DLC flags for the active game installation.
- * @returns Array of `ValidationIssue` warnings (never errors — the user may
+ * @returns Array of `ValidationIssue` warnings (never errors; the user may
  *          have intentionally edited the save for a future install).
  */
 export function checkDlcFieldInjection(
@@ -163,16 +163,16 @@ export function checkDlcFieldInjection(
 			};
 			const baseRoot = heroEntry?.hero_file_data?.raw_data?.base_root;
 			const quirks = baseRoot?.quirks ?? {};
-			const heroName = baseRoot?.actor?.name ?? 'Unknown';
+			const heroName = baseRoot?.actor?.name ?? '';
 
 			for (const quirkId of Object.keys(quirks)) {
 				if (quirkId.startsWith('disease_vampire_')) {
 					issues.push({
 						severity: 'warning',
-						category: 'DLC',
-						message: `Hero "${heroName}" has Crimson Curse quirk "${quirkId}" but Crimson Court DLC is not installed. The game cannot resolve this quirk without the DLC.`
+						category: { id: 'validation.category.dlc' },
+						message: { id: 'validation.curseDlc', params: { name: heroName, quirk: quirkId, quirkId } }
 					});
-					// One warning per hero is enough — break after the first match.
+					// One warning per hero is enough : break after the first match.
 					break;
 				}
 			}
@@ -192,8 +192,8 @@ export function checkDlcFieldInjection(
 			if (walletEntry.type === 'shard') {
 				issues.push({
 					severity: 'warning',
-					category: 'DLC',
-					message: `Estate wallet contains a "shard" currency entry (amount: ${walletEntry.amount ?? 0}) but Color of Madness DLC is not installed. This currency cannot be used without the DLC.`
+					category: { id: 'validation.category.dlc' },
+					message: { id: 'validation.shardDlc', params: { amountText: walletEntry.amount ?? 0 } }
 				});
 				// Only one warning needed regardless of how many shard entries exist.
 				break;

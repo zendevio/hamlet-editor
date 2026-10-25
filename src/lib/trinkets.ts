@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from '#lib/i18n/messages.generated.js';
 import type { TrinketDef } from '#lib/api/gamedata.js';
 import type { EstateData, HeroBaseRoot, TrinketEntry } from '#lib/types/save-data.js';
 import { cloneSaveItem } from '#lib/clone-save-item.svelte.js';
@@ -6,11 +7,11 @@ import { equippedTrinkets } from '#lib/hero-safety.js';
 export type TrinketSource = 'inventory' | 'catalogue';
 
 /** Shared picker and mutation guard, including the other slot on the same hero. */
-export function trinketEquipBlockReason(id: string, heroClass: string, definitions: readonly TrinketDef[], otherIds: readonly string[] = []): string | null {
+export function trinketEquipBlockReason(id: string, heroClass: string, definitions: readonly TrinketDef[], otherIds: readonly string[] = []): MessageDescriptor | null {
 	const definition = definitions.find((entry) => entry.id === id);
-	if (definitions.length && !definition) return 'Class restriction unknown: this trinket has no loaded definition.';
-	if (definition?.class_restriction && definition.class_restriction !== heroClass) return 'This trinket is restricted to another hero class.';
-	if (definition?.limit != null && definition.limit > 0 && otherIds.filter((other) => other === id).length >= definition.limit) return `This trinket is limited to ${definition.limit} per hero.`;
+	if (definitions.length && !definition) return { id: 'hero.trinket.definition' };
+	if (definition?.class_restriction && definition.class_restriction !== heroClass) return { id: 'hero.trinket.class' };
+	if (definition?.limit != null && definition.limit > 0 && otherIds.filter((other) => other === id).length >= definition.limit) return { id: 'hero.trinket.limit', params: { count: definition.limit, countText: definition.limit } };
 	return null;
 }
 
@@ -50,11 +51,11 @@ export function equipTrinket(
 	id: string,
 	source: TrinketSource,
 	definitions: readonly TrinketDef[] = []
-): { changed: boolean; estateChanged: boolean; error?: string } {
+): { changed: boolean; estateChanged: boolean; error?: MessageDescriptor } {
 	const unchanged = { changed: false, estateChanged: false };
-	if (hero['roster.status'] === 3) return { ...unchanged, error: 'Trinkets cannot be equipped or unequipped on a dead hero. Revive them in town first.' };
+	if (hero['roster.status'] === 3) return { ...unchanged, error: { id: 'hero.trinket.dead' } };
 	const entries = equippedTrinkets(hero);
-	if (!entries) return { ...unchanged, error: 'This hero has unsupported trinket data.' };
+	if (!entries) return { ...unchanged, error: { id: 'hero.trinket.shape' } };
 	const previous = hero.trinkets.items[slot] as TrinketEntry | undefined;
 	if ((previous?.id ?? '') === id) return unchanged;
 	const blocked = id ? trinketEquipBlockReason(id, hero.heroClass, definitions,
@@ -63,13 +64,13 @@ export function equipTrinket(
 	const needsEstate = !!previous || (!!id && source === 'inventory');
 	const items = storageItems(estate);
 	if (needsEstate && !items) {
-		return { ...unchanged, error: 'Load a valid estate file before moving trinkets to or from inventory.' };
+		return { ...unchanged, error: { id: 'hero.trinket.estate' } };
 	}
 	const match = id && source === 'inventory'
 		? Object.entries(items!).find(([, item]) => isTrinket(item) && item.id === id)
 		: undefined;
 	if (id && source === 'inventory' && !match) {
-		return { ...unchanged, error: 'This trinket is no longer in your inventory.' };
+		return { ...unchanged, error: { id: 'hero.trinket.inventory' } };
 	}
 	const incoming = match ? cloneSaveItem(match[1] as TrinketEntry) : catalogueTrinket(id, items);
 	if (match) {

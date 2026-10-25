@@ -10,9 +10,14 @@ export async function generateNameTable(gamePath: string): Promise<string[]> {
 	return await invoke<string[]>('generate_name_table', { gamePath });
 }
 
+export interface LocalizationTables {
+	table: Record<string, string>;
+	english: Record<string, string> | null;
+}
+
 /** Load display strings only; DSON identifiers use ensureNameTable independently. */
-export async function loadLocalization(gamePath: string, language = 'english'): Promise<Record<string, string>> {
-	return await invoke<Record<string, string>>('load_localization', { gamePath, language });
+export async function loadLocalization(gamePath: string, language = 'english'): Promise<LocalizationTables> {
+	return await invoke<LocalizationTables>('load_localization', { gamePath, language });
 }
 
 export async function availableGameTextLanguages(gamePath: string): Promise<string[]> {

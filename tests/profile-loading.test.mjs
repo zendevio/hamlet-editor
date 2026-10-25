@@ -21,6 +21,7 @@ const server = await createServer({
 	logLevel: 'error'
 });
 after(() => server.close());
+const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const settings = await server.ssrLoadModule('/src/lib/stores/settings.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
@@ -219,7 +220,7 @@ test('capacity rules survive a same-install reload and cannot be reused for anot
 	assert.equal(store.getRevivalBlockReason(), null);
 	settings.setGamePath('/fixtures/other-install');
 	await store.loadProfileFromBackend('/profiles/profile_0');
-	assert.match(store.getRevivalBlockReason(), /capacity is unknown/);
+	assert.match(describeMessage(store.getRevivalBlockReason()), /capacity is unknown/);
 	gameData.setRosterCapacityRules(rules, '/fixtures/other-install');
 	assert.equal(store.getRevivalBlockReason(), null);
 });

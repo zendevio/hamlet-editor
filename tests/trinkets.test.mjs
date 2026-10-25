@@ -14,8 +14,8 @@ const server = await createServer({
 	appType: 'custom', logLevel: 'error'
 });
 after(() => server.close());
-const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
+const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const { runPreSaveValidation } = await server.ssrLoadModule('/src/lib/validation.ts');
 const { equipTrinket, inventoryTrinkets, trinketEquipBlockReason, catalogueTrinket } = await server.ssrLoadModule('/src/lib/trinkets.ts');
@@ -83,7 +83,7 @@ test('missing or malformed estate, exhausted inventory and class restrictions bl
 	for (const id of ['new', '']) {
 		const h = hero();
 		h.trinkets.items['0'] = item('old');
-		assert.match(equipTrinket(h, null, '0', id, 'catalogue').error, /estate file/);
+		assert.match(describeMessage(equipTrinket(h, null, '0', id, 'catalogue').error), /estate file/);
 		assert.equal(h.trinkets.items['0'].id, 'old');
 	}
 	const definitions = [{ id: 'restricted', class_restriction: 'vestal' }];
@@ -136,7 +136,7 @@ test('catalogue store creation dirties only roster and missing estate blocks rep
 	store.resetSaveData();
 	gameData.setTrinkets([]);
 	store.loadRoster(savedRoster);
-	assert.match(store.setHeroTrinket('1', '0', 'other', 'catalogue'), /estate file/);
+	assert.match(describeMessage(store.setHeroTrinket('1', '0', 'other', 'catalogue')), /estate file/);
 	assert.deepEqual(store.getSaveData().roster, savedRoster);
 	assert.equal(store.hasDirtyFiles(), false);
 });
@@ -171,8 +171,8 @@ test('installed feature definitions refuse the Plague Doctor codex on a Crusader
 	for (const source of ['inventory', 'catalogue']) {
 		const h = hero(), e = estate({ 0: item(id), 1: item('unknown') });
 		const before = structuredClone({ h, e });
-		assert.match(equipTrinket(h, e, '0', id, source, definitions).error, /another hero class/);
-		assert.match(equipTrinket(h, e, '0', 'unknown', source, definitions).error, /Class restriction unknown/);
+		assert.match(describeMessage(equipTrinket(h, e, '0', id, source, definitions).error), /another hero class/);
+		assert.match(describeMessage(equipTrinket(h, e, '0', 'unknown', source, definitions).error), /Class restriction unknown/);
 		assert.deepEqual({ h, e }, before);
 	}
 	assert.equal(trinketEquipBlockReason(id, 'plague_doctor', definitions), null);
@@ -188,8 +188,8 @@ test('per-hero limits count the other slot and reject both sources before mutati
 			const before = structuredClone({ h, e });
 			const result = equipTrinket(h, e, '1', 'ring', source, definitions);
 			if (limit === 1) {
-				assert.match(result.error, /limited to 1 per hero/);
-				assert.match(trinketEquipBlockReason('ring', 'crusader', definitions, ['ring']), /limited/);
+				assert.match(describeMessage(result.error), /limited to 1 per hero/);
+				assert.match(describeMessage(trinketEquipBlockReason('ring', 'crusader', definitions, ['ring'])), /limited/);
 				assert.deepEqual({ h, e }, before);
 			} else assert.equal(result.changed, true);
 		}
@@ -202,5 +202,5 @@ test('validation does not flag storage overlap or copies on several heroes', () 
 	for (const guid of ids) store.getHeroRawData(guid).trinkets.items = { 0: item('ring') };
 	store.getSaveData().estate.base_root.trinkets.items = { 0: item('ring', 4) };
 	gameData.setTrinkets([{ id: 'ring', class_restriction: null, limit: 1 }]);
-	assert.equal(runPreSaveValidation().filter((issue) => issue.category === 'Trinkets').length, 0);
+	assert.equal(runPreSaveValidation().filter((issue) => issue.category.id === 'validation.category.trinkets').length, 0);
 });

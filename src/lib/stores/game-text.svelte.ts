@@ -37,11 +37,11 @@ export function requestGameText(gamePath: string, language: string): () => void 
 	errorCause = undefined;
 	loading = Boolean(gamePath);
 	if (gamePath) {
-		loadLocalization(gamePath, requested).then((table) => {
+		loadLocalization(gamePath, requested).then(({ table, english }) => {
 			if (request !== revision) return;
 			const nonempty = Object.fromEntries(Object.entries(table).filter(([, value]) => typeof value === 'string' && value.trim()));
 			if (!Object.keys(nonempty).length) throw new Error('Empty game text table');
-			setNameTable(nonempty, requested, gamePath);
+			setNameTable(nonempty, requested, gamePath, english ?? undefined);
 		}).catch((cause: unknown) => {
 			if (request !== revision) return;
 			errorCause = cause;

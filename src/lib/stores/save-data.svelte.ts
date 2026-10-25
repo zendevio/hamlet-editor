@@ -6,7 +6,7 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
-import type { ActionMessage } from '#lib/i18n/index.svelte.js';
+import type { MessageDescriptor } from '#lib/i18n/index.svelte.js';
 import { compareIds } from '#lib/i18n/intl.js';
 import { compareBuildingNames } from '#lib/save-labels.js';
 import { equipTrinket, returnTrinkets, type TrinketSource } from '#lib/trinkets.js';
@@ -366,7 +366,7 @@ export function setHeroStress(guid: string, stress: number) {
 }
 
 /** Update a hero's name. */
-export function setHeroName(guid: string, name: string): ActionMessage | null {
+export function setHeroName(guid: string, name: string): MessageDescriptor | null {
 	const raw = getHeroRawData(guid);
 	if (!raw) return { id: 'store.heroMissing' };
 	const parsed = validateHeroName(name);
@@ -516,14 +516,14 @@ export function healHeroToMax(guid: string) {
 }
 
 /** Use the installed rules and current purchases, including unsaved upgrade edits. */
-export function getRevivalBlockReason(count = 1): string | null {
+export function getRevivalBlockReason(count = 1): MessageDescriptor | null {
 	const data = getGameData();
 	const rules = loadedGamePath && data.rosterCapacityGamePath !== loadedGamePath ? null : data.rosterCapacityRules;
 	return revivalBlockReason(game, roster, rosterCapacity(game, upgrades, rules), count);
 }
 
 /** Validate the entire selection before applying a roster-only town revival. */
-export function reviveHeroes(guids: readonly string[]): ActionMessage | null {
+export function reviveHeroes(guids: readonly string[]): MessageDescriptor | null {
 	const unique = [...new Set(guids)];
 	if (!unique.length) return { id: 'store.reviveSelection' };
 	const reason = getRevivalBlockReason(unique.length);
@@ -555,7 +555,7 @@ export function setHeroCurseState(guid: string, id: string) {
 }
 
 /** Update the estate name in persist.game.json. */
-export function setEstateName(name: string): ActionMessage | null {
+export function setEstateName(name: string): MessageDescriptor | null {
 	if (!game) return { id: 'store.noGame' };
 	const parsed = validateHeroName(name);
 	if (parsed.error !== undefined) return parsed.error;
@@ -566,12 +566,12 @@ export function setEstateName(name: string): ActionMessage | null {
 	return null;
 }
 
-export function getDismissBlockReason(guid: string): string | null {
+export function getDismissBlockReason(guid: string): MessageDescriptor | null {
 	return dismissBlockReason(guid, { roster, estate, town, upgrades, game, raid });
 }
 
 /** Remove live roster/purchase references, preserving campaign and progression history. */
-export function dismissHero(guid: string): ActionMessage | null {
+export function dismissHero(guid: string): MessageDescriptor | null {
 	const reason = getDismissBlockReason(guid);
 	if (reason) return reason;
 	if (!roster) return { id: 'store.noRoster' };
@@ -596,7 +596,7 @@ export function dismissHero(guid: string): ActionMessage | null {
 	return null;
 }
 
-export function setHeroTrinket(guid: string, slot: '0' | '1', id: string, source: TrinketSource): ActionMessage | null {
+export function setHeroTrinket(guid: string, slot: '0' | '1', id: string, source: TrinketSource): MessageDescriptor | null {
 	const hero = getHeroRawData(guid);
 	if (!hero) return { id: 'store.heroMissing' };
 	const result = equipTrinket(hero, estate, slot, id, source, getGameData().trinkets);
@@ -892,7 +892,7 @@ export function getSavedHeroHp(guid: string): number | undefined {
 }
 
 /** Revert a single hero to on-disk state. */
-export function revertHero(guid: string): ActionMessage | null | undefined {
+export function revertHero(guid: string): MessageDescriptor | null | undefined {
 	if (!rosterSnapshot || !roster) return;
 	const snapshot = JSON.parse(rosterSnapshot) as RosterData;
 	const original = snapshot.base_root.heroes[guid];

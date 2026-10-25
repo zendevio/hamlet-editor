@@ -1,5 +1,7 @@
 <root>
 <language id="english">
+<entry id="hero_class_name_crusader"><![CDATA[Arena class]]></entry>
+<entry id="str_inventory_title_trinketarena_only"><![CDATA[Arena trinket]]></entry>
 <entry id="campaign_title"><![CDATA[Arena English]]></entry>
 <entry id="arena_only"><![CDATA[Arena fallback]]></entry>
 </language>

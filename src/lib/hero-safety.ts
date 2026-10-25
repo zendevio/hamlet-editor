@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from '#lib/i18n/messages.generated.js';
 import { readTreatmentSlots } from '#lib/treatment.js';
 import type { RosterCapacityRules } from '#lib/api/gamedata.js';
 import type { EstateData, GameData, HeroBaseRoot, HeroQuirk, RaidData, RosterData, TownData, TrinketEntry, UpgradesData } from '#lib/types/save-data.js';
@@ -39,32 +40,32 @@ export function equippedTrinkets(hero: HeroBaseRoot): TrinketEntry[] | null {
 	return entries;
 }
 
-export function dismissBlockReason(guid: string, data: HeroReferences): string | null {
+export function dismissBlockReason(guid: string, data: HeroReferences): MessageDescriptor | null {
 	const hero = data.roster?.base_root.heroes[guid]?.hero_file_data.raw_data.base_root;
-	if (!hero) return 'This hero is no longer in the roster.';
-	if (hero['roster.status'] === 3) return 'Dead heroes cannot be dismissed. Their roster record preserves the grave.';
-	if (livingHeroCount(data.roster!) <= 1) return 'You need at least 1 hero to venture on. Recruit another hero before dismissing this one.';
+	if (!hero) return { id: 'store.heroMissing' };
+	if (hero['roster.status'] === 3) return { id: 'hero.safety.dismissDead' };
+	if (livingHeroCount(data.roster!) <= 1) return { id: 'hero.safety.dismissLastHero' };
 	if (hero['roster.status'] === 2 || hero['roster.building_name'] || readTreatmentSlots(data.town).some(({ slot }) => String(slot.hero) === guid)) {
-		return 'Release this hero from treatment before dismissing them.';
+		return { id: 'hero.safety.dismissTreatment' };
 	}
 	if (data.game?.base_root.inraid && (data.raid?.base_root.party.heroes.includes(Number(guid)) || hero['roster.status'] === 1)) {
-		return 'This hero is in the raid party. Return to town before dismissing them.';
+		return { id: 'hero.safety.dismissParty' };
 	}
-	if (data.game?.base_root.inraid) return 'Dismissal is unavailable during a raid.';
+	if (data.game?.base_root.inraid) return { id: 'hero.safety.dismissRaid' };
 	if (!data.town || !data.upgrades || !data.game) {
-		return 'Dismissal is blocked because reference data is missing. Reload the complete profile.';
+		return { id: 'hero.safety.dismissReferences' };
 	}
 	const trinkets = equippedTrinkets(hero);
 	const storage = data.estate?.base_root.trinkets?.items;
 	if (!trinkets || (trinkets.length > 0 && (!storage || Array.isArray(storage)
 		|| Object.keys(storage).some((key) => !/^(0|[1-9]\d*)$/.test(key) || !Number.isSafeInteger(Number(key)))
 		|| Object.keys(storage).some((key) => Number(key) >= 2147483647)))) {
-		return 'Unequip trinkets first: their estate storage cannot be updated safely.';
+		return { id: 'hero.safety.dismissTrinkets' };
 	}
 	// Keep the game's four party slots; -1 marks an empty position.
 	const lastParty = data.roster?.base_root.last_party?.last_party_guids;
 	if (!Array.isArray(lastParty) || lastParty.length !== 4 || !lastParty.every((id) => Number.isInteger(id))) {
-		return 'Dismissal is blocked because the last party list has an unsupported shape.';
+		return { id: 'hero.safety.dismissPartyShape' };
 	}
 	return null;
 }
@@ -88,12 +89,12 @@ export function rosterCapacity(game: GameData | null, upgrades: UpgradesData | n
 	return Number.isInteger(capacity) && capacity > 0 ? capacity : null;
 }
 
-export function revivalBlockReason(game: GameData | null, roster: RosterData | null, capacity: number | null, count = 1): string | null {
-	if (game?.base_root.inraid) return 'Revival is blocked during a raid because restoring combat and party state is unverified. Return to town first.';
-	if (!game || !roster) return 'Game and roster data must be loaded before revival.';
-	if (Object.keys(game.base_root.persistent_ugcs ?? {}).length > 0) return 'Revival is blocked because enabled mods may change roster capacity.';
-	if (capacity === null) return 'Revival is blocked because roster capacity is unknown. Load the installed Stage Coach capacity data and complete upgrade data.';
-	if (livingHeroCount(roster) + count > capacity) return `Revival needs ${count} free roster slot${count === 1 ? '' : 's'}. The living roster is ${livingHeroCount(roster)}/${capacity}.`;
+export function revivalBlockReason(game: GameData | null, roster: RosterData | null, capacity: number | null, count = 1): MessageDescriptor | null {
+	if (game?.base_root.inraid) return { id: 'hero.safety.reviveRaid' };
+	if (!game || !roster) return { id: 'hero.safety.reviveData' };
+	if (Object.keys(game.base_root.persistent_ugcs ?? {}).length > 0) return { id: 'hero.safety.reviveMods' };
+	if (capacity === null) return { id: 'hero.safety.reviveCapacity' };
+	if (livingHeroCount(roster) + count > capacity) return { id: 'hero.safety.capacity', params: { count, countText: count, livingText: livingHeroCount(roster), capacityText: capacity } };
 	return null;
 }
 

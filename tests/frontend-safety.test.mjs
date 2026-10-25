@@ -14,6 +14,7 @@ const server = await createServer({
 	appType: 'custom', logLevel: 'error'
 });
 after(() => server.close());
+const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
 const load = (name) => server.ssrLoadModule(`/src/lib/${name}.ts`);
 const store = await load('stores/save-data.svelte');
 const { runPreSaveValidation } = await load('validation');
@@ -185,7 +186,7 @@ test('dismiss uses real profile purchases and history, removes live references a
 
 test('dismiss cleans a real last-party vector after treatment release and blocks live state', () => {
 	loadDismissReference();
-	assert.match(store.dismissHero('34'), /treatment/);
+	assert.match(describeMessage(store.dismissHero('34')), /treatment/);
 	store.releaseHeroFromTreatment('34');
 	store.clearAllDirty();
 	assert.equal(store.dismissHero('34'), null);
@@ -199,7 +200,7 @@ test('dismiss cleans a real last-party vector after treatment release and blocks
 		if (mode === 'raid') data.game.base_root.inraid = true;
 		if (mode === 'shape') data.roster.base_root.last_party.last_party_guids = {};
 		const before = JSON.stringify([data.roster, data.upgrades, data.town]);
-		assert.match(store.dismissHero('96'), /raid party|during a raid|unsupported shape/);
+		assert.match(describeMessage(store.dismissHero('96')), /raid party|during a raid|unsupported shape/);
 		assert.equal(JSON.stringify([data.roster, data.upgrades, data.town]), before);
 		assert.equal(store.hasDirtyFiles(), false);
 	}
@@ -310,10 +311,10 @@ test('dismiss refuses missing live data and treatment slots despite available st
 	loadDismissReference();
 	store.getHeroRawData('34')['roster.status'] = 0;
 	store.getHeroRawData('34')['roster.building_name'] = '';
-	assert.match(store.dismissHero('34'), /treatment/);
+	assert.match(describeMessage(store.dismissHero('34')), /treatment/);
 	const roster = store.getSaveData().roster;
 	store.resetSaveData(); store.loadRoster(roster);
-	assert.match(store.dismissHero('96'), /reference data is missing/);
+	assert.match(describeMessage(store.dismissHero('96')), /reference data is missing/);
 	assert.equal(store.hasDirtyFiles(), false);
 });
 
@@ -328,7 +329,7 @@ test('reference level-one heroes keep their higher gear through all automatic fi
 		assert.equal(hero.armourRank, rank, name);
 	}
 	const issues = runPreSaveValidation();
-	assert.equal(issues.some((issue) => issue.category === 'Gear Rank'), false);
+	assert.equal(issues.some((issue) => issue.category.id === 'validation.category.gear'), false);
 	for (const issue of issues) issue.fix?.();
 	for (const [name, rank] of Object.entries(expected)) {
 		const hero = store.getHeroes().find((hero) => hero.name === name);
@@ -347,7 +348,7 @@ test('all valid gear ranks survive validation and automatic fixes at every hero 
 			assert.equal(raw.weapon_rank, rank);
 			assert.equal(raw.armour_rank, 4 - rank);
 			const issues = runPreSaveValidation();
-			assert.equal(issues.some((issue) => issue.category === 'Gear Rank'), false);
+			assert.equal(issues.some((issue) => issue.category.id === 'validation.category.gear'), false);
 			for (const issue of issues) issue.fix?.();
 			assert.equal(raw.weapon_rank, rank);
 			assert.equal(raw.armour_rank, 4 - rank);
@@ -360,7 +361,7 @@ test('gear validation rejects invalid indices without destructive automatic fixe
 	for (const rank of [-1, 5, 1.5, NaN, Infinity]) {
 		raw.weapon_rank = rank;
 		raw.armour_rank = rank;
-		const issues = runPreSaveValidation().filter((issue) => issue.category === 'Gear Rank');
+		const issues = runPreSaveValidation().filter((issue) => issue.category.id === 'validation.category.gear');
 		assert.equal(issues.length, 2);
 		assert.ok(issues.every((issue) => issue.severity === 'error' && !issue.fix));
 		assert.equal(raw.weapon_rank, rank);
@@ -471,14 +472,14 @@ test('dismiss blocks unsupported equipment without mutations and retains the fin
     loadDismissReference();
     store.getHeroRawData('44').trinkets.items = { 0: { id: 'unverified' } };
     let before = JSON.stringify(store.getSaveData().roster);
-    assert.match(store.dismissHero('44'), /Unequip trinkets first/);
+    assert.match(describeMessage(store.dismissHero('44')), /Unequip trinkets first/);
     assert.equal(JSON.stringify(store.getSaveData().roster), before);
     assert.equal(store.hasDirtyFiles(), false);
     loadDismissReference();
     const data = store.getSaveData();
     data.roster.base_root.heroes = { 44: data.roster.base_root.heroes['44'] };
     before = JSON.stringify(data.roster);
-    assert.match(store.dismissHero('44'), /at least 1 hero/);
+    assert.match(describeMessage(store.dismissHero('44')), /at least 1 hero/);
     assert.equal(JSON.stringify(data.roster), before);
     assert.equal(store.hasDirtyFiles(), false);
 });

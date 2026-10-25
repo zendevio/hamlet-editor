@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { t } from '#lib/i18n/index.svelte.js';
+	import { describeMessage, t } from '#lib/i18n/index.svelte.js';
 	import { formatNumber } from '#lib/i18n/intl.js';
-	import { validationCategory } from '#lib/save-labels.js';
+	import Message from '#lib/i18n/Message.svelte';
+	import { gameTextLocale } from '#lib/save-labels.js';
+	import { validationMessage } from '#lib/validation-messages.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -42,6 +44,7 @@
 
 		<div class="max-h-64 space-y-2 overflow-y-auto">
 			{#each issues as issue, i (i)}
+				{@const message = validationMessage(issue)}
 				<div class="flex items-start gap-2 rounded border p-2 text-sm">
 					{#if issue.severity === 'error'}
 						<WarningCircleIcon size={16} class="mt-0.5 shrink-0 text-red-500" />
@@ -50,12 +53,18 @@
 					{/if}
 					<div class="flex-1">
 						<div class="flex items-center gap-2">
-							<Badge variant="outline" class="text-xs">{validationCategory(issue.category)}</Badge>
+							<Badge variant="outline" class="text-xs">{describeMessage(issue.category)}</Badge>
 							{#if issue.fix}
 								<Badge variant="secondary" class="text-xs">{t('validation.autoFixable')}</Badge>
 							{/if}
 						</div>
-						<p class="text-muted-foreground mt-1">{issue.message}</p>
+						<p class="text-muted-foreground mt-1">
+							<Message id={message.id} params={message.params ?? {}}>
+								{#snippet emphasis(children)}<span lang={gameTextLocale()}>{@render children()}</span>{/snippet}
+								{#snippet code(children)}{@render children()}{/snippet}
+								{#snippet link(children)}{@render children()}{/snippet}
+							</Message>
+						</p>
 					</div>
 				</div>
 			{/each}

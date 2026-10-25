@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
-import { checkCatalogKeys, checkMessageContract, contract } from './i18n-contract.mjs';
+import { checkCatalogKeys, checkMessageContract, contract, requiredPluralCategories } from './i18n-contract.mjs';
 import { IntlMessageFormat } from 'intl-messageformat';
 import { checkBaseline, scanCopy } from './i18n-ratchet.mjs';
 
@@ -75,7 +75,7 @@ for (const filename of (await readdir(new URL('catalogs/', root))).filter((name)
 				if (node.type === 5 || node.type === 6) {
 					const choices = node.type === 6 ? [...samples] : ['__catchall__'];
 					if (node.type === 6) {
-						for (const category of new Intl.PluralRules(locale, { type: node.pluralType }).resolvedOptions().pluralCategories) {
+						for (const category of requiredPluralCategories(locale, id, node)) {
 							assert.ok(node.options[category], `${locale}:${id}: missing plural category ${category}`);
 						}
 					}

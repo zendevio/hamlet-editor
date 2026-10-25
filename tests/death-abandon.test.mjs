@@ -12,8 +12,8 @@ const server = await createServer({
 	server: { middlewareMode: true, watch: null, ws: false }, appType: 'custom', logLevel: 'error'
 });
 after(() => server.close());
-const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
+const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const safety = await server.ssrLoadModule('/src/lib/hero-safety.ts');
 const raid = await server.ssrLoadModule('/src/lib/raid.ts');
@@ -70,7 +70,7 @@ test('In-raid revival, capacity exhaustion and unknown capacity fail atomically'
 		if (mode === 'full') data.roster.base_root.heroes['999'] = structuredClone(data.roster.base_root.heroes['96']);
 		if (mode === 'unknown') gameData.setRosterCapacityRules(null);
 		const before = snapshot(data);
-		assert.match(store.reviveHeroes(['58']), mode === 'raid' ? /during a raid/ : mode === 'full' ? /free roster slot/ : /capacity is unknown/);
+		assert.match(describeMessage(store.reviveHeroes(['58'])), mode === 'raid' ? /during a raid/ : mode === 'full' ? /free roster slot/ : /capacity is unknown/);
 		assert.deepEqual(snapshot(data), before);
 		assert.equal(store.hasDirtyFiles(), false);
 	}
@@ -197,13 +197,13 @@ test('town status 1 and stale raid heroes can be dismissed; the dead grave and l
 	assert.equal(store.dismissHero('96'), null);
 	data = load(4); store.loadTown(structuredClone(dismiss.town));
 	const before = snapshot(data);
-	assert.match(store.dismissHero('58'), /Dead heroes cannot be dismissed/);
+	assert.match(describeMessage(store.dismissHero('58')), /Dead heroes cannot be dismissed/);
 	assert.deepEqual(snapshot(data), before);
 	data.roster.base_root.heroes = { 58: data.roster.base_root.heroes['58'], 96: data.roster.base_root.heroes['96'] };
-	assert.match(store.dismissHero('96'), /at least 1 hero/);
+	assert.match(describeMessage(store.dismissHero('96')), /at least 1 hero/);
 	assert.equal(store.hasDirtyFiles(), false);
 	data = load(3); store.loadTown(structuredClone(dismiss.town));
-	assert.match(store.dismissHero('96'), /raid party/);
+	assert.match(describeMessage(store.dismissHero('96')), /raid party/);
 });
 
 test('dead heroes cannot equip, replace or unequip trinkets through helpers or store', () => {
@@ -213,8 +213,8 @@ test('dead heroes cannot equip, replace or unequip trinkets through helpers or s
 	for (const source of ['catalogue', 'inventory']) {
 		for (const id of ['', 'focus_ring', 'old']) {
 			const before = snapshot(data);
-			assert.match(trinkets.equipTrinket(dead, data.estate, '0', id, source).error, /dead hero/);
-			assert.match(store.setHeroTrinket('58', '0', id, source), /dead hero/);
+			assert.match(describeMessage(trinkets.equipTrinket(dead, data.estate, '0', id, source).error), /dead hero/);
+			assert.match(describeMessage(store.setHeroTrinket('58', '0', id, source)), /dead hero/);
 			assert.deepEqual(snapshot(data), before);
 		}
 	}
@@ -237,8 +237,8 @@ test('enabled campaign mods block capacity and revival without any mutation', ()
 	data.game.base_root.persistent_ugcs = { 12345: { name: 'Custom Stage Coach' } };
 	assert.equal(safety.rosterCapacity(data.game, data.upgrades, rules), null);
 	const before = snapshot(data);
-	assert.match(store.getRevivalBlockReason(), /mods/);
-	assert.match(store.reviveHeroes(['58']), /mods/);
+	assert.match(describeMessage(store.getRevivalBlockReason()), /mods/);
+	assert.match(describeMessage(store.reviveHeroes(['58'])), /mods/);
 	assert.deepEqual(snapshot(data), before);
 	assert.equal(store.hasDirtyFiles(), false);
 });

@@ -62,7 +62,7 @@ export async function installHarness() {
 		if (plan?.delayMs) await new Promise((resolve) => setTimeout(resolve, plan.delayMs));
 		if (plan?.fail) throw typeof plan.fail === 'string' ? new Error(plan.fail) : plan.fail;
 		if (plan && Object.hasOwn(plan, 'value')) return plan.value;
-		if (plan?.empty) return command === 'load_localization' ? {} : [];
+		if (plan?.empty) return command === 'load_localization' ? { table: {}, english: {} } : [];
 		if (command === 'read_settings') return { status: 'ok', values: { ...values }, folder: '/h1/settings', fingerprint: null, detail: '' };
 		if (command === 'collect_language_evidence') return {
 			os_locales: { status: 'ok', value: new URL(location.href).searchParams.has('automatic') ? ['tr-TR'] : ['en-US'] },
@@ -80,12 +80,17 @@ export async function installHarness() {
 		if (command === 'generate_name_table') return ['stage_coach.rostersize'];
 		if (command === 'set_name_table' || command === 'save_profile') return;
 		if (command === 'load_profile') return { data: structuredClone(fixture), name_table_version: 17 };
-		if (command === 'load_localization') return {
+		if (command === 'load_localization') return { table: {
 			hero_class_name_crusader: `${args.language}:crusader`,
 			hero_class_name_vestal: `${args.language}:vestal`,
 			str_inventory_title_trinketh1_trinket_a: `${args.language}:trinket-a`,
-			str_inventory_title_trinketh1_trinket_b: `${args.language}:trinket-b`
-		};
+			str_inventory_title_trinketh1_trinket_b: `${args.language}:trinket-b`,
+			str_quirk_name_quick_reflexes: `${args.language}:quick-reflexes`,
+			str_quirk_name_warrior_of_light: `${args.language}:warrior-of-light`,
+			combat_skill_name_crusader_smite: `${args.language}:smite`,
+			camping_skill_name_encourage: `${args.language}:encourage`
+		}, english: args.language === 'english' ? null : { str_quirk_name_quick_reflexes: 'english:quick-reflexes',
+			str_quirk_name_warrior_of_light: 'Warrior of Light' } };
 		if (command === 'available_game_text_languages') return Object.keys(GAME_TEXT_LOCALES);
 		if (command === 'detect_save_locations') return [{ path: '/h1/profile_0', source: 'Manual', steam_user_id: null, profile_id: 'profile_0', has_active_raid: false }];
 		if (command === 'is_game_running') {
@@ -94,8 +99,9 @@ export async function installHarness() {
 		}
 		if (command === 'check_restore') return { adds: 2, removes: 1, blocked_reason: null };
 		if (command === 'list_backups') return [{ path: '/h1/backup', timestamp: '2026-10-25T10:00:00Z', file_count: 22, profile_id: 'profile_0' }];
+		if (command === 'load_class_skills') return [{ class_id: 'crusader', combat_skills: ['smite'], camping_skills: ['encourage'] }];
 		if (command === 'load_roster_capacity_rules') return null;
-		if (['load_quirk_library', 'load_trinket_library', 'load_class_stats', 'load_class_skills', 'scan_mod_directories', 'detect_game_installations'].includes(command)) return [];
+		if (['load_quirk_library', 'load_trinket_library', 'load_class_stats', 'scan_mod_directories', 'detect_game_installations'].includes(command)) return [];
 		if (command === 'create_backup') return '/h1/backup';
 		if (command === 'open_backup_folder') return '/h1/backups';
 		throw new Error(`H1 unexpected IPC: ${command}`);

@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import { IntlMessageFormat } from 'intl-messageformat';
 const tags = ['emphasis', 'code', 'link'];
+
+/** The revival title counts selected heroes, a nonnegative integer domain. */
+export function requiredPluralCategories(locale, id, node) {
+	const categories = new Intl.PluralRules(locale, { type: node.pluralType }).resolvedOptions().pluralCategories;
+	// Exact =1 consumes the only English cardinal one count in this domain.
+	// Other locales still need their full category set, including one at 21 or 0.
+	if (locale === 'en' && id === 'heroes.reviveTitle' && node.value === 'count' &&
+		node.pluralType === 'cardinal' && node.offset === 0 && node.options['=1']) {
+		return categories.filter((category) => category !== 'one');
+	}
+	return categories;
+}
+
 // The AST comes from the exact same FormatJS parser as the runtime.
 export function contract(nodes, params = {}, slots = new Set()) {
 	for (const node of nodes) {

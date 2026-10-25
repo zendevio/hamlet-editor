@@ -1,7 +1,10 @@
 <script lang="ts">
-	import { showActionError } from '#lib/i18n/notifications.js';
-	import { describeActionMessage, type ActionMessage } from '#lib/i18n/index.svelte.js';
-	import { heroClassName, heroStatusLabel, gameTextLocale } from '#lib/save-labels.js';
+	import { showMessageError } from '#lib/i18n/notifications.js';
+	import { describeMessage, t, getEditorLocale, type MessageDescriptor } from '#lib/i18n/index.svelte.js';
+	import Message from '#lib/i18n/Message.svelte';
+	import ResolveLabel from './ResolveLabel.svelte';
+	import { formatNumber, compareNames } from '#lib/i18n/intl.js';
+	import { heroClassName, heroStatusLabel, gameTextLocale, combatSkillName, campingSkillName, trinketName, afflictionName, vampireStateName, VIRTUES } from '#lib/save-labels.js';
 
 	import { commitChangedValue, sliderControl, sliderValueLabel, sliderNumberLabel, hpSliderMax } from '#lib/control-events.js';
 	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
@@ -64,15 +67,12 @@
 		addHeroQuirk,
 		revertHero,
 		setHeroTrinket,
-		RESOLVE_LEVEL_NAMES,
-		RESOLVE_XP_THRESHOLDS,
 		getDlcFlags,
 		getSaveData,
 		getDismissBlockReason,
 		setHeroCurseState
 	} from '#lib/stores/save-data.svelte.js';
 	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks, quirkName, quirkDescription, matchesQuirkSearch } from '#lib/data/quirks.js';
-	import { snakeToTitle } from '#lib/utils.js';
 	import RevivalWizard from './RevivalWizard.svelte';
 	import TrinketPicker from './TrinketPicker.svelte';
 	import { getAvailableCombatSkills, getAvailableCampingSkills } from '#lib/stores/game-data.svelte.js';
@@ -98,7 +98,7 @@
 	// ── Name editing ──
 	let editingName = $state(false);
 	let nameValue = $state('');
-	let nameError = $state<ActionMessage>('');
+	let nameError = $state<MessageDescriptor | null>(null);
 	let nameAtStart = '';
 	let nameHeroGuid = '';
 
@@ -132,12 +132,7 @@
 
 	// ── Blood Curse derived ──
 	const VAMPIRE_QUIRK_IDS = CURSE_STATES;
-	const VAMPIRE_STATE_LABELS: Record<string, string> = {
-		disease_vampire_passive: 'Sated',
-		disease_vampire_crave: 'Craving',
-		disease_vampire_wasting: 'Wasting',
-		disease_vampire_blood_lust: 'Blood Lust'
-	};
+	const afflictionIds = ['paranoid', 'depressed', 'selfish', 'abusive', 'fearful', 'irrational', 'masochistic', 'berserk', 'color_madness', ...VIRTUES];
 
 	let vampireQuirkId = $derived(
 		Object.keys(hero.quirks).find((id) => id.startsWith('disease_vampire_')) ?? null
@@ -152,7 +147,7 @@
 	let availableCombat = $derived(getAvailableCombatSkills(hero.heroClass));
 	let availableCamping = $derived(getAvailableCampingSkills(hero.heroClass));
 
-	// Abomination has a fixed skill set — no toggling allowed
+	// Abomination has a fixed skill set; no toggling allowed
 	let isAbomination = $derived(hero.heroClass === 'abomination');
 
 	// Max selectable combat skills: 7 for abomination, 4 for all others
@@ -195,7 +190,7 @@
 	let allQuirks = $derived(getAllQuirks());
 	let filteredPickerQuirks = $derived.by(() => {
 		const existingIds = new Set(Object.keys(hero.quirks));
-		const q = quirkSearch.trim().toLowerCase();
+		const q = quirkSearch;
 		return allQuirks.filter((quirk) => {
 			if (existingIds.has(quirk.id) || !canPickQuirk(quirk.id)) return false;
 			if (quirkPickerCategory === 'positive' && quirk.category !== 'positive') return false;
@@ -203,11 +198,11 @@
 			if (!matchesQuirkSearch(quirk.id, quirk.displayName, q))
 				return false;
 			return true;
-		});
+		}).sort((a, b) => compareNames(a.displayName, a.id, b.displayName, b.id, gameTextLocale()));
 	});
 
 	function startEditName() {
-		nameError = '';
+		nameError = null;
 		nameValue = hero.name;
 		nameAtStart = hero.name;
 		nameHeroGuid = hero.guid;
@@ -225,15 +220,16 @@
 			return;
 		}
 		const parsed = validateHeroName(nameValue);
-		nameError = parsed.error ?? '';
+		nameError = parsed.error ?? null;
 		if (parsed.error !== undefined) return;
 		commitChangedValue(hero.name, parsed.value, (name) => {
-			nameError = setHeroName(hero.guid, name) ?? '';
+			nameError = setHeroName(hero.guid, name) ?? null;
 		});
 		if (!nameError) editingName = false;
 	}
 
 	function handleNameKeydown(e: KeyboardEvent) {
+		if (e.isComposing || e.keyCode === 229) return;
 		if (e.key === 'Enter') saveName();
 		if (e.key === 'Escape') {
 			editingName = false;
@@ -273,13 +269,13 @@
 
 	function handleTrinketSelect(slot: '0' | '1', trinketId: string, source: 'inventory' | 'catalogue' = 'catalogue') {
 		const reason = setHeroTrinket(hero.guid, slot, trinketId, source);
-		if (reason) showActionError(reason);
+		if (reason) showMessageError(reason);
 	}
 
 	// D8: Dismiss confirmation dialog
 	function handleDismissConfirm() {
 		const reason = dismissHero(hero.guid);
-		if (reason) { showActionError(reason); return; }
+		if (reason) { showMessageError(reason); return; }
 		dismissConfirmChecked = false;
 		dismissDialogOpen = false;
 		onDismiss?.();
@@ -287,7 +283,7 @@
 
 	function handleRevert() {
 		const reason = revertHero(hero.guid);
-		if (reason) showActionError(reason);
+		if (reason) showMessageError(reason);
 	}
 </script>
 
@@ -300,8 +296,8 @@
 			type="button"
 			class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
 			onclick={() => toggleQuirkLock(hero.guid, id)}
-			title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
-			aria-label={quirk.is_locked ? `Unlock ${quirkName(id)}` : `Lock ${quirkName(id)}`}
+			title={quirk.is_locked ? t('heroes.unlockQuirkTitle') : t('heroes.lockQuirkTitle')}
+			aria-label={t('heroes.lockQuirk', { locked: quirk.is_locked ? 'yes' : 'no', name: quirkName(id) })}
 		>
 			{#if quirk.is_locked}
 				<LockIcon size={11} class="text-yellow-500" />
@@ -309,13 +305,13 @@
 				<LockOpenIcon size={11} />
 			{/if}
 		</button>
-		<span class="flex-1 truncate text-[11px]">{quirkName(id)}</span>
+		<span lang={gameTextLocale()} class="flex-1 truncate text-[11px]">{quirkName(id)}</span>
 		<button
 			type="button"
 			class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
 			onclick={() => removeHeroQuirk(hero.guid, id)}
-			title="Remove quirk"
-			aria-label="Remove {quirkName(id)}"
+			title={t('heroes.removeQuirk')}
+			aria-label={t('heroes.removeQuirkAction', { name: quirkName(id) })}
 		>
 			<XIcon size={11} />
 		</button>
@@ -323,7 +319,7 @@
 {/snippet}
 
 <ScrollArea class="h-full">
-	<div class="space-y-4 p-4">
+	<div data-testid="hero-detail" class="space-y-4 p-4">
 		<!-- Header -->
 		<div class="flex gap-3">
 			<!-- Portrait -->
@@ -336,7 +332,7 @@
 					<GameAssetImage
 						gamePath={settings.gamePath}
 						relativePath={getPortraitPath(hero.heroClass)}
-						alt="{hero.name} portrait"
+						alt={t('heroes.portrait', { name: hero.name })}
 						class="h-full w-full object-cover"
 					/>
 				{/if}
@@ -347,14 +343,14 @@
 					{#if editingName}
 						<Input
 							bind:value={nameValue}
-							aria-label="Hero name"
+							aria-label={t('heroes.heroName')}
 							aria-invalid={!!nameError}
 							onblur={saveName}
 							onkeydown={handleNameKeydown}
 							class="h-7 text-sm font-medium"
 							autofocus
 						/>
-						{#if nameError}<p role="alert" class="text-xs text-destructive">{describeActionMessage(nameError)}</p>{/if}
+						{#if nameError}<p role="alert" class="text-xs text-destructive">{describeMessage(nameError)}</p>{/if}
 					{:else}
 						<button
 							type="button"
@@ -372,10 +368,10 @@
 						<TooltipTrigger>
 							<Button variant="ghost" size="sm" class="h-7 shrink-0 gap-1 text-xs" onclick={handleRevert}>
 								<ArrowCounterClockwiseIcon size={12} />
-								Reset
+								{t('heroes.reset')}
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent>Revert all unsaved changes for this hero</TooltipContent>
+						<TooltipContent>{t('heroes.resetHelp')}</TooltipContent>
 					</Tooltip>
 				</div>
 				<div class="flex items-center justify-between px-1 text-xs text-muted-foreground">
@@ -386,12 +382,12 @@
 					</div>
 					<Select type="single" value={String(resolveLevel)} onValueChange={(v: string) => handleLevelChange(v)}>
 						<SelectTrigger class="h-6 w-auto text-xs">
-							<span class="truncate">Lv {resolveLevel} · {RESOLVE_LEVEL_NAMES[resolveLevel]}</span>
+							<span class="truncate"><ResolveLabel level={resolveLevel} /></span>
 						</SelectTrigger>
 						<SelectContent>
 							{#each Array(7) as _, i}
 								<SelectItem value={String(i)}>
-									Lv {i} · {RESOLVE_LEVEL_NAMES[i]} (XP: {RESOLVE_XP_THRESHOLDS[i]})
+									<ResolveLabel level={i} xp />
 								</SelectItem>
 							{/each}
 						</SelectContent>
@@ -403,7 +399,7 @@
 		<!-- ═══════ Vitals Section ═══════ -->
 		<div>
 			<div class="flex items-center gap-2 py-1">
-				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Vitals</span>
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.vitals')}</span>
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-4">
@@ -415,12 +411,12 @@
 									<GameAssetIcon
 										gamePath={settings.gamePath}
 										relativePath="raid/skill_attributes/skill_attribute_heal.png"
-										alt="HP"
+										alt={t('heroes.hp')}
 										class="size-3.5"
 									>
 										{#snippet fallback()}<HeartIcon size={14} class="text-red-500" />{/snippet}
 									</GameAssetIcon>
-									<span class="text-[11px] font-medium">HP</span>
+									<span class="text-[11px] font-medium">{t('heroes.hp')}</span>
 								</div>
 								<span
 									class="text-xs font-mono {hero.currentHp < maxHp * 0.5
@@ -438,11 +434,11 @@
 								variant="outline"
 								size="sm"
 								class="mt-1.5 h-6 w-full text-[11px]"
-								title="Heal to the class base maximum; buffs are not included. Existing higher HP is kept."
+								title={t('heroes.healHelp')}
 								onclick={() => healHeroToMax(hero.guid)}
 								disabled={hero.currentHp >= maxHp}
 							>
-								Heal to Max
+								{t('heroes.healToMax')}
 							</Button>
 						</div>
 
@@ -453,19 +449,19 @@
 									<GameAssetIcon
 										gamePath={settings.gamePath}
 										relativePath="raid/skill_attributes/skill_attribute_stress.png"
-										alt="Stress"
+										alt={t('heroes.stress')}
 										class="size-3.5"
 									>
 										{#snippet fallback()}<BrainIcon size={14} class="text-yellow-500" />{/snippet}
 									</GameAssetIcon>
-									<span class="text-[11px] font-medium">Stress</span>
+									<span class="text-[11px] font-medium">{t('heroes.stress')}</span>
 								</div>
 								<span
 									class="text-xs font-mono {hero.stress >= 100
 										? 'text-red-500 font-bold'
 										: 'text-muted-foreground'}"
 								>
-									{sliderValueLabel(hero.stress, { min: 0, max: 200, step: 1 })} / 200
+									{sliderValueLabel(hero.stress, { min: 0, max: 200, step: 1 })} / {formatNumber(200)}
 								</span>
 							</div>
 							<Slider
@@ -479,11 +475,15 @@
 								onclick={() => setHeroStress(hero.guid, 0)}
 								disabled={hero.stress === 0}
 							>
-								Clear Stress
+								{t('heroes.clearStress')}
 							</Button>
 							{#if hero.stress >= 100}
 								<p class="text-destructive mt-1 text-[11px]">
-									Affliction threshold reached ({hero.afflictionTypeId || 'none set'})
+									<Message id="heroes.afflictionThreshold" params={{ name: hero.afflictionTypeId ? afflictionName(hero.afflictionTypeId) : t('heroes.noneSet') }}>
+										{#snippet emphasis(children)}<span lang={hero.afflictionTypeId ? gameTextLocale() : getEditorLocale()}>{@render children()}</span>{/snippet}
+										{#snippet code(children)}{@render children()}{/snippet}
+										{#snippet link(children)}{@render children()}{/snippet}
+									</Message>
 								</p>
 							{/if}
 						</div>
@@ -499,7 +499,7 @@
 						<!-- Affliction -->
 						<div class="flex-1">
 							<div class="mb-1 flex items-center justify-between">
-								<span class="text-[11px] font-medium">Affliction / Virtue</span>
+								<span class="text-[11px] font-medium">{t('heroes.afflictionVirtue')}</span>
 								{#if hero.afflictionTypeId || hero.virtueTypeId}
 									<Button
 										variant="ghost"
@@ -507,7 +507,7 @@
 										class="h-5 text-[10px]"
 										onclick={() => setHeroAffliction(hero.guid, '')}
 									>
-										Clear
+										{t('heroes.clear')}
 									</Button>
 								{/if}
 							</div>
@@ -517,26 +517,19 @@
 								onValueChange={(v: string) => commitChangedValue(hero.virtueTypeId || hero.afflictionTypeId || '_none', v, (id) => setHeroAffliction(hero.guid, id === '_none' ? '' : id))}
 							>
 								<SelectTrigger class="h-8 text-xs">
-									<span>{hero.virtueTypeId ? snakeToTitle(hero.virtueTypeId) : hero.afflictionTypeId ? snakeToTitle(hero.afflictionTypeId) : 'None'}</span>
+									<span>{#if hero.virtueTypeId || hero.afflictionTypeId}<span lang={gameTextLocale()}>{afflictionName(hero.virtueTypeId || hero.afflictionTypeId)}</span>{:else}{t('heroes.none')}{/if}</span>
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="_none">None</SelectItem>
-									<SelectItem value="paranoid">Paranoid</SelectItem>
-									<SelectItem value="depressed">Hopeless</SelectItem>
-									<SelectItem value="selfish">Selfish</SelectItem>
-									<SelectItem value="abusive">Abusive</SelectItem>
-									<SelectItem value="fearful">Fearful</SelectItem>
-									<SelectItem value="irrational">Irrational</SelectItem>
-									<SelectItem value="masochistic">Masochistic</SelectItem>
-									<SelectItem value="berserk">Rapturous (Flagellant)</SelectItem>
-									{#if dlcFlags.hasColorOfMadness}
-										<SelectItem value="color_madness">Refracted (Color of Madness)</SelectItem>
-									{/if}
-									<SelectItem value="courageous">Courageous (Virtue)</SelectItem>
-									<SelectItem value="focused">Focused (Virtue)</SelectItem>
-									<SelectItem value="powerful">Powerful (Virtue)</SelectItem>
-									<SelectItem value="vigorous">Vigorous (Virtue)</SelectItem>
-									<SelectItem value="stalwart">Stalwart (Virtue)</SelectItem>
+									<SelectItem value="_none">{t('heroes.none')}</SelectItem>
+									{#each afflictionIds.filter((id) => id !== 'color_madness' || dlcFlags.hasColorOfMadness) as id (id)}
+										<SelectItem value={id}>
+											<Message id="heroes.afflictionOption" params={{ name: afflictionName(id), kind: VIRTUES.includes(id) ? 'virtue' : id }}>
+												{#snippet code(children)}{@render children()}{/snippet}
+												{#snippet link(children)}{@render children()}{/snippet}
+												{#snippet emphasis(children)}<span lang={gameTextLocale()}>{@render children()}</span>{/snippet}
+											</Message>
+										</SelectItem>
+									{/each}
 								</SelectContent>
 							</Select>
 						</div>
@@ -544,19 +537,18 @@
 						<!-- Deaths Door -->
 						<div class="flex-1">
 							<div class="mb-1 flex items-center justify-between">
-								<span class="text-[11px] font-medium">Death's Door</span>
+								<span class="text-[11px] font-medium">{t('heroes.deathsDoor')}</span>
 								<Tooltip>
 									<TooltipTrigger>
-										<span class="text-muted-foreground text-[10px]">Historical flag</span>
+										<span class="text-muted-foreground text-[10px]">{t('heroes.historicalFlag')}</span>
 									</TooltipTrigger>
 									<TooltipContent class="max-w-60">
-										Indicates this hero has previously reached Death's Door. Does not directly affect
-										current gameplay state.
+										{t('heroes.deathsDoorHelp')}
 									</TooltipContent>
 								</Tooltip>
 							</div>
 							<div class="flex h-8 items-center justify-between rounded-none border px-2">
-								<span class="text-xs text-muted-foreground">{hero.visitedDeathsDoor ? 'Visited' : 'Never'}</span>
+								<span class="text-xs text-muted-foreground">{hero.visitedDeathsDoor ? t('heroes.visited') : t('heroes.never')}</span>
 								<Switch
 									checked={hero.visitedDeathsDoor}
 									onCheckedChange={(checked) => commitChangedValue(hero.visitedDeathsDoor, checked, (value) => setHeroDeathsDoor(hero.guid, value))}
@@ -570,7 +562,7 @@
 		<!-- ═══════ Quirks Section ═══════ -->
 		<div>
 			<div class="flex items-center gap-2 py-1">
-				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Quirks</span>
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.quirks')}</span>
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 grid grid-cols-2 gap-4">
@@ -578,7 +570,7 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between">
 							<span class="text-[11px] font-medium text-green-600 dark:text-green-400">
-								Positive ({positiveQuirks.length}/5)
+								{t('heroes.positiveCount', { countText: formatNumber(positiveQuirks.length) })}
 							</span>
 						</div>
 						<div class="space-y-1">
@@ -594,7 +586,7 @@
 								onclick={() => openQuirkPicker('positive')}
 							>
 								<PlusIcon size={11} class="mr-1" />
-								Add Positive
+								{t('heroes.addPositive')}
 							</Button>
 						{/if}
 					</div>
@@ -603,14 +595,14 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between">
 							<span class="text-[11px] font-medium text-red-600 dark:text-red-400">
-								Negative ({negativeCount}/5)
+								{t('heroes.negativeCount', { countText: formatNumber(negativeCount) })}
 							</span>
 						</div>
 
 						<!-- Diseases -->
 						{#if diseaseQuirks.length > 0}
 							<div class="mb-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-								Diseases
+								{t('heroes.diseases')}
 							</div>
 							<div class="space-y-1">
 								{#each diseaseQuirks as [id, quirk] (id)}
@@ -633,33 +625,33 @@
 								onclick={() => openQuirkPicker('negative')}
 							>
 								<PlusIcon size={11} class="mr-1" />
-								Add Negative
+								{t('heroes.addNegative')}
 							</Button>
 						{/if}
 						<p class="text-muted-foreground mt-2 text-[10px]">
-							Diseases count toward the 5-quirk limit.
+							{t('heroes.diseaseLimitHelp')}
 						</p>
 					</div>
 				</div>
 
 				<!-- Quirk Picker Overlay -->
 				{#if showQuirkPicker}
-					<div class="mt-3 rounded-none border p-2">
+					<div data-testid="quirk-picker" class="mt-3 rounded-none border p-2">
 						<div class="mb-2 flex items-center justify-between">
 							<span class="text-[11px] font-medium">
-								Add {quirkPickerCategory === 'positive' ? 'Positive' : 'Negative/Disease'} Quirk
+								{t('heroes.addQuirk', { category: quirkPickerCategory })}
 							</span>
 							<button
 								type="button"
 								class="text-muted-foreground cursor-pointer hover:text-foreground"
 								onclick={() => (showQuirkPicker = false)}
-								aria-label="Close quirk picker"
+								aria-label={t('heroes.closeQuirkPicker')}
 							>
 								<XIcon size={14} />
 							</button>
 						</div>
 						<Input
-							placeholder="Search quirks..."
+							placeholder={t('heroes.searchQuirks')}
 							bind:value={quirkSearch}
 							class="mb-2 h-7 text-xs"
 							autofocus
@@ -679,16 +671,16 @@
 												: 'bg-red-500'}"
 									></span>
 									<span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
-										<span>{quirk.displayName}</span>
+										<span lang={gameTextLocale()}>{quirk.displayName}</span>
 										<span class="text-muted-foreground/50 text-[10px]">{quirk.id}</span>
 										{#if quirk.description}
-											<span class="text-muted-foreground line-clamp-2 block text-[10px] leading-snug" title={quirk.description}>{quirk.description}</span>
+											<span class="text-muted-foreground line-clamp-2 block text-[10px] leading-snug" lang={gameTextLocale()} title={quirk.description}>{quirk.description}</span>
 										{/if}
 									</span>
 								</button>
 							{/each}
 							{#if filteredPickerQuirks.length === 0}
-								<p class="text-muted-foreground py-2 text-center text-[11px]">No quirks found</p>
+								<p class="text-muted-foreground py-2 text-center text-[11px]">{t('heroes.noQuirksFound')}</p>
 							{/if}
 						</div>
 					</div>
@@ -698,14 +690,14 @@
 		<!-- ═══════ D1: Skills Section ═══════ -->
 		<div>
 			<div class="flex items-center gap-2 py-1">
-				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Skills</span>
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.skills')}</span>
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-3">
 					<!-- Combat Skills -->
 					<div>
 						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
-							Combat Skills ({combatSkillIds.length}{availableCombat.length > 0 && !isAbomination ? `/${MAX_COMBAT_SKILLS}` : ''})
+							{t('heroes.combatCount', { countText: formatNumber(combatSkillIds.length), limited: availableCombat.length > 0 && !isAbomination ? 'yes' : 'no', maxText: formatNumber(MAX_COMBAT_SKILLS) })}
 						</span>
 						{#if availableCombat.length > 0}
 							{#if isAbomination}
@@ -713,11 +705,11 @@
 									{#each availableCombat as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px] opacity-60">
 											<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
-											<span class="truncate font-mono">{snakeToTitle(skillId)}</span>
+											<span lang={gameTextLocale()} class="truncate font-mono">{combatSkillName(hero.heroClass, skillId)}</span>
 										</div>
 									{/each}
 								</div>
-								<p class="text-muted-foreground mt-1 text-[10px]">Fixed skill set.</p>
+								<p class="text-muted-foreground mt-1 text-[10px]">{t('heroes.fixedSkillSet')}</p>
 							{:else}
 								<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
 									{#each availableCombat as skillId (skillId)}
@@ -734,25 +726,25 @@
 													disabled={disableOn || disableOff}
 													onclick={() => handleToggleCombat(skillId)}
 													aria-pressed={isSelected}
-													aria-label="{isSelected ? 'Deselect' : 'Select'} {snakeToTitle(skillId)}"
+													aria-label={t('heroes.skillAction', { selected: isSelected ? 'yes' : 'no', name: combatSkillName(hero.heroClass, skillId) })}
 												>
 													{#if isSelected}
 														<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
 													{:else}
 														<span class="h-2 w-2 rounded-full border border-orange-400 shrink-0"></span>
 													{/if}
-													<span class="truncate font-mono">{snakeToTitle(skillId)}</span>
+													<span lang={gameTextLocale()} class="truncate font-mono">{combatSkillName(hero.heroClass, skillId)}</span>
 												</button>
 											</TooltipTrigger>
 											<TooltipContent>
 												{#if disableOn}
-													4 combat skills already selected
+													{t('heroes.combatLimit')}
 												{:else if disableOff}
-													At least 1 combat skill must remain
+													{t('heroes.combatMinimum')}
 												{:else if isSelected}
-													Click to deselect
+													{t('heroes.clickToDeselect')}
 												{:else}
-													Click to select
+													{t('heroes.clickToSelect')}
 												{/if}
 											</TooltipContent>
 										</Tooltip>
@@ -766,15 +758,15 @@
 									{#each combatSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
-											<span class="truncate font-mono">{skillId}</span>
+											<span lang={gameTextLocale()} class="truncate font-mono">{combatSkillName(hero.heroClass, skillId)}</span>
 										</div>
 									{/each}
 								</div>
 							{:else}
-								<p class="text-muted-foreground text-[11px]">No combat skills selected.</p>
+								<p class="text-muted-foreground text-[11px]">{t('heroes.noCombatSkillsSelected')}</p>
 							{/if}
 							<p class="text-muted-foreground/60 text-[10px]">
-								Read-only. Load game data to enable editing.
+								{t('heroes.skillsReadOnly')}
 							</p>
 						{/if}
 					</div>
@@ -782,7 +774,7 @@
 					<!-- Camping Skills -->
 					<div>
 						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">
-							Camping Skills ({campingSkillIds.length})
+							{t('heroes.campingCount', { countText: formatNumber(campingSkillIds.length) })}
 						</span>
 						{#if availableCamping.length > 0}
 							<div class="grid grid-cols-2 gap-0.5 xl:grid-cols-4">
@@ -796,18 +788,18 @@
 													{isSelected ? 'bg-blue-500/10 hover:bg-blue-500/20' : 'hover:bg-muted'}"
 												onclick={() => handleToggleCamping(skillId)}
 												aria-pressed={isSelected}
-												aria-label="{isSelected ? 'Deselect' : 'Select'} {snakeToTitle(skillId)}"
+												aria-label={t('heroes.skillAction', { selected: isSelected ? 'yes' : 'no', name: campingSkillName(skillId) })}
 											>
 												{#if isSelected}
 													<span class="h-2 w-2 rounded-full bg-blue-400 shrink-0 ring-1 ring-blue-400"></span>
 												{:else}
 													<span class="h-2 w-2 rounded-full border border-blue-400 shrink-0"></span>
 												{/if}
-												<span class="truncate font-mono">{snakeToTitle(skillId)}</span>
+												<span lang={gameTextLocale()} class="truncate font-mono">{campingSkillName(skillId)}</span>
 											</button>
 										</TooltipTrigger>
 										<TooltipContent>
-											{#if isSelected}Click to deselect{:else}Click to select{/if}
+											{#if isSelected}{t('heroes.clickToDeselect')}{:else}{t('heroes.clickToSelect')}{/if}
 										</TooltipContent>
 									</Tooltip>
 								{/each}
@@ -819,15 +811,15 @@
 									{#each campingSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
-											<span class="truncate font-mono">{skillId}</span>
+											<span lang={gameTextLocale()} class="truncate font-mono">{campingSkillName(skillId)}</span>
 										</div>
 									{/each}
 								</div>
 							{:else}
-								<p class="text-muted-foreground text-[11px]">No camping skills selected.</p>
+								<p class="text-muted-foreground text-[11px]">{t('heroes.noCampingSkillsSelected')}</p>
 							{/if}
 							<p class="text-muted-foreground/60 text-[10px]">
-								Read-only. Load game data to enable editing.
+								{t('heroes.skillsReadOnly')}
 							</p>
 						{/if}
 					</div>
@@ -837,7 +829,7 @@
 		<!-- ═══════ Equipment Section ═══════ -->
 		<div>
 			<div class="flex items-center gap-2 py-1">
-				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Equipment</span>
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.equipment')}</span>
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-3">
@@ -845,7 +837,7 @@
 						<!-- Weapon Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
-								Weapon (max: 4)
+								{t('heroes.weaponMax4')}
 							</span>
 							<Select
 								type="single"
@@ -853,11 +845,11 @@
 								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) commitChangedValue(hero.weaponRank, parsed.value, (rank) => setHeroWeaponRank(hero.guid, rank)); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
-									<span>Rank {hero.weaponRank}</span>
+									<span>{t('heroes.rank', { rankText: formatNumber(hero.weaponRank) })}</span>
 								</SelectTrigger>
 								<SelectContent>
 									{#each Array(5) as _, i}
-										<SelectItem value={String(i)}>Rank {i}</SelectItem>
+										<SelectItem value={String(i)}>{t('heroes.rank', { rankText: formatNumber(i) })}</SelectItem>
 									{/each}
 								</SelectContent>
 							</Select>
@@ -866,7 +858,7 @@
 						<!-- Armour Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
-								Armour (max: 4)
+								{t('heroes.armourMax4')}
 							</span>
 							<Select
 								type="single"
@@ -874,32 +866,32 @@
 								onValueChange={(v: string) => { const parsed = parseInteger(v, 0, 4); if (parsed.error === undefined) commitChangedValue(hero.armourRank, parsed.value, (rank) => setHeroArmourRank(hero.guid, rank)); }}
 							>
 								<SelectTrigger class="h-8 text-xs">
-									<span>Rank {hero.armourRank}</span>
+									<span>{t('heroes.rank', { rankText: formatNumber(hero.armourRank) })}</span>
 								</SelectTrigger>
 								<SelectContent>
 									{#each Array(5) as _, i}
-										<SelectItem value={String(i)}>Rank {i}</SelectItem>
+										<SelectItem value={String(i)}>{t('heroes.rank', { rankText: formatNumber(i) })}</SelectItem>
 									{/each}
 								</SelectContent>
 							</Select>
 							<p class="text-muted-foreground mt-1 text-[10px]">
-								Base max HP at current armour rank: {maxHp} (buffs not included)
+								{t('heroes.baseHp', { hpText: formatNumber(maxHp) })}
 							</p>
 						</div>
 					</div>
 
 					<!-- D3: Trinket Slots -->
 					<div>
-						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">Trinkets</span>
+						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">{t('heroes.trinkets')}</span>
 						<div class="grid grid-cols-2 gap-2">
 							<!-- Slot 0 -->
 							<div>
-								<span class="text-muted-foreground mb-1 block text-[10px]">Slot 1</span>
+								<span class="text-muted-foreground mb-1 block text-[10px]">{t('heroes.slot1')}</span>
 								<div class="rounded-none border px-2 py-1.5 text-[11px] {trinketSlot0?.id ? '' : 'text-muted-foreground'}">
 									{#if trinketSlot0?.id}
-										<span class="font-mono">{trinketSlot0.id}</span>
+										<span lang={gameTextLocale()} class="font-mono">{trinketName(trinketSlot0.id)}</span>
 									{:else}
-										<span class="italic">Empty</span>
+										<span class="italic">{t('heroes.empty')}</span>
 									{/if}
 								</div>
 								<TrinketPicker
@@ -912,12 +904,12 @@
 							</div>
 							<!-- Slot 1 -->
 							<div>
-								<span class="text-muted-foreground mb-1 block text-[10px]">Slot 2</span>
+								<span class="text-muted-foreground mb-1 block text-[10px]">{t('heroes.slot2')}</span>
 								<div class="rounded-none border px-2 py-1.5 text-[11px] {trinketSlot1?.id ? '' : 'text-muted-foreground'}">
 									{#if trinketSlot1?.id}
-										<span class="font-mono">{trinketSlot1.id}</span>
+										<span lang={gameTextLocale()} class="font-mono">{trinketName(trinketSlot1.id)}</span>
 									{:else}
-										<span class="italic">Empty</span>
+										<span class="italic">{t('heroes.empty')}</span>
 									{/if}
 								</div>
 								<TrinketPicker
@@ -929,7 +921,7 @@
 								/>
 							</div>
 						</div>
-						{#if isDead}<p class="text-muted-foreground mt-1 text-[10px]">Revive this hero in town before changing trinkets.</p>{/if}
+						{#if isDead}<p class="text-muted-foreground mt-1 text-[10px]">{t('heroes.trinketsDeadHelp')}</p>{/if}
 					</div>
 			</div>
 		</div>
@@ -939,34 +931,34 @@
 			<div>
 				<div class="flex items-center gap-2 py-1">
 					<DropIcon size={14} class="shrink-0 text-red-500" />
-					<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Blood Curse</span>
+					<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.bloodCurse')}</span>
 					<Separator class="flex-1" />
 					{#if vampireQuirkId}
 						<Badge variant="outline" class="shrink-0 h-4 text-[10px] text-red-600 dark:text-red-400">
-							{VAMPIRE_STATE_LABELS[vampireQuirkId] ?? vampireQuirkId}
+							{vampireStateName(vampireQuirkId)}
 						</Badge>
 					{/if}
 				</div>
 				<div class="mt-2 space-y-2">
 						<div>
-							<span class="text-muted-foreground mb-1 block text-[11px]">Current State</span>
+							<span class="text-muted-foreground mb-1 block text-[11px]">{t('heroes.currentState')}</span>
 							<Select
 								type="single"
 								value={vampireQuirkId ?? ''}
 								onValueChange={(v: string) => handleBloodCurseChange(v)}
 							>
 								<SelectTrigger class="h-8 text-xs">
-									<span>{vampireQuirkId ? VAMPIRE_STATE_LABELS[vampireQuirkId] : 'Unknown'}</span>
+									<span>{#if vampireQuirkId}{vampireStateName(vampireQuirkId)}{:else}{t('heroes.unknown')}{/if}</span>
 								</SelectTrigger>
 								<SelectContent>
 									{#each VAMPIRE_QUIRK_IDS as id (id)}
-										<SelectItem value={id}>{VAMPIRE_STATE_LABELS[id]}</SelectItem>
+										<SelectItem value={id}>{vampireStateName(id)}</SelectItem>
 									{/each}
 								</SelectContent>
 							</Select>
 						</div>
 						<p class="text-muted-foreground text-[10px]">
-							Only one Blood Curse state can be active at a time. Changing state replaces the current quirk.
+							{t('heroes.curseHelp')}
 						</p>
 					</div>
 			</div>
@@ -975,7 +967,7 @@
 		<!-- ═══════ Actions Section ═══════ -->
 		<div>
 			<div class="flex items-center gap-2 py-1">
-				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">Actions</span>
+				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.actions')}</span>
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-2">
@@ -987,18 +979,18 @@
 							onclick={() => (revivalWizardOpen = true)}
 						>
 							<HeartIcon size={14} class="text-green-500" />
-							Revive Hero
+							{t('heroes.reviveHero')}
 						</Button>
 						<p class="text-muted-foreground text-[10px]">
-							Revive in town when a roster slot is free. Skill upgrades lost at death are not restored.
+							{t('heroes.reviveConsequences')}
 						</p>
 					{/if}
 
-					<!-- D8: Dismiss Hero — triggers AlertDialog -->
+					<!-- D8: Dismiss Hero : triggers AlertDialog -->
 					<div class="rounded-none border border-red-500/20 p-3">
-						<p class="mb-2 text-xs font-medium text-red-600 dark:text-red-400">Dismiss Hero</p>
+						<p class="mb-2 text-xs font-medium text-red-600 dark:text-red-400">{t('heroes.dismissHero')}</p>
 						<p class="text-muted-foreground mb-2 text-[11px]">
-							Permanently remove {hero.name} from the roster. This cannot be undone after saving.
+							{t('heroes.dismissDescription', { name: hero.name })}
 						</p>
 						<Button
 							variant="destructive"
@@ -1008,9 +1000,9 @@
 							onclick={() => (dismissDialogOpen = true)}
 						>
 							<TrashIcon size={14} />
-							Dismiss {hero.name}
+							{t('heroes.dismissName', { name: hero.name })}
 						</Button>
-						{#if dismissReason}<p class="mt-2 text-xs text-destructive">{describeActionMessage(dismissReason)}</p>{/if}
+						{#if dismissReason}<p class="mt-2 text-xs text-destructive">{describeMessage(dismissReason)}</p>{/if}
 					</div>
 			</div>
 		</div>
@@ -1023,17 +1015,17 @@
 		<DialogHeader>
 			<DialogTitle class="flex items-center gap-2 text-sm">
 				<TrashIcon size={16} class="text-destructive" />
-				Dismiss {hero.name}?
+				{t('heroes.dismissQuestion', { name: hero.name })}
 			</DialogTitle>
 			<DialogDescription>
-				This will permanently remove the hero from your roster.
+				{t('heroes.dismissDialogHelp')}
 			</DialogDescription>
 		</DialogHeader>
 		<div class="space-y-3 py-2">
 			<label class="flex cursor-pointer items-start gap-2">
 				<Checkbox bind:checked={dismissConfirmChecked} class="mt-0.5" />
 				<span class="text-[11px] leading-relaxed">
-					I understand this cannot be undone.
+					{t('heroes.dismissConfirm')}
 				</span>
 			</label>
 		</div>
@@ -1043,7 +1035,7 @@
 				size="sm"
 				onclick={() => { dismissDialogOpen = false; dismissConfirmChecked = false; }}
 			>
-				Cancel
+				{t('heroes.cancel')}
 			</Button>
 			<Button
 				variant="destructive"
@@ -1053,7 +1045,7 @@
 				class="gap-1"
 			>
 				<TrashIcon size={14} />
-				Dismiss
+				{t('heroes.dismiss')}
 			</Button>
 		</DialogFooter>
 	</DialogContent>

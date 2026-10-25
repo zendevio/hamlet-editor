@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatNumber } from '#lib/i18n/intl.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import HeroList from '#lib/components/heroes/HeroList.svelte';
 	import HeroDetail from '#lib/components/heroes/HeroDetail.svelte';
@@ -40,17 +42,17 @@
 {#if !saveData.isLoaded}
 	<div class="flex flex-col items-center gap-4">
 		<EmptyState
-			title="No profile loaded"
-			description="Open Settings to configure your save file location, then select a profile to begin editing."
+			title={t('heroes.noProfile')}
+			description={t('heroes.noProfileHelp')}
 		/>
 		{#if import.meta.env.DEV}
 			<Button variant="outline" size="sm" onclick={loadMockData}>
-				Load Mock Data (Dev)
+				{t('heroes.loadMock')}
 			</Button>
 		{/if}
 	</div>
 {:else}
-	<div class="flex h-full min-h-0 flex-col">
+	<div data-testid="heroes-page" class="flex h-full min-h-0 flex-col">
 		<!-- Batch Toolbar -->
 		<BatchToolbar {selectedHeroes} totalCount={heroes.length} />
 
@@ -69,26 +71,26 @@
 					<!-- Batch Summary -->
 					<div class="flex h-full flex-col items-center justify-center p-6">
 						<p class="text-muted-foreground mb-4 text-sm font-medium">
-							{selectedGuids.size} heroes selected
+							{t('heroes.batchSelected', { count: selectedGuids.size, countText: formatNumber(selectedGuids.size) })}
 						</p>
 						<div class="flex max-w-md flex-wrap gap-2">
 							{#each selectedHeroes as hero (hero.guid)}
 								<div class="bg-muted flex items-center gap-2 px-2 py-1 text-xs">
 									<span class="h-2 w-2 rounded-full {hero.statusDotClass}"></span>
 									<span>{hero.name}</span>
-									<span class="text-muted-foreground">Lv {hero.resolveLevel}</span>
+									<span class="text-muted-foreground">{t('heroes.levelShort', { levelText: formatNumber(hero.resolveLevel) })}</span>
 								</div>
 							{/each}
 						</div>
 						<p class="text-muted-foreground mt-4 text-xs">
-							Use the toolbar above to apply batch operations.
+							{t('heroes.batchHelp')}
 						</p>
 					</div>
 				{:else if activeHero}
 					<HeroDetail hero={activeHero} onDismiss={handleDismiss} />
 				{:else}
 					<div class="flex h-full items-center justify-center">
-						<p class="text-muted-foreground text-sm">Select a hero to edit</p>
+						<p class="text-muted-foreground text-sm">{t('heroes.selectHero')}</p>
 					</div>
 				{/if}
 			</ResizablePane>

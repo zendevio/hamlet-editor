@@ -1,7 +1,9 @@
-import { CLASS_DISPLAY_NAMES, BUILDING_DISPLAY_NAMES } from '#lib/data/constants.js';
+import { snakeToTitle } from '#lib/utils.js';
+import { CLASS_DISPLAY_NAMES, BUILDING_DISPLAY_NAMES, ACTIVITY_DISPLAY_NAMES, RESOLVE_LEVEL_NAMES } from '#lib/data/constants.js';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
-import { getGameData, localize } from '#lib/stores/game-data.svelte.js';
+import { getGameData, localize, localizeEnglish } from '#lib/stores/game-data.svelte.js';
 import { t } from '#lib/i18n/index.svelte.js';
+import { CURSE_STATES } from '#lib/hero-safety.js';
 import { compareNames } from '#lib/i18n/intl.js';
 
 export function gameTextLocale(): string {
@@ -33,12 +35,44 @@ export function compareBuildingNames(a: { buildingName: string }, b: { buildingN
 		buildingDisplayName(b.buildingName), b.buildingName, gameTextLocale());
 }
 
-/** Compatibility with validation.ts categories until its S3 descriptor migration. */
-export function validationCategory(category: string): string {
-	switch (category) {
-		case 'Gear Rank': return t('validation.category.gear');
-		case 'Treatment': return t('validation.category.treatment');
-		case 'DLC': return t('validation.category.dlc');
-		default: return category;
-	}
+
+export function heroClassEnglishName(id: string): string {
+	// Search aliases: hero_class_name_, str_inventory_title_trinket, str_quirk_name_.
+	// Keep in sync with SEARCH_ALIAS_PREFIXES in src-tauri/src/commands/names.rs and quirks.ts.
+	return localizeEnglish('hero_class_name_' + id, CLASS_DISPLAY_NAMES[id] ?? id);
+}
+
+export function resolveTitle(level: number): string {
+	return localize(`str_resolve_${level}`, RESOLVE_LEVEL_NAMES[level] ?? String(level));
+}
+
+export function combatSkillName(heroClass: string, id: string): string {
+	return localize(`combat_skill_name_${heroClass}_${id}`, snakeToTitle(id));
+}
+
+export function campingSkillName(id: string): string {
+	return localize(`camping_skill_name_${id}`, snakeToTitle(id));
+}
+
+export function trinketName(id: string): string {
+	return localize(`str_inventory_title_trinket${id}`, snakeToTitle(id));
+}
+
+export function trinketEnglishName(id: string): string {
+	return localizeEnglish(`str_inventory_title_trinket${id}`, snakeToTitle(id));
+}
+
+const AFFLICTIONS: Record<string, string> = { depressed: 'Hopeless', berserk: 'Rapturous', color_madness: 'Refracted' };
+export const VIRTUES = ['courageous', 'focused', 'powerful', 'vigorous', 'stalwart'];
+export function afflictionName(id: string): string {
+	return localize(`${VIRTUES.includes(id) ? 'str_virtue_name_' : 'str_affliction_name_'}${id}`, AFFLICTIONS[id] ?? snakeToTitle(id));
+}
+
+export function vampireStateName(id: string): string {
+	// An unrecognized state (for example from a mod) keeps its raw id visible.
+	return CURSE_STATES.includes(id as (typeof CURSE_STATES)[number]) ? t('heroes.curseState', { state: id }) : id;
+}
+
+export function activityDisplayName(id: string): string {
+	return localize('town_activity_name_' + id, ACTIVITY_DISPLAY_NAMES[id] ?? snakeToTitle(id));
 }

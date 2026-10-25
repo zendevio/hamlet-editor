@@ -2,10 +2,12 @@
      For typical DD1 rosters (< 30 heroes), this performs well.
      Virtual scrolling can be added later if needed for heavily modded games. -->
 <script lang="ts">
-	import { compareNames } from '#lib/i18n/intl.js';
-	import { heroClassName, gameTextLocale } from '#lib/save-labels.js';
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatNumber, compareNames } from '#lib/i18n/intl.js';
+	import { heroClassEnglishName, heroStatusLabel, heroClassName, gameTextLocale } from '#lib/save-labels.js';
+	import { matchesSearch } from '#lib/search.js';
+	import { sortHeroes } from '#lib/hero-order.js';
 
-	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
@@ -25,11 +27,7 @@
 	import { getSettings } from '#lib/stores/settings.svelte.js';
 	import { getPortraitPath } from '#lib/utils.js';
 	import type { HeroSummary } from '#lib/stores/save-data.svelte.js';
-	import {
-		STATUS_MAP,
-		RESOLVE_LEVEL_NAMES,
-		CLASS_DISPLAY_NAMES
-	} from '#lib/stores/save-data.svelte.js';
+	import { STATUS_MAP } from '#lib/stores/save-data.svelte.js';
 
 	const settings = getSettings();
 
@@ -52,7 +50,7 @@
 
 	// Available classes from current hero data
 	let availableClasses = $derived(
-		[...new Set(heroes.map((h) => h.heroClass))].sort()
+		[...new Set(heroes.map((h) => h.heroClass))].sort((a, b) => compareNames(heroClassName(a), a, heroClassName(b), b, gameTextLocale()))
 	);
 
 	// Available statuses from current hero data
@@ -66,8 +64,7 @@
 
 		// Text search
 		if (searchQuery.trim()) {
-			const q = searchQuery.trim().toLowerCase();
-			result = result.filter((h) => h.name.toLowerCase().includes(q));
+			result = result.filter((h) => matchesSearch(searchQuery, h.name, heroClassName(h.heroClass), heroClassEnglishName(h.heroClass), h.heroClass));
 		}
 
 		// Status filter
@@ -84,41 +81,7 @@
 	});
 
 	// ── Sorting ──
-	let sortedHeroes = $derived.by(() => {
-		const sorted = [...filteredHeroes];
-
-		switch (sortBy) {
-			case 'name':
-				sorted.sort((a, b) => a.name.localeCompare(b.name));
-				break;
-			case 'class':
-				sorted.sort((a, b) => compareNames(heroClassName(a.heroClass), a.guid, heroClassName(b.heroClass), b.guid, gameTextLocale()));
-				break;
-			case 'level':
-				sorted.sort((a, b) => b.resolveLevel - a.resolveLevel || a.name.localeCompare(b.name));
-				break;
-			case 'hp':
-				sorted.sort((a, b) => (a.currentHp / a.maxHp) - (b.currentHp / b.maxHp));
-				break;
-			case 'stress':
-				sorted.sort((a, b) => b.stress - a.stress || a.name.localeCompare(b.name));
-				break;
-			case 'status':
-			default: {
-				// Status priority: Available(0), In party(1), In Treatment(2), Missing(4), Dead(3)
-				const statusOrder: Record<number, number> = { 0: 0, 1: 1, 2: 2, 4: 3, 3: 4 };
-				sorted.sort(
-					(a, b) =>
-						(statusOrder[a.status] ?? 5) - (statusOrder[b.status] ?? 5) ||
-						b.resolveLevel - a.resolveLevel ||
-						a.name.localeCompare(b.name)
-				);
-				break;
-			}
-		}
-
-		return sorted;
-	});
+	let sortedHeroes = $derived(sortHeroes(filteredHeroes, sortBy));
 
 	// ── Selection ──
 	let allVisibleSelected = $derived(
@@ -188,10 +151,10 @@
 					size={14}
 				/>
 				<Input
-					placeholder="Search heroes..."
+					placeholder={t('heroes.searchHeroes')}
 					bind:value={searchQuery}
 					class="h-8 pl-7 text-xs"
-					aria-label="Search heroes by name"
+					aria-label={t('heroes.searchHeroesByNameOrClass')}
 				/>
 			</div>
 			<Tooltip>
@@ -201,25 +164,25 @@
 						size="sm"
 						class="h-8 w-8 p-0"
 						onclick={() => (showFilters = !showFilters)}
-						aria-label="Toggle filters"
+						aria-label={t('heroes.toggleFilters')}
 						aria-expanded={showFilters}
 					>
 						<FunnelSimpleIcon size={14} />
 					</Button>
 				</TooltipTrigger>
-				<TooltipContent>Toggle filters</TooltipContent>
+				<TooltipContent>{t('heroes.toggleFilters')}</TooltipContent>
 			</Tooltip>
 			<Select type="single" bind:value={sortBy}>
 				<SelectTrigger class="h-8 flex-1 min-w-0 text-xs">
-					<span class="text-xs truncate">Sort: {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}</span>
+					<span class="text-xs truncate">{t('heroes.sort', { sort: sortBy })}</span>
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value="name">Name</SelectItem>
-					<SelectItem value="status">Status</SelectItem>
-					<SelectItem value="class">Class</SelectItem>
-					<SelectItem value="level">Level</SelectItem>
-					<SelectItem value="hp">HP</SelectItem>
-					<SelectItem value="stress">Stress</SelectItem>
+					<SelectItem value="name">{t('heroes.name')}</SelectItem>
+					<SelectItem value="status">{t('heroes.status')}</SelectItem>
+					<SelectItem value="class">{t('heroes.class')}</SelectItem>
+					<SelectItem value="level">{t('heroes.level')}</SelectItem>
+					<SelectItem value="hp">{t('heroes.hp')}</SelectItem>
+					<SelectItem value="stress">{t('heroes.stress')}</SelectItem>
 				</SelectContent>
 			</Select>
 		</div>
@@ -228,7 +191,7 @@
 			<div class="flex flex-col gap-2">
 				<!-- Status filter -->
 				<div class="flex flex-wrap gap-1">
-					<span class="text-muted-foreground mr-1 self-center text-[10px] uppercase tracking-wider">Status:</span>
+					<span class="text-muted-foreground mr-1 self-center text-[10px] uppercase tracking-wider">{t('heroes.statusFilter')}</span>
 					{#each availableStatuses as status}
 						{@const info = STATUS_MAP[status]}
 						<button
@@ -241,14 +204,14 @@
 							onclick={() => toggleStatusFilter(status)}
 						>
 							<span class="h-2 w-2 rounded-full {info?.dotClass ?? 'bg-gray-400'}"></span>
-							{info?.label ?? `Status ${status}`}
+							{heroStatusLabel(status)}
 						</button>
 					{/each}
 				</div>
 
 				<!-- Class filter -->
 				<div class="flex flex-wrap gap-1">
-					<span class="text-muted-foreground mr-1 self-center text-[10px] uppercase tracking-wider">Class:</span>
+					<span class="text-muted-foreground mr-1 self-center text-[10px] uppercase tracking-wider">{t('heroes.classFilter')}</span>
 					{#each availableClasses as cls}
 						<button
 							class="inline-flex h-6 cursor-pointer items-center gap-1 rounded-none border px-2 text-[11px] transition-colors {classFilter.has(
@@ -259,14 +222,14 @@
 							aria-pressed={classFilter.has(cls)}
 							onclick={() => toggleClassFilter(cls)}
 						>
-							{localize('hero_class_name_' + cls, CLASS_DISPLAY_NAMES[cls] ?? cls)}
+							<span lang={gameTextLocale()}>{heroClassName(cls)}</span>
 						</button>
 					{/each}
 				</div>
 
 				{#if hasActiveFilters}
 					<Button variant="ghost" size="sm" class="h-6 self-start text-xs" onclick={clearFilters}>
-						Clear filters
+						{t('heroes.clearFiltersInline')}
 					</Button>
 				{/if}
 			</div>
@@ -281,9 +244,9 @@
 			class="h-3.5 w-3.5"
 		/>
 		<span class="text-muted-foreground text-[11px]">
-			{selectedGuids.size} of {heroes.length} selected
+			{t('heroes.selected', { countText: formatNumber(selectedGuids.size), totalText: formatNumber(heroes.length) })}
 			{#if filteredHeroes.length !== heroes.length}
-				<span class="text-muted-foreground/60">({sortedHeroes.length} shown)</span>
+				<span class="text-muted-foreground/60">{t('heroes.shown', { countText: formatNumber(sortedHeroes.length) })}</span>
 			{/if}
 		</span>
 	</div>
@@ -292,9 +255,9 @@
 	<ScrollArea class="flex-1 min-h-0">
 		{#if sortedHeroes.length === 0}
 			<div class="flex flex-col items-center justify-center gap-2 py-12">
-				<p class="text-muted-foreground text-sm">No heroes match your filters.</p>
+				<p class="text-muted-foreground text-sm">{t('heroes.noHeroesMatchYourFilters')}</p>
 				{#if hasActiveFilters}
-					<Button variant="outline" size="sm" onclick={clearFilters}>Clear Filters</Button>
+					<Button variant="outline" size="sm" onclick={clearFilters}>{t('heroes.clearFilters')}</Button>
 				{/if}
 			</div>
 		{:else}
@@ -307,6 +270,7 @@
 						class="group flex w-full cursor-pointer items-center gap-3 border-b px-3 py-2.5 text-left transition-colors
 							{isActive ? 'bg-accent' : 'hover:bg-muted/50'}
 							{isDead ? 'opacity-60' : ''}"
+						data-testid={`hero-row-${hero.guid}`}
 						onclick={() => selectHero(hero.guid)}
 					>
 						<!-- Checkbox -->
@@ -345,7 +309,7 @@
 									{hero.name}
 								</span>
 								<Badge variant="outline" class="h-4 shrink-0 px-1 text-[10px]">
-									Lv {hero.resolveLevel}
+									{t('heroes.levelShort', { levelText: formatNumber(hero.resolveLevel) })}
 								</Badge>
 							</div>
 							<span lang={gameTextLocale()} class="text-muted-foreground truncate text-xs">{heroClassName(hero.heroClass)}</span>

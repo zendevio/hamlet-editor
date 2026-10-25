@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { describeMessage, type MessageDescriptor } from '#lib/i18n/index.svelte.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { parseInteger } from '#lib/input-validation.js';
 	import { WALLET_MAX } from '#lib/estate.js';
@@ -23,14 +24,14 @@
 		onchange?: (value: number) => void;
 	} = $props();
 
-	let error = $state('');
+	let error = $state<MessageDescriptor | null>(null);
 	let editing = $state(false);
 	let editValue = $state('');
 	let valueAtStart = 0;
 	let inputRef = $state<HTMLInputElement | null>(null);
 
 	function startEdit() {
-		error = '';
+		error = null;
 		editing = true;
 		editValue = String(value);
 		valueAtStart = value;
@@ -48,7 +49,7 @@
 			return;
 		}
 		const parsed = parseInteger(editValue, 0, WALLET_MAX);
-		error = parsed.error ?? '';
+		error = parsed.error ?? null;
 		if (parsed.error !== undefined) return;
 		editing = false;
 		commitChangedValue(value, parsed.value, (next) => onchange?.(next));
@@ -117,7 +118,7 @@
 				onkeydown={handleKeydown}
 				class="h-8 text-lg font-bold tabular-nums"
 			/>
-			{#if error}<p role="alert" class="text-xs text-destructive">{error}</p>{/if}
+			{#if error}<p role="alert" class="text-xs text-destructive">{describeMessage(error)}</p>{/if}
 		{:else}
 			<button
 				type="button"

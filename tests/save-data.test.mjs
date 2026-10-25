@@ -49,7 +49,7 @@ function fixture() {
 	} } });
 }
 function treatmentIssues() {
-	return runPreSaveValidation().filter((issue) => issue.category === 'Treatment');
+	return runPreSaveValidation().filter((issue) => issue.category.id === 'validation.category.treatment');
 }
 beforeEach(() => { store.resetSaveData(); fixture(); });
 

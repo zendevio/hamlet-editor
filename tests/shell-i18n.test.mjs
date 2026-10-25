@@ -64,8 +64,7 @@ test('status and category labels render through the catalog, including P2 per-ke
 		assert.equal(labels.heroStatusLabel(9), 'Unknown(9)');
 		assert.equal(labels.heroStatusLabel(1000), 'Unknown(1000)');
 		assert.equal(labels.heroStatusLabel('mod_status'), 'Unknown(mod_status)');
-		for (const category of ['Gear Rank', 'Treatment', 'DLC']) assert.equal(labels.validationCategory(category), category);
-		assert.equal(labels.validationCategory('future category'), 'future category');
+		for (const [id, category] of [['gear', 'Gear Rank'], ['treatment', 'Treatment'], ['dlc', 'DLC']]) assert.equal(describeMessage({ id: 'validation.category.' + id }), category);
 	}
 });
 
