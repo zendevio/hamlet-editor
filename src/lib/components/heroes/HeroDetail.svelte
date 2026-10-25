@@ -68,7 +68,7 @@
 		getDismissBlockReason,
 		setHeroCurseState
 	} from '#lib/stores/save-data.svelte.js';
-	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks } from '#lib/data/quirks.js';
+	import { isPositiveQuirk, isDiseaseQuirk, getAllQuirks, quirkName, quirkDescription, matchesQuirkSearch } from '#lib/data/quirks.js';
 	import { snakeToTitle } from '#lib/utils.js';
 	import RevivalWizard from './RevivalWizard.svelte';
 	import TrinketPicker from './TrinketPicker.svelte';
@@ -189,7 +189,7 @@
 	);
 
 	// All quirks for the picker, filtered
-	let allQuirks = getAllQuirks();
+	let allQuirks = $derived(getAllQuirks());
 	let filteredPickerQuirks = $derived.by(() => {
 		const existingIds = new Set(Object.keys(hero.quirks));
 		const q = quirkSearch.trim().toLowerCase();
@@ -197,7 +197,7 @@
 			if (existingIds.has(quirk.id) || !canPickQuirk(quirk.id)) return false;
 			if (quirkPickerCategory === 'positive' && quirk.category !== 'positive') return false;
 			if (quirkPickerCategory === 'negative' && quirk.category === 'positive') return false;
-			if (q && !quirk.displayName.toLowerCase().includes(q) && !quirk.id.includes(q))
+			if (!matchesQuirkSearch(quirk.id, quirk.displayName, q))
 				return false;
 			return true;
 		});
@@ -290,6 +290,7 @@
 
 {#snippet quirkRow(id: string, quirk: HeroQuirk, colorClass: string)}
 	<div
+		title={quirkDescription(id) ? `${quirkDescription(id)} (${id})` : id}
 		class="flex items-center gap-1 rounded-none border px-2 py-1 {colorClass}"
 	>
 		<button
@@ -297,7 +298,7 @@
 			class="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
 			onclick={() => toggleQuirkLock(hero.guid, id)}
 			title={quirk.is_locked ? 'Unlock quirk' : 'Lock quirk'}
-			aria-label={quirk.is_locked ? `Unlock ${snakeToTitle(id)}` : `Lock ${snakeToTitle(id)}`}
+			aria-label={quirk.is_locked ? `Unlock ${quirkName(id)}` : `Lock ${quirkName(id)}`}
 		>
 			{#if quirk.is_locked}
 				<LockIcon size={11} class="text-yellow-500" />
@@ -305,13 +306,13 @@
 				<LockOpenIcon size={11} />
 			{/if}
 		</button>
-		<span class="flex-1 truncate text-[11px]">{snakeToTitle(id)}</span>
+		<span class="flex-1 truncate text-[11px]">{quirkName(id)}</span>
 		<button
 			type="button"
 			class="cursor-pointer text-muted-foreground transition-colors hover:text-red-500"
 			onclick={() => removeHeroQuirk(hero.guid, id)}
 			title="Remove quirk"
-			aria-label="Remove {snakeToTitle(id)}"
+			aria-label="Remove {quirkName(id)}"
 		>
 			<XIcon size={11} />
 		</button>
@@ -664,18 +665,23 @@
 							{#each filteredPickerQuirks.slice(0, 50) as quirk (quirk.id)}
 								<button
 									type="button"
-									class="flex w-full cursor-pointer items-center gap-2 px-2 py-1 text-left text-[11px] transition-colors hover:bg-muted"
+									class="flex w-full cursor-pointer items-start gap-2 px-2 py-1 text-left text-[11px] transition-colors hover:bg-muted"
 									onclick={() => pickQuirk(quirk.id)}
 								>
 									<span
-										class="h-1.5 w-1.5 rounded-full {quirk.category === 'positive'
+										class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full {quirk.category === 'positive'
 											? 'bg-green-500'
 											: quirk.category === 'disease'
 												? 'bg-amber-500'
 												: 'bg-red-500'}"
 									></span>
-									<span>{quirk.displayName}</span>
-									<span class="text-muted-foreground/50 text-[10px]">{quirk.id}</span>
+									<span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+										<span>{quirk.displayName}</span>
+										<span class="text-muted-foreground/50 text-[10px]">{quirk.id}</span>
+										{#if quirk.description}
+											<span class="text-muted-foreground line-clamp-2 block text-[10px] leading-snug" title={quirk.description}>{quirk.description}</span>
+										{/if}
+									</span>
 								</button>
 							{/each}
 							{#if filteredPickerQuirks.length === 0}

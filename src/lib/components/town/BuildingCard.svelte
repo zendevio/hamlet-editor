@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
@@ -41,7 +42,7 @@
 
 	let isOpen = $state(false);
 
-	let displayName = $derived(BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName);
+	let displayName = $derived(localize('town_name_' + buildingName, BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName));
 	let isTreatmentBuilding = $derived(
 		TREATMENT_BUILDINGS.includes(buildingName as TreatmentBuildingName)
 	);

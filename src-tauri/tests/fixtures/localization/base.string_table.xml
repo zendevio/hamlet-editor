@@ -1,0 +1,29 @@
+<root>
+<language  id="english" >
+<entry id="str_quirk_name_resolution"><![CDATA[Resolution]]></entry>
+<entry id="str_quirk_description_resolution"><![CDATA[In town, will never Drink.]]></entry>
+<entry id="english_only"><![CDATA[English fallback]]></entry>
+<entry id="brackets"><![CDATA[[quoted] text]]></entry>
+<entry id="multiline">
+ <![CDATA[first line
+second line]]>
+ </entry>
+<entry id="malformed"><![CDATA[broken]]> unexpected </entry>
+<entry id="unclosed"><![CDATA[broken
+<entry id="after_malformed"><![CDATA[Still intact]]></entry>
+<entry id="empty_preserves"><![CDATA[Nonempty]]></entry>
+<entry id="campaign_fallback"><![CDATA[Campaign fallback]]></entry>
+<entry id="campaign_title"><![CDATA[Campaign English]]></entry>
+</language>
+<language  id="schinese" >
+<entry id="str_quirk_name_resolution"><![CDATA[戒酒]]></entry>
+<entry id="str_quirk_description_resolution"><![CDATA[在城镇从不饮酒。]]></entry>
+<entry id="empty_preserves"><![CDATA[   ]]></entry>
+<entry id="campaign_title"><![CDATA[战役]]></entry>
+</language>
+<language id="french" />
+<language id="japanese">
+<entry id="str_quirk_name_resolution"><![CDATA[禁酒]]></entry>
+</language>
+<language id="unsupported"><entry id="ignored"><![CDATA[ignored]]></entry></language>
+</root>

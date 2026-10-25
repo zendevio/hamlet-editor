@@ -53,8 +53,8 @@ export function getGameData() {
  * Looks up the key in the loaded name table first; falls back to
  * snakeToTitle() when no entry is present.
  */
-export function localize(key: string): string {
-	return nameTable[key] ?? snakeToTitle(key);
+export function localize(key: string, fallback = snakeToTitle(key)): string {
+	return nameTable[key] ?? fallback;
 }
 
 /** Replace the entire name table (e.g. after loading game strings). */

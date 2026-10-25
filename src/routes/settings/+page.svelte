@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { availableGameTextLanguages } from '#lib/api/names.js';
+	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
+	import { setGameTextLanguage } from '#lib/stores/settings.svelte.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import {
 		Card,
@@ -80,6 +83,30 @@
 	const requestDataChange = getContext<RequestDataChange>(DATA_CHANGE_CONTEXT);
 	const settings = getSettings();
 	const saveData = getSaveData();
+
+	let gameTextLanguages = $state<string[]>(['english']);
+	let languagesLoading = $state(true);
+	let languagesFailed = $state(false);
+	let languageOptions = $derived([...new Set([...gameTextLanguages, settings.gameTextLanguage])]);
+	$effect(() => {
+		const path = settings.gamePath;
+		let current = true;
+		languagesLoading = true;
+		languagesFailed = false;
+		if (path) {
+			availableGameTextLanguages(path).then((languages) => {
+				if (current) gameTextLanguages = languages;
+			}).catch(() => {
+				if (current) languagesFailed = true;
+			}).finally(() => {
+				if (current) languagesLoading = false;
+			});
+		} else {
+			gameTextLanguages = ['english'];
+			languagesLoading = false;
+		}
+		return () => { current = false; };
+	});
 
 	let appVersion = $state('dev');
 
@@ -430,8 +457,36 @@
 	});
 </script>
 
+
 <ScrollArea class="h-[calc(100vh-4rem)]">
 	<div class="mx-auto max-w-2xl space-y-6 p-2">
+
+		<Card>
+			<CardHeader>
+				<CardTitle class="text-sm">Game text language</CardTitle>
+				<CardDescription>Names and descriptions from the installed game. Missing translations use English.</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<label for="game-text-language" class="sr-only">Game text language</label>
+				<select
+					id="game-text-language"
+					class="bg-background border px-3 py-2 text-sm"
+					value={settings.gameTextLanguage}
+					onchange={(event) => setGameTextLanguage(event.currentTarget.value)}
+				>
+					{#each languageOptions as language}
+						<option value={language}>{GAME_TEXT_LANGUAGES[language]}{!languagesLoading && !languagesFailed && !gameTextLanguages.includes(language) ? ' (not available)' : ''}</option>
+					{/each}
+				</select>
+				{#if languagesLoading}
+					<p class="text-xs text-muted-foreground" role="status">Checking installed languages...</p>
+				{:else if languagesFailed}
+					<p class="text-xs text-muted-foreground" role="status">Installed languages could not be checked. Your saved selection is retained.</p>
+				{:else if !gameTextLanguages.includes(settings.gameTextLanguage)}
+					<p class="text-xs text-muted-foreground" role="status">The selected language is not available in this installation. Missing text uses English.</p>
+				{/if}
+			</CardContent>
+		</Card>
 
 		<!-- ═══════ Paths Section ═══════ -->
 		<Card>

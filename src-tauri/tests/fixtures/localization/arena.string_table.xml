@@ -1,0 +1,14 @@
+<root>
+<language id="english">
+<entry id="campaign_title"><![CDATA[Arena English]]></entry>
+<entry id="arena_only"><![CDATA[Arena fallback]]></entry>
+</language>
+<language id="schinese">
+<entry id="campaign_title"><![CDATA[竞技场]]></entry>
+<entry id="campaign_fallback"><![CDATA[竞技场回退]]></entry>
+<entry id="dlc_title"><![CDATA[竞技场扩展]]></entry>
+<entry id="arena_priority" arena_priority="1"><![CDATA[Skipped]]></entry>
+<entry id="empty_preserves"><![CDATA[]]></entry>
+</language>
+<language id="japanese" />
+</root>

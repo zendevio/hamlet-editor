@@ -239,7 +239,7 @@ function heroEntryToSummary(guid: string, entry: HeroEntry): HeroSummary {
 		guid,
 		name: root.actor.name,
 		heroClass: root.heroClass,
-		classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? localize('hero_class_name_' + root.heroClass),
+		classDisplayName: localize('hero_class_name_' + root.heroClass, CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass),
 		resolveLevel,
 		resolveXp: root.resolveXp,
 		currentHp: root.actor.current_hp,
@@ -648,7 +648,7 @@ export function getHeroesInBuilding(buildingName: TreatmentBuildingName): Treatm
 			guid,
 			name: root.actor.name,
 			heroClass: root.heroClass,
-			classDisplayName: CLASS_DISPLAY_NAMES[root.heroClass] ?? localize('hero_class_name_' + root.heroClass),
+			classDisplayName: localize('hero_class_name_' + root.heroClass, CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass),
 			buildingName,
 			activityType,
 			slotIndex
@@ -695,7 +695,7 @@ export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 	return Object.entries(groups)
 		.map(([buildingName, upgrades]) => ({
 			buildingName,
-			displayName: BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName,
+			displayName: localize('town_name_' + buildingName, BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName),
 			upgrades: upgrades.sort((a, b) => a.requirement_code.localeCompare(b.requirement_code)),
 			purchasedCount: upgrades.filter((u) => u.is_purchased).length,
 			totalCount: upgrades.length

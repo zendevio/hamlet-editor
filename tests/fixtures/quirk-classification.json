@@ -1,0 +1,1067 @@
+[
+  {
+    "id": "ablutomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "accurate",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alcoholism",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "alien_calm",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_eye",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_force",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_healing",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_isolation",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_precision",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_purity",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_solidity",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_speed",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "alien_stability",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "anemic",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "antsy",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "armor_haggler",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "ascetic",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "ashen",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "automatonophobia",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "back_tracker",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "bad_gambler",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "bad_healer",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "bad_humours",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "bloodthirsty",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "bulimic",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "calm",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "claustrophobia",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "clotter",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "clumsy",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "clutch_hitter",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "compulsive",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "corvids_appetite",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "corvids_blindness",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "corvids_curiosity",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "corvids_eye",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "corvids_grace",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "corvids_resilience",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "cove_adventurer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "cove_explorer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "cove_phobe",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "cove_scrounger",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "cove_tactician",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "creeping_cough",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "curious",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "dacnomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "daredevil",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "dark_temptation",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "demonomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "deviant_tastes",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "dipsomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "disease_vampire_blood_lust",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "disease_vampire_crave",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "disease_vampire_passive",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "disease_vampire_wasting",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "diurnal",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "dud_hitter",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "eagle_eye",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "early_riser",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "egomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "enlightened",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "ennui",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "evasive",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "fading",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "fairweather_fighter",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "faithless",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "fast_healer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "fated",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "fear_of_beast",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "fear_of_eldritch",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "fear_of_man",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "fear_of_unholy",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "flagellant",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "flawed_release",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "fragile",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "gambler",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "germophobe",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "gift_of_the_healer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "gifted",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "god_fearing",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "gothic",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "grey_rot",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "guilty_conscience",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "hagiomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "hard_noggin",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hard_skinned",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hatred_of_beast",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hatred_of_eldritch",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hatred_of_man",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hatred_of_unholy",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hemophilia",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "hieromania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "hippocratic",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hot_to_trot",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "husk_slayer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "hylomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "hysterical_blindness",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "imposter_syndrome",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "improved_balance",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "inaccurate",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "infirm",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "irrepressible",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "kleptomaniac",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "known_cheat",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "last_gasp",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "lazy_eye",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "lethargy",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "love_interest",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "luminous",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "lurker",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "lygophobia",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "meditator",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "mercurial",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "musical",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "natural",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "natural_eye",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "natural_swing",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "necromania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "nervous",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "nervous_bleeder",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "night_blindness",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "night_owl",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "nocturnal",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "nymphomania",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "off_guard",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "on_guard",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "paranormania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "perfectionist",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "phengophobia",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "photomania",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "plutomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "precision_striker",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "quick_reflexes",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "quickdraw",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "rabies",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "resilient",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "resolution",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "risktaker",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "robust",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "ruins_adventurer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "ruins_explorer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "ruins_phobe",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "ruins_scrounger",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "ruins_tactician",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "ruminator",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "satanophobia",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "scattering",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "scientific",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "scurvy",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "scythemaster",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "second_wind",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "sensitive_to_light",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "shard_hungry",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "shocker",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "sickly",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "sitiomania",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "skilled_gambler",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "sky_taint",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "slayer_of_beast",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "slayer_of_eldritch",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "slayer_of_man",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "slayer_of_unholy",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "slow_reflexes",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "slowdraw",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "slugger",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "soft",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "spiritual",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "spotted_fever",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "steady",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "stomach_cramp",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "stout",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "stress_eater",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "stress_faster",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "suicidal",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "syphilis",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "tapeworm",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "tetanus",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "thanatophobia",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "the_ague",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "the_black_plague",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "the_fits",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "the_red_plague",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "the_runs",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "the_worries",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "the_yips",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "thick_blooded",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "thin_blooded",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "tone_deaf",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "torn_rotator_cuff",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "tough",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "tuckered_out",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "twilight_dreamer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "unerring",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "unquiet_mind",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "unyielding",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "vampiric_spirits",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "vertigo",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "warren_adventurer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "warren_explorer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "warren_phobe",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "warren_scrounger",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "warren_tactician",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "warrior_of_light",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "wasting_sickness",
+    "is_positive": false,
+    "is_disease": true
+  },
+  {
+    "id": "weak_grip",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "weald_adventurer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "weald_explorer",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "weald_phobe",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "weald_scrounger",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "weald_tactician",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "weapons_haggler",
+    "is_positive": true,
+    "is_disease": false
+  },
+  {
+    "id": "winded",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "witness",
+    "is_positive": false,
+    "is_disease": false
+  },
+  {
+    "id": "zoophobia",
+    "is_positive": false,
+    "is_disease": false
+  }
+]

@@ -133,15 +133,25 @@
 
 	// ── Name table + localization + mod-scan pipeline ──
 
+	$effect(() => {
+		const path = settings.gamePath;
+		const language = settings.gameTextLanguage;
+		let current = true;
+		if (path) {
+			loadLocalization(path, language).then((table) => {
+				if (current) setNameTable(table);
+			}).catch((error) => {
+				if (current) toast.error(`Could not load game text: ${error}`);
+			});
+		}
+		return () => { current = false; };
+	});
+
 	async function initGameData(gamePath: string) {
 		// 1. Generate name table from game files and push to Rust state.
 		await ensureNameTable(gamePath);
 
-		// 2. Load localization strings and store in the frontend game-data store.
-		const locData = await loadLocalization(gamePath);
-		setNameTable(locData);
-
-		// 3. Load quirk, trinket, class stats, and class skills definitions from game files.
+		// 2. Load quirk, trinket, class stats, and class skills definitions from game files.
 		const [quirkDefs, trinketDefs, statsDefs, skillsDefs, capacityRules] = await Promise.all([
 			loadQuirkLibrary(gamePath),
 			loadTrinketLibrary(gamePath),
@@ -155,7 +165,7 @@
 		setClassSkills(skillsDefs);
 		setRosterCapacityRules(capacityRules, gamePath);
 
-		// 4. Scan mod directories and surface the count.
+		// 3. Scan mod directories and surface the count.
 		const mods = await scanModDirectories(gamePath);
 		modCount = mods.length;
 		if (mods.length > 0) {
@@ -164,7 +174,7 @@
 	}
 
 	// When setup completes (or was already complete on startup), load the profile,
-	// with the shared name-table barrier, then load localization and game libraries.
+	// with the shared name-table barrier, then load game libraries. Display localization loads independently.
 	// Also detect save locations to populate the sidebar profile selector.
 	$effect(() => {
 		const profileKey = `${settings.savePath}\0${settings.gamePath}`;

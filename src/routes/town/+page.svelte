@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { readDistricts } from '#lib/districts.js';
 	import { snakeToTitle } from '#lib/utils.js';
@@ -173,7 +174,7 @@
 						<Card class="p-0">
 							<CardContent class="flex items-center justify-between px-4 py-3">
 								<span class="text-sm font-medium">
-									{DISTRICT_DISPLAY_NAMES[district.id] ?? snakeToTitle(district.id)}
+									{localize('str_' + district.id + '_title', DISTRICT_DISPLAY_NAMES[district.id] ?? snakeToTitle(district.id))}
 								</span>
 								<div class="flex items-center gap-2">
 									<span class="text-xs text-muted-foreground">

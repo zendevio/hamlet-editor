@@ -88,6 +88,7 @@ pub fn run() {
             commands::assets::load_game_asset,
             commands::names::generate_name_table,
             commands::names::load_localization,
+            commands::names::available_game_text_languages,
             commands::mods::scan_mod_directories,
             commands::gamedata::load_quirk_library,
             commands::gamedata::load_trinket_library,

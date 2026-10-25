@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { sliderControl, sliderValueLabel } from '#lib/control-events.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import PartySlot from '#lib/components/raid/PartySlot.svelte';
@@ -120,7 +121,7 @@
 				name: hero?.name ?? null,
 				heroClass: hero?.heroClass ?? null,
 				classDisplayName: hero
-					? (CLASS_DISPLAY_NAMES[hero.heroClass] ?? hero.heroClass)
+					? (localize('hero_class_name_' + hero.heroClass, CLASS_DISPLAY_NAMES[hero.heroClass] ?? hero.heroClass))
 					: null
 			};
 		});

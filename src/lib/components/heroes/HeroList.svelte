@@ -2,6 +2,7 @@
      For typical DD1 rosters (< 30 heroes), this performs well.
      Virtual scrolling can be added later if needed for heavily modded games. -->
 <script lang="ts">
+	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Checkbox } from '#lib/components/ui/checkbox/index.js';
@@ -255,7 +256,7 @@
 							aria-pressed={classFilter.has(cls)}
 							onclick={() => toggleClassFilter(cls)}
 						>
-							{CLASS_DISPLAY_NAMES[cls] ?? cls}
+							{localize('hero_class_name_' + cls, CLASS_DISPLAY_NAMES[cls] ?? cls)}
 						</button>
 					{/each}
 				</div>

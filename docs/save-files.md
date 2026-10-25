@@ -477,54 +477,11 @@ Setting `is_purchased: false` on a building upgrade entry in `persist.upgrades.j
 
 ---
 
-## Negative Quirk IDs — Complete List
+## Quirk IDs and classification
 
-These IDs appear as keys in the `quirks` object inside each hero's save data. Sourced from `shared/quirk/quirk_library.json` and `quirks.string_table.xml`.
+Quirk ids appear as keys in the `quirks` object inside each hero's save data. Whether a quirk is positive, negative or a disease comes from the installed game data: `is_positive` and `is_disease` in `shared/quirk/quirk_library.json` and the DLC quirk libraries (`dlc/735730_color_of_madness/shared/quirk/com.quirk_library.json`, `dlc/580100_crimson_court/features/crimson_court/shared/quirk/crimson_court.quirk_library.json`). The editor reads these at runtime. The offline fallback arrays in `src/lib/data/quirks.ts` are regenerated from the committed extract `tests/fixtures/quirk-classification.json` (procedure in `tests/fixtures/quirk-classification.md`), and `tests/quirks.test.mjs` checks them against it. Update the extract instead of keeping a hand-written list here. Display names and descriptions come from the string tables (`str_quirk_name_<id>`, `str_quirk_description_<id>`, mostly in `localization/miscellaneous.string_table.xml`).
 
-### Base Game Negative Quirks
-
-**Stat Penalty:**
-`fragile`, `soft`, `slow_reflexes`, `slowdraw`, `the_yips`, `lazy_eye`, `clumsy`, `torn_rotator_cuff`, `scattering`, `inaccurate`, `weak_grip`, `flawed_release`, `nervous`, `ruminator`, `thin_blooded`, `anemic`, `sickly`, `mercurial`, `winded`, `tuckered_out`, `off_guard`, `dud_hitter`, `stress_eater`, `stress_faster`, `night_blindness`, `sensitive_to_light`, `diurnal`, `nocturnal`, `shocker`, `suicidal`, `last_gasp`, `double_vision`, `stomach_cramp`, `disorganized`, `bulimic`, `irrepressible`, `unyielding`, `too_boastful`, `cruelty_conscious`
-
-**Phobia / Fear:**
-`fear_of_beast`, `fear_of_eldritch`, `fear_of_man`, `fear_of_unholy`, `zoophobia`, `automatonophobia`, `claustrophobia`, `lygophobia`, `phengophobia`, `satanophobia`, `thanatophobia`, `autophobia`, `necrophobia`, `lurker`
-
-**Dungeon Phobias:**
-`ruins_phobe`, `warren_phobe`, `weald_phobe`, `cove_phobe`, `darkest_dungeon_phobe`
-
-**Dungeon Scroungers (negative — reduced heirloom discovery):**
-`ruins_scrounger`, `warren_scrounger`, `weald_scrounger`, `cove_scrounger`, `darkest_dungeon_scrounger`
-
-**Hatred (penalize against monster type):**
-`hatred_of_eldritch`, `hatred_of_unholy`, `hatred_of_man`, `hatred_of_beast`
-
-**Compulsions / Manias (forced curio/item interactions):**
-`kleptomaniac`, `curious`, `bloodthirsty`, `guilty_conscience`, `hieromania`, `necromania`, `ablutomania`, `dacnomania`, `egomania`, `hylomania`, `nymphomania`, `sitiomania`, `photomania`, `plutomania`, `dipsomania`, `paranormania`, `demonomania`, `compulsive`, `hagiomania`, `dark_temptation`
-
-**Town Activity Quirks (force specific stress relief activities):**
-`deviant_tastes`, `known_cheat`, `unquiet_mind`, `witness`, `faithless`, `alcoholism`, `gambler`, `bad_gambler`, `love_interest`, `tither`, `flagellant`
-
-**Diseases (`is_disease: true` in quirk_library — treated at Sanitarium):**
-`bad_humours`, `creeping_cough`, `hemophilia`, `the_runs`, `lethargy`, `wasting_sickness`, `tetanus`, `rabies`, `syphilis`, `spotted_fever`, `vertigo`, `vampiric_spirits`, `ennui`, `the_ague`, `hysterical_blindness`, `scurvy`, `the_worries`, `the_fits`, `tapeworm`, `the_red_plague`, `the_black_plague`
-
-**Note on diseases**: Diseases have `"is_disease": true` in the quirk_library. In save files, they appear in the same `quirks` object as regular quirks. The Sanitarium UI separates them, but the data layer does not — the same removal operation applies to both.
-
-### Crimson Court DLC Negative Quirks
-
-File: `dlc/580100_crimson_court/features/crimson_court/shared/quirk/crimson_court.quirk_library.json`
-
-**Corvid Quirks:**
-`corvid_blindness`, `corvid_appetite`, `corvid_curiosity`
-
-**The Crimson Curse** IS stored as disease-type quirk entries in the `quirks` map — using the IDs `disease_vampire_passive`, `disease_vampire_crave`, `disease_vampire_wasting`, `disease_vampire_blood_lust` (confirmed in `crimson_court.quirk_library.json`). Only one state at a time. The quirk library defines evolution chains between states. Heroes with the curse are immune to standard diseases. See `game-data.md` Blood Curse States table for details.
-
-### Color of Madness DLC Negative Quirks
-
-File: `dlc/735730_color_of_madness/shared/quirk/com.quirk_library.json`
-
-**`shard_mercenary`** — Permanent. Prevents hero from joining any quest except the Farmstead Endless Mode. Cannot be removed or replaced. Applied automatically to Shard Mercenary Stage Coach recruits. Takes 10% of Comet Shards at end of Endless run.
-
----
+Diseases appear in the same `quirks` object as regular quirks. The Sanitarium UI separates them, but the data layer does not, so the same removal operation applies to both.
 
 ## Save Corruption Recovery
 

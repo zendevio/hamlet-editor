@@ -5,6 +5,7 @@
  * (LazyStore). Falls back gracefully in dev/browser environments.
  */
 
+import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
 import type { GameInstall } from '#lib/api/detect.js';
 import { resetGameData } from '#lib/stores/game-data.svelte.js';
 
@@ -32,6 +33,9 @@ async function persistAll() {
 		await store.set('autoBackup', autoBackup);
 		await store.set('isSetupComplete', isSetupComplete);
 		await store.set('gameInstall', gameInstall);
+		// Only an explicit choice is stored, so a later automatic default can still apply.
+		if (gameTextLanguageChosen) await store.set('gameTextLanguage', gameTextLanguage);
+		else await store.delete('gameTextLanguage');
 		await store.save();
 	} catch {
 		// Silently ignore persistence errors — they're non-fatal
@@ -41,6 +45,8 @@ async function persistAll() {
 // ── Reactive State ──
 
 let gamePath = $state<string>('');
+let gameTextLanguage = $state('english');
+let gameTextLanguageChosen = false;
 let savePath = $state<string>('');
 let profileId = $state<string>('');
 let autoBackup = $state(false);
@@ -53,6 +59,11 @@ let gameInstall = $state<GameInstall | null>(null);
 	try {
 		const store = await getStore();
 		if (!store) return;
+		const savedLanguage = await store.get<string>('gameTextLanguage');
+		if (savedLanguage && Object.hasOwn(GAME_TEXT_LANGUAGES, savedLanguage)) {
+			gameTextLanguage = savedLanguage;
+			gameTextLanguageChosen = true;
+		}
 		const savedGamePath = await store.get<string>('gamePath');
 		const savedSavePath = await store.get<string>('savePath');
 		const savedProfileId = await store.get<string>('profileId');
@@ -75,6 +86,9 @@ let gameInstall = $state<GameInstall | null>(null);
 
 export function getSettings() {
 	return {
+		get gameTextLanguage() {
+			return gameTextLanguage;
+		},
 		get gamePath() {
 			return gamePath;
 		},
@@ -127,6 +141,8 @@ export function setGameInstall(install: GameInstall) {
 }
 
 export function resetSetup() {
+	gameTextLanguage = 'english';
+	gameTextLanguageChosen = false;
 	gamePath = '';
 	savePath = '';
 	profileId = '';
@@ -134,5 +150,12 @@ export function resetSetup() {
 	isSetupComplete = false;
 	gameInstall = null;
 	resetGameData();
+	persistAll();
+}
+
+export function setGameTextLanguage(language: string) {
+	if (!Object.hasOwn(GAME_TEXT_LANGUAGES, language)) return;
+	gameTextLanguage = language;
+	gameTextLanguageChosen = true;
 	persistAll();
 }

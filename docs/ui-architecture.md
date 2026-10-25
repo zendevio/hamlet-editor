@@ -195,12 +195,13 @@ Each section is a collapsible `Card` (shadcn `Collapsible`). Default expansion: 
 
 **Quirks Section**
 - Two columns: Positive (left) and Negative/Disease (right).
-- Each quirk rendered as a `Badge` chip: localized name from `quirks.string_table.xml`, remove button (X), lock toggle icon.
+- Each quirk rendered as a `Badge` chip: localized name from installed `*.string_table.xml` files, remove button (X), lock toggle icon.
 - Locked quirks show a lock icon; clicking toggles `is_locked`.
 - Disease quirks shown with a distinct amber background and a small medical cross icon. Diseases and regular negative quirks share the right column but diseases are visually grouped at the top with a "Diseases" sub-header.
-- "Add Quirk" button opens a `Combobox` (shadcn `Command` + `Popover`) autocompleted from `quirk_library.json` + DLC quirk libraries + mod quirk files. Grouped by category: Positive, Negative (stat/phobia/dungeon/hatred/compulsion/town), Disease. Unknown/modded IDs can be typed manually.
+- "Add Quirk" opens the inline hero picker, populated from the installed base and DLC quirk libraries. It filters by column category and searches displayed names and raw IDs case-insensitively, including CJK text. Rows show the raw ID.
 - Game limit enforced: max 5 positive + 5 negative quirks. **Diseases count toward the 5-negative cap** (they are mechanically quirks in the save file, stored in the same `quirks` object). The "Add" button disables when the column is full. A note below the negative column reads: "Diseases count toward the 5-quirk limit."
-- Quirk tooltip shows the quirk's category and stat effects (parsed from quirk_library buff references).
+- Quirk tooltips show `str_quirk_description_<id>` when available, plus the raw ID on hero chips. Names use `str_quirk_name_<id>`, falling back to title-cased IDs; absent descriptions are empty.
+- `src/lib/data/quirks.ts` supplies the shared catalogue and classification. Loaded `QuirkDef` flags take precedence, then fallback lists generated from the base, Crimson Court and Color of Madness libraries. Unknown IDs default to negative. Mod quirk libraries are not loaded. Curse guards remain in `hero-safety.ts`.
 
 **Skills Section** (collapsed by default)
 - **Combat Skills** — grid of toggleable skill slots. Each shows the skill icon (`heroes/<class>/<class>.ability.<slot_word>.png` where slot_word is `one`, `two`, `three`, `four`, `five`, `six`, `seven`) + localized name. Max 4 selected for standard classes, 7 for Abomination (fixed set). Available skills populated from `<class>.info.darkest`.
@@ -581,7 +582,7 @@ HeroesView
 │   │   │   └── NegativeSubgroup
 │   │   │       └── QuirkChip[]
 │   │   ├── QuirkLimitNote ("Diseases count toward the 5-quirk limit")
-│   │   └── AddQuirkButton -> QuirkPicker (Combobox)
+│   │   └── AddQuirkButton -> inline hero quirk picker
 │   ├── HeroSkills (Collapsible Card, collapsed default)
 │   │   ├── CombatSkillGrid
 │   │   │   └── SkillSlot[] (toggle + GameAssetImage + label)
@@ -688,7 +689,7 @@ RaidView
 | Component | shadcn Base | Purpose |
 |-----------|------------|---------|
 | `TrinketPicker` | `Combobox` (Command + Popover) | Search by name/ID, inventory counts before explicit catalogue creation, filter loaded class restrictions |
-| `QuirkPicker` | `Combobox` (Command + Popover) | Search quirks, grouped by category (positive/negative/disease) |
+| HeroDetail inline quirk picker | Search input and filtered buttons | Search localized names and IDs within the selected column category |
 | `GameAssetImage` | Custom | Loads PNG from game installation via `load_game_asset()`. Shows placeholder silhouette on failure. Caches loaded assets in memory (LRU). |
 | `ConfirmDialog` | `AlertDialog` | Standardized confirmation modal. Cancel always left/default. Destructive operations require checkbox. |
 | `InlineEditNumber` | `Input` (type=number) | Click-to-edit numeric field. Range validation. Min/max display. |
@@ -1166,8 +1167,16 @@ pub struct ProfileMeta {
 
 ### 12.5 Game Data
 
+`gameTextLanguage` is persisted in Settings, defaulting to `english`. The select uses native language names and retains the saved selection while checking installed languages. An unavailable selection remains visible with a "not available" label; detection failures show a status message.
+
+The read-only localization commands run outside the main thread. English keys are merged first, then the selected language supplies per-key translations. Each file is read once. Arena tables in `dlc/1117860_arena_mp` provide the lowest-priority text. Base and campaign DLC text, including campaign English fallbacks, take precedence over arena definitions. Entries carrying `arena_priority` are skipped, and empty values never replace nonempty text. Malformed entries are skipped individually. Discovery and parsing share the same language-tag pattern, including whitespace and self-closing blocks.
+
+The layout reloads localization independently of profile loading, ignoring obsolete responses and leaving save state untouched. Class, building and district labels prefer `hero_class_name_<id>`, `town_name_<id>` and `str_<id>_title` before English fallback labels. The localization map is display data only: `ensureNameTable` uses `generate_name_table` and `set_name_table`, and Rust `extract_upgrades_json` collects raw tree IDs. DSON hashing and upgrade resolution do not consume localized display text.
+
 | Command | Signature | Purpose |
 |---------|-----------|---------|
+| `load_localization` | `(game_path: String, language: String) -> Result<HashMap<String, String>, String>` | Load display text with per-key English fallback; validate the 12 supported language IDs |
+| `available_game_text_languages` | `(game_path: String) -> Vec<String>` | Discover supported installed language blocks, always including English |
 | `load_game_asset` | `(relative_path: String) -> Result<Vec<u8>, String>` | Read a PNG from game installation, return as bytes |
 | `load_game_data` | `(data_type: String) -> Result<GameRefData, String>` | Parse game reference data (quirks, trinkets, skills, classes, localization, name_hash_table) |
 | `scan_mods` | `() -> Result<Vec<ModInfo>, String>` | Scan mods/ and Workshop dirs for mod metadata |
@@ -1206,8 +1215,8 @@ These operations modify multiple save files and require careful coordination. Th
 | Farmstead dungeon type in raid | Color of Madness | `dlc.colorOfMadness` |
 | Courtyard dungeon type in raid | Crimson Court | `dlc.crimsonCourt` |
 | Districts in Town view | Color of Madness | `dlc.colorOfMadness` |
-| Crimson Court quirks in QuirkPicker | Crimson Court | `dlc.crimsonCourt` |
-| Color of Madness quirks in QuirkPicker | Color of Madness | `dlc.colorOfMadness` |
+| Crimson Court quirks in the hero picker | Crimson Court | `dlc.crimsonCourt` |
+| Color of Madness quirks in the hero picker | Color of Madness | `dlc.colorOfMadness` |
 | Shard Mercenary quirk display | Color of Madness | `dlc.colorOfMadness` |
 | Endless Wave Highscore in Estate view | Color of Madness | `dlc.colorOfMadness` |
 | Crimson Court trinkets in TrinketPicker | Crimson Court | `dlc.crimsonCourt` |
