@@ -6,12 +6,13 @@
  * Also holds quirk and trinket definitions loaded from game JSON files.
  */
 
+import type { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
 import { snakeToTitle } from '#lib/utils.js';
 import type { ClassSkills, ClassStats, QuirkDef, TrinketDef, RosterCapacityRules } from '#lib/api/gamedata.js';
 
 // ── State ──
 
-let nameTable = $state<Record<string, string>>({});
+let display = $state<{ table: Record<string, string>; language: keyof typeof GAME_TEXT_LOCALES; gamePath: string }>({ table: {}, language: 'english', gamePath: '' });
 let localizationLoaded = $state(false);
 let quirks = $state<QuirkDef[]>([]);
 let trinkets = $state<TrinketDef[]>([]);
@@ -27,8 +28,10 @@ export function getGameData() {
 		get rosterCapacityRules() { return rosterCapacityRules; },
 		get rosterCapacityGamePath() { return rosterCapacityGamePath; },
 		get nameTable() {
-			return nameTable;
+			return display.table;
 		},
+		get displayLanguage() { return display.language; },
+		get displayGamePath() { return display.gamePath; },
 		get localizationLoaded() {
 			return localizationLoaded;
 		},
@@ -54,12 +57,12 @@ export function getGameData() {
  * snakeToTitle() when no entry is present.
  */
 export function localize(key: string, fallback = snakeToTitle(key)): string {
-	return nameTable[key] ?? fallback;
+	return display.table[key]?.trim() ? display.table[key] : fallback;
 }
 
 /** Replace the entire name table (e.g. after loading game strings). */
-export function setNameTable(table: Record<string, string>) {
-	nameTable = table;
+export function setNameTable(table: Record<string, string>, language: keyof typeof GAME_TEXT_LOCALES = 'english', gamePath = '') {
+	display = { table, language, gamePath };
 	localizationLoaded = true;
 }
 
@@ -114,7 +117,7 @@ export function getMaxHp(heroClass: string, armourRank: number): number | null {
 
 /** Reset localization state (e.g. when game install is cleared). */
 export function resetGameData() {
-	nameTable = {};
+	display = { table: {}, language: 'english', gamePath: '' };
 	localizationLoaded = false;
 	quirks = [];
 	trinkets = [];

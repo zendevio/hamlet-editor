@@ -1,4 +1,9 @@
 <script lang="ts">
+	import Message from '#lib/i18n/Message.svelte';
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatDate, formatNumber } from '#lib/i18n/intl.js';
+	import { showPersistentError } from '#lib/i18n/notifications.js';
+	import { getGameTextState } from '#lib/stores/game-text.svelte.js';
 	import { availableGameTextLanguages } from '#lib/api/names.js';
 	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
 	import { setGameTextLanguage } from '#lib/stores/settings.svelte.js';
@@ -39,7 +44,7 @@
 		setProfileId,
 		setAutoBackup
 	} from '#lib/stores/settings.svelte.js';
-	import { restoreOutcome, runRestore } from '#lib/restore-workflow.js';
+	import { runRestore } from '#lib/restore-workflow.js';
 	import { withCurrentProfile } from '#lib/profiles.js';
 	import { getSaveData, loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
@@ -60,7 +65,7 @@
 	} from '#lib/api/backup.js';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
-	import { onMount, getContext } from 'svelte';
+	import { onMount, getContext, type Component } from 'svelte';
 	import { DATA_CHANGE_CONTEXT, type RequestDataChange } from '#lib/save-workflow.js';
 
 	// Phosphor icons
@@ -83,6 +88,7 @@
 	const requestDataChange = getContext<RequestDataChange>(DATA_CHANGE_CONTEXT);
 	const settings = getSettings();
 	const saveData = getSaveData();
+	const gameText = getGameTextState();
 
 	let gameTextLanguages = $state<string[]>(['english']);
 	let languagesLoading = $state(true);
@@ -108,9 +114,13 @@
 		return () => { current = false; };
 	});
 
-	let appVersion = $state('dev');
+	let appVersion = $state<string | null>(null);
+	let Pilot = $state<Component | null>(null);
 
 	onMount(async () => {
+		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1')) {
+			Pilot = (await import('#lib/dev/PilotProof.svelte')).default;
+		}
 		detectingSaves = true;
 		try {
 			saveLocations = await detectSaveLocations();
@@ -122,7 +132,7 @@
 			appVersion = 'v' + await getVersion();
 		} catch {
 			// Not in Tauri runtime (browser dev mode)
-			appVersion = 'dev';
+			appVersion = null;
 		}
 	});
 
@@ -176,18 +186,18 @@
 			if (gameInstalls.length > 0) {
 				if (!await changeGamePath(gameInstalls[0].path)) return;
 				gamePathValid = true;
-				toast.success('Game installation detected', {
+				toast.success(t('settings.gameDetected'), {
 					description: gameInstalls[0].path
 				});
 			} else {
 				gamePathValid = false;
-				toast.error('No game installation found', {
-					description: 'Use Browse to select manually.'
+				toast.error(t('settings.noGame'), {
+					description: t('settings.browseHelp')
 				});
 			}
 		} catch {
 			gamePathValid = false;
-			toast.error('Detection failed');
+			toast.error(t('settings.detectionFailed'));
 		} finally {
 			detectingGame = false;
 		}
@@ -202,18 +212,18 @@
 				const current = saveLocations.find((loc) => loc.path === settings.savePath) ?? saveLocations[0];
 				await handleProfileChange(current.path);
 				savePathValid = true;
-				toast.success('Save files detected', {
-					description: `Found ${saveLocations.length} profile(s).`
+				toast.success(t('settings.savesDetected'), {
+					description: t('settings.profilesFound', { count: saveLocations.length })
 				});
 			} else {
 				savePathValid = false;
-				toast.error('No save files found', {
-					description: 'Use Browse to select manually.'
+				toast.error(t('settings.noSaves'), {
+					description: t('settings.browseHelp')
 				});
 			}
 		} catch {
 			savePathValid = false;
-			toast.error('Detection failed');
+			toast.error(t('settings.detectionFailed'));
 		} finally {
 			detectingSaves = false;
 		}
@@ -222,26 +232,26 @@
 	async function handleBrowseGame() {
 		try {
 			const { open } = await import('@tauri-apps/plugin-dialog');
-			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
+			const selected = await open({ directory: true, title: t('settings.gamePanel') });
 			if (selected && typeof selected === 'string') {
 				if (!await changeGamePath(selected)) return;
 				gamePathValid = null;
 			}
 		} catch (err) {
-			toast.error('Could not load selected game data', { description: String(err) });
+			toast.error(t('settings.gameLoadFailed'), { description: String(err) });
 		}
 	}
 
 	async function handleBrowseSave() {
 		try {
 			const { open } = await import('@tauri-apps/plugin-dialog');
-			const selected = await open({ directory: true, title: 'Select save file folder' });
+			const selected = await open({ directory: true, title: t('settings.savePanel') });
 			if (selected && typeof selected === 'string') {
 				if (!await changeProfilePath(selected, selected.split(/[\\/]/).filter(Boolean).at(-1) ?? '')) return;
 				savePathValid = null;
 			}
 		} catch (err) {
-			toast.error('Could not load selected profile', { description: String(err) });
+			toast.error(t('settings.profileLoadFailed'), { description: String(err) });
 		}
 	}
 
@@ -268,10 +278,10 @@
 		if (!loc) return;
 		try {
 			if (await changeProfilePath(loc.path, loc.profile_id)) {
-				toast.success('Profile loaded', { description: `Switched to profile ${loc.profile_id}` });
+				toast.success(t('settings.profileLoaded'), { description: t('settings.profileSwitched', { profile: loc.profile_id }) });
 			}
 		} catch (err) {
-			toast.error('Failed to load profile', { description: String(err) });
+			toast.error(t('settings.profileFailed'), { description: String(err) });
 		}
 	}
 
@@ -294,10 +304,10 @@
 		creatingBackup = true;
 		try {
 			await createBackup(settings.savePath);
-			toast.success('Backup created');
+			toast.success(t('settings.backupCreated'));
 			await loadBackupList();
 		} catch (err) {
-			toast.error('Backup failed', {
+			toast.error(t('settings.backupFailed'), {
 				description: String(err)
 			});
 		} finally {
@@ -309,7 +319,7 @@
 		try {
 			await openBackupFolder();
 		} catch (err) {
-			toast.error('Could not open backup folder', {
+			toast.error(t('settings.openBackupFailed'), {
 				description: String(err)
 			});
 		}
@@ -325,7 +335,7 @@
 		try {
 			restoreCheck = await checkRestore(backup.path, settings.savePath);
 		} catch (err) {
-			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+			showPersistentError({ id: 'settings.restoreUnavailable' }, String(err));
 			return;
 		} finally {
 			checkingRestore = false;
@@ -351,7 +361,7 @@
 				restoreConfirmChecked = false;
 			}
 		} catch (err) {
-			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+			showPersistentError({ id: 'settings.restoreUnavailable' }, String(err));
 		} finally {
 			checkingRestore = false;
 		}
@@ -372,15 +382,12 @@
 				restore: () => restoreBackup(target.path, profilePath),
 				reload: () => loadProfileFromBackend(profilePath)
 			})) return;
-			toast.success('Backup restored', {
-				description: `Restored from ${formatTimestamp(restoreTarget.timestamp)}.`
+			toast.success(t('settings.backupRestored'), {
+				description: t('settings.restoredFrom', { timestamp: formatTimestamp(restoreTarget.timestamp) })
 			});
 			await loadBackupList();
 		} catch (err) {
-			toast.error('Restore failed', {
-				duration: Infinity, closeButton: true,
-				description: String(err)
-			});
+			showPersistentError({ id: 'settings.restoreFailed' }, String(err));
 		} finally {
 			restoringBackup = null;
 			if (!restoreDialogOpen) restoreTarget = null;
@@ -394,7 +401,7 @@
 		try {
 			gameRestoreCheck = await checkRestore(null, settings.savePath);
 		} catch (err) {
-			toast.error('Restore unavailable', { description: String(err), duration: Infinity, closeButton: true });
+			showPersistentError({ id: 'settings.restoreUnavailable' }, String(err));
 			return;
 		} finally {
 			checkingRestore = false;
@@ -417,15 +424,12 @@
 				restore: () => restoreGameBackup(profilePath),
 				reload: () => loadProfileFromBackend(profilePath)
 			})) return;
-			toast.success('Game backup restored', {
-				description: 'The game\'s own backup has been restored successfully.'
+			toast.success(t('settings.gameBackupRestored'), {
+				description: t('settings.gameBackupRestoredHelp')
 			});
 			await loadBackupList();
 		} catch (err) {
-			toast.error('Restore failed', {
-				duration: Infinity, closeButton: true,
-				description: String(err)
-			});
+			showPersistentError({ id: 'settings.restoreFailed' }, String(err));
 		} finally {
 			restoringGameBackup = false;
 			restoreGameBackupConfirmChecked = false;
@@ -435,18 +439,16 @@
 	// ── Helpers ──
 
 	function formatTimestamp(iso: string): string {
-		try {
-			const d = new Date(iso);
-			return d.toLocaleString(undefined, {
-				year: 'numeric',
-				month: 'short',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit'
-			});
-		} catch {
-			return iso;
-		}
+		return formatDate(iso, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+	}
+
+	function restoreSummary(check: RestoreCheck | null): string {
+		return check ? t('settings.restoreOutcome', { adds: check.adds, removes: check.removes, addsText: formatNumber(check.adds) }) : '';
+	}
+
+	function profileSource(source: string): string {
+		const keys: Record<string, 'settings.sourceSteam' | 'settings.sourceGog' | 'settings.sourceEpic' | 'settings.sourceManual'> = { Steam: 'settings.sourceSteam', Gog: 'settings.sourceGog', Epic: 'settings.sourceEpic', Manual: 'settings.sourceManual' };
+		return keys[source] ? t(keys[source]) : source;
 	}
 
 	// Load backup list on mount if path is set
@@ -458,16 +460,18 @@
 </script>
 
 
+{#if Pilot}<Pilot />{/if}
+
 <ScrollArea class="h-[calc(100vh-4rem)]">
-	<div class="mx-auto max-w-2xl space-y-6 p-2">
+	<div data-testid="settings-page" class="mx-auto max-w-2xl space-y-6 p-2">
 
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-sm">Game text language</CardTitle>
-				<CardDescription>Names and descriptions from the installed game. Missing translations use English.</CardDescription>
+				<CardTitle class="text-sm">{t('settings.gameLanguage')}</CardTitle>
+				<CardDescription>{t('settings.gameLanguageHelp')}</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<label for="game-text-language" class="sr-only">Game text language</label>
+				<label for="game-text-language" class="sr-only">{t('settings.gameLanguage')}</label>
 				<select
 					id="game-text-language"
 					class="bg-background border px-3 py-2 text-sm"
@@ -475,15 +479,19 @@
 					onchange={(event) => setGameTextLanguage(event.currentTarget.value)}
 				>
 					{#each languageOptions as language}
-						<option value={language}>{GAME_TEXT_LANGUAGES[language]}{!languagesLoading && !languagesFailed && !gameTextLanguages.includes(language) ? ' (not available)' : ''}</option>
+						<option value={language}>{GAME_TEXT_LANGUAGES[language]}{!languagesLoading && !languagesFailed && !gameTextLanguages.includes(language) ? t('settings.unavailable') : ''}</option>
 					{/each}
 				</select>
+				{#if gameText.error}
+					<p role="alert" data-testid="game-text-error">{t('settings.gameTextFailed', { requested: GAME_TEXT_LANGUAGES[gameText.requestedLanguage], effective: GAME_TEXT_LANGUAGES[gameText.effectiveLanguage] })}</p>
+					<pre class="whitespace-pre-wrap break-all text-xs" data-testid="game-text-diagnostic">{gameText.errorDetail}</pre>
+				{/if}
 				{#if languagesLoading}
-					<p class="text-xs text-muted-foreground" role="status">Checking installed languages...</p>
+					<p class="text-xs text-muted-foreground" role="status">{t('settings.languagesLoading')}</p>
 				{:else if languagesFailed}
-					<p class="text-xs text-muted-foreground" role="status">Installed languages could not be checked. Your saved selection is retained.</p>
+					<p class="text-xs text-muted-foreground" role="status">{t('settings.languagesFailed')}</p>
 				{:else if !gameTextLanguages.includes(settings.gameTextLanguage)}
-					<p class="text-xs text-muted-foreground" role="status">The selected language is not available in this installation. Missing text uses English.</p>
+					<p class="text-xs text-muted-foreground" role="status">{t('settings.languageUnavailable')}</p>
 				{/if}
 			</CardContent>
 		</Card>
@@ -491,18 +499,19 @@
 		<!-- ═══════ Paths Section ═══════ -->
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-sm">Paths</CardTitle>
-				<CardDescription>Game installation and save file locations.</CardDescription>
+				<CardTitle class="text-sm">{t('settings.paths')}</CardTitle>
+				<CardDescription>{t('settings.pathsHelp')}</CardDescription>
 			</CardHeader>
 			<CardContent class="space-y-5">
 				<!-- Game Installation Path -->
 				<div class="space-y-2">
-					<span class="text-[11px] font-medium text-muted-foreground">Game Installation</span>
-					<div class="flex items-center gap-2">
-						<div class="relative flex-1">
+					<span class="text-[11px] font-medium text-muted-foreground">{t('settings.gameInstallation')}</span>
+					<div class="flex flex-wrap items-center gap-2">
+						<div class="relative min-w-40 flex-1">
 							<Input
+								aria-label={t('settings.gameInstallation')}
 								value={settings.gamePath}
-								placeholder="Path to Darkest Dungeon installation..."
+								placeholder={t('settings.gamePathPlaceholder')}
 								readonly
 								class="h-8 pr-8 text-xs"
 							/>
@@ -529,10 +538,10 @@
 									onclick={handleBrowseGame}
 								>
 									<FolderOpenIcon size={14} />
-									Browse
+									{t('settings.browse')}
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent>Select game folder manually</TooltipContent>
+							<TooltipContent>{t('settings.browseGameHelp')}</TooltipContent>
 						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger>
@@ -548,15 +557,15 @@
 									{:else}
 										<MagnifyingGlassIcon size={14} />
 									{/if}
-									Auto-detect
+									{t('settings.detect')}
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent>Scan for Darkest Dungeon installations</TooltipContent>
+							<TooltipContent>{t('settings.detectGameHelp')}</TooltipContent>
 						</Tooltip>
 					</div>
 					{#if gamePathValid === false}
 						<p class="text-[11px] text-red-500">
-							Not a valid Darkest Dungeon installation. Try browsing manually.
+							{t('settings.invalidGamePath')}
 						</p>
 					{/if}
 				</div>
@@ -565,12 +574,13 @@
 
 				<!-- Save File Location -->
 				<div class="space-y-2">
-					<span class="text-[11px] font-medium text-muted-foreground">Save File Location</span>
-					<div class="flex items-center gap-2">
-						<div class="relative flex-1">
+					<span class="text-[11px] font-medium text-muted-foreground">{t('settings.saveLocation')}</span>
+					<div class="flex flex-wrap items-center gap-2">
+						<div class="relative min-w-40 flex-1">
 							<Input
+								aria-label={t('settings.saveLocation')}
 								value={settings.savePath}
-								placeholder="Path to save files..."
+								placeholder={t('settings.savePathPlaceholder')}
 								readonly
 								class="h-8 pr-8 text-xs"
 							/>
@@ -597,10 +607,10 @@
 									onclick={handleBrowseSave}
 								>
 									<FolderOpenIcon size={14} />
-									Browse
+									{t('settings.browse')}
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent>Select save folder manually</TooltipContent>
+							<TooltipContent>{t('settings.browseSaveHelp')}</TooltipContent>
 						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger>
@@ -616,15 +626,15 @@
 									{:else}
 										<MagnifyingGlassIcon size={14} />
 									{/if}
-									Auto-detect
+									{t('settings.detect')}
 								</Button>
 							</TooltipTrigger>
-							<TooltipContent>Scan for Darkest Dungeon save files</TooltipContent>
+							<TooltipContent>{t('settings.detectSaveHelp')}</TooltipContent>
 						</Tooltip>
 					</div>
 					{#if savePathValid === false}
 						<p class="text-[11px] text-red-500">
-							No save files found at this location. Required files may be missing.
+							{t('settings.invalidSavePath')}
 						</p>
 					{/if}
 				</div>
@@ -633,24 +643,24 @@
 
 				<!-- Profile Selector -->
 				<div class="space-y-2">
-					<span class="text-[11px] font-medium text-muted-foreground">Current Profile</span>
+					<span class="text-[11px] font-medium text-muted-foreground">{t('settings.currentProfile')}</span>
 					{#if profileOptions.length > 0}
 						<Select
 							type="single"
 							value={settings.savePath}
 							onValueChange={(v: string) => handleProfileChange(v)}
 						>
-							<SelectTrigger class="h-8 text-xs">
-								<span>{settings.profileId || 'Select a profile...'}</span>
+							<SelectTrigger aria-label={t('settings.currentProfile')} class="h-8 text-xs">
+								<span>{settings.profileId || t('settings.selectProfile')}</span>
 							</SelectTrigger>
 							<SelectContent>
 								{#each profileOptions as opt}
 									<SelectItem value={opt.id}>
 										<span class="flex items-center gap-2">
 											<span>{opt.label}</span>
-											<Badge variant="outline" class="text-[10px]">{opt.source}</Badge>
+											<Badge variant="outline" class="text-[10px]">{profileSource(opt.source)}</Badge>
 											{#if opt.hasRaid}
-												<Badge variant="destructive" class="text-[10px]">In Raid</Badge>
+												<Badge variant="destructive" class="text-[10px]">{t('settings.inRaid')}</Badge>
 											{/if}
 										</span>
 									</SelectItem>
@@ -660,7 +670,7 @@
 					{:else}
 						<div class="flex items-center gap-2 border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
 							<InfoIcon size={14} class="shrink-0" />
-							<span>No profiles detected. Run auto-detect or browse to a save folder first.</span>
+							<span>{t('settings.noProfiles')}</span>
 						</div>
 					{/if}
 				</div>
@@ -670,19 +680,20 @@
 		<!-- ═══════ Backup Section ═══════ -->
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-sm">Backups</CardTitle>
-				<CardDescription>Create and manage save file backups.</CardDescription>
+				<CardTitle class="text-sm">{t('settings.backups')}</CardTitle>
+				<CardDescription>{t('settings.backupsHelp')}</CardDescription>
 			</CardHeader>
 			<CardContent class="space-y-4">
 				<!-- Auto-backup toggle -->
 				<div class="flex items-center justify-between">
 					<div>
-						<p class="text-xs font-medium">Auto-backup before saving</p>
+						<p class="text-xs font-medium">{t('settings.autoBackup')}</p>
 						<p class="text-[11px] text-muted-foreground">
-							Automatically create a backup before every save operation.
+							{t('settings.autoBackupHelp')}
 						</p>
 					</div>
 					<Switch
+						aria-label={t('settings.autoBackup')}
 						checked={settings.autoBackup}
 						onCheckedChange={(checked) => commitChangedValue(settings.autoBackup, checked, setAutoBackup)}
 					/>
@@ -701,10 +712,10 @@
 					>
 						{#if creatingBackup}
 							<SpinnerIcon size={14} class="animate-spin" />
-							Creating...
+							{t('settings.creating')}
 						{:else}
 							<ArchiveIcon size={14} />
-							Create Backup Now
+							{t('settings.createBackup')}
 						{/if}
 					</Button>
 					<Button
@@ -714,7 +725,7 @@
 						onclick={handleOpenBackupFolder}
 					>
 						<FolderOpenIcon size={14} />
-						Open Backup Folder
+						{t('settings.openBackupFolder')}
 					</Button>
 					<Button
 						variant="outline"
@@ -725,10 +736,10 @@
 					>
 						{#if restoringGameBackup}
 							<SpinnerIcon size={14} class="animate-spin" />
-							Restoring...
+							{t('settings.restoring')}
 						{:else}
 							<ArrowCounterClockwiseIcon size={14} />
-							Restore Game Backup
+							{t('settings.restoreGameBackup')}
 						{/if}
 					</Button>
 				</div>
@@ -738,7 +749,7 @@
 				<!-- Recent backups list -->
 				<div class="space-y-2">
 					<div class="flex items-center justify-between">
-						<span class="text-[11px] font-medium text-muted-foreground">Recent Backups</span>
+						<span class="text-[11px] font-medium text-muted-foreground">{t('settings.recentBackups')}</span>
 						{#if loadingBackups}
 							<SpinnerIcon size={12} class="animate-spin text-muted-foreground" />
 						{/if}
@@ -747,7 +758,7 @@
 					{#if backups.length === 0 && !loadingBackups}
 						<div class="flex items-center gap-2 border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
 							<ArchiveIcon size={14} class="shrink-0" />
-							<span>No backups found. Create one to get started.</span>
+							<span>{t('settings.noBackups')}</span>
 						</div>
 					{:else}
 						<div class="space-y-1.5">
@@ -761,7 +772,7 @@
 												{formatTimestamp(backup.timestamp)}
 											</p>
 											<p class="text-[11px] text-muted-foreground">
-												{backup.file_count} file{backup.file_count !== 1 ? 's' : ''} · {backup.profile_id}
+												{t('settings.backupFiles', { count: backup.file_count, profile: backup.profile_id })}
 											</p>
 										</div>
 									</div>
@@ -774,10 +785,10 @@
 									>
 										{#if isRestoring}
 											<SpinnerIcon size={12} class="animate-spin" />
-											Restoring...
+											{t('settings.restoring')}
 										{:else}
 											<ArrowCounterClockwiseIcon size={12} />
-											Restore
+											{t('settings.restore')}
 										{/if}
 									</Button>
 								</div>
@@ -791,8 +802,8 @@
 		<!-- ═══════ Display Section ═══════ -->
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-sm">Display</CardTitle>
-				<CardDescription>Appearance preferences.</CardDescription>
+				<CardTitle class="text-sm">{t('settings.display')}</CardTitle>
+				<CardDescription>{t('settings.displayHelp')}</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div class="flex items-center justify-between">
@@ -803,13 +814,14 @@
 							<SunIcon size={16} class="text-muted-foreground" />
 						{/if}
 						<div>
-							<p class="text-xs font-medium">Dark mode</p>
+							<p class="text-xs font-medium">{t('settings.darkMode')}</p>
 							<p class="text-[11px] text-muted-foreground">
-								Toggle between dark and light themes.
+								{t('settings.darkModeHelp')}
 							</p>
 						</div>
 					</div>
 					<Switch
+						aria-label={t('settings.darkMode')}
 						checked={mode.current === 'dark'}
 						onCheckedChange={(checked) => commitChangedValue(mode.current === 'dark', checked, () => toggleMode())}
 					/>
@@ -820,12 +832,12 @@
 		<!-- ═══════ About Section ═══════ -->
 		<Card>
 			<CardHeader>
-				<CardTitle class="text-sm">About</CardTitle>
+				<CardTitle class="text-sm">{t('settings.about')}</CardTitle>
 			</CardHeader>
 			<CardContent class="space-y-4">
 				<div class="flex items-center justify-between">
-					<span class="text-xs font-medium">Version</span>
-					<Badge variant="outline" class="text-[11px]">{appVersion}</Badge>
+					<span class="text-xs font-medium">{t('settings.version')}</span>
+					<Badge variant="outline" class="text-[11px]">{appVersion ?? t('settings.developmentVersion')}</Badge>
 				</div>
 
 				<Separator />
@@ -834,9 +846,7 @@
 					<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 						<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-							Hamlet Editor is not an official Red Hook Studios product or product modification,
-							and Red Hook Studios Inc. is not responsible for changes or damages resulting from
-							its use.
+							{t('settings.disclaimer')}
 						</p>
 					</div>
 				</div>
@@ -844,15 +854,15 @@
 				<Separator />
 
 				<div>
-					<Button
-						variant="ghost"
-						size="sm"
-						class="h-7 gap-1.5 text-xs"
-						href="https://github.com/AlinGheorghe/hamlet-editor"
-					>
-						<GithubLogoIcon size={14} />
-						GitHub Repository
-					</Button>
+					<Message id="settings.repository" params={{}}>
+						{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
+						{#snippet code(children)}<code>{@render children()}</code>{/snippet}
+						{#snippet link(children)}
+							<Button variant="ghost" size="sm" class="h-7 gap-1.5 text-xs" href="https://github.com/AlinGheorghe/hamlet-editor">
+								<GithubLogoIcon size={14} />{@render children()}
+							</Button>
+						{/snippet}
+					</Message>
 				</div>
 			</CardContent>
 		</Card>
@@ -861,21 +871,21 @@
 
 <!-- ═══════ Restore Confirmation Dialog ═══════ -->
 <Dialog bind:open={restoreDialogOpen}>
-	<DialogContent class="sm:max-w-md">
+	<DialogContent closeLabel={t('common.close')} class="sm:max-w-md">
 		<DialogHeader>
 			<DialogTitle class="flex items-center gap-2 text-sm">
 				<ArrowCounterClockwiseIcon size={18} />
-				Restore Backup
+				{t('settings.restoreBackup')}
 			</DialogTitle>
 			<DialogDescription>
-				This will replace your current save files with the selected backup.
-				{restoreOutcome(restoreCheck)}
+				{t('settings.restoreDescription')}
+				{restoreSummary(restoreCheck)}
 			</DialogDescription>
 		</DialogHeader>
 
 		{#if restoreCheck?.blocked_reason}
-			<p role="alert" class="text-sm text-destructive">{restoreCheck.blocked_reason}</p>
-			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(false)}>Check again</Button>
+			<p role="alert" class="text-sm text-destructive">{t('settings.blockedDiagnostic', { detail: restoreCheck.blocked_reason })}</p>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(false)}>{t('settings.checkAgain')}</Button>
 		{/if}
 
 		{#if restoreTarget}
@@ -883,28 +893,27 @@
 				<div class="border border-border bg-muted/30 p-3">
 					<p class="text-xs font-medium">{formatTimestamp(restoreTarget.timestamp)}</p>
 					<p class="text-[11px] text-muted-foreground">
-						{restoreTarget.file_count} file{restoreTarget.file_count !== 1 ? 's' : ''} · {restoreTarget.profile_id}
+						{t('settings.backupFiles', { count: restoreTarget.file_count, profile: restoreTarget.profile_id })}
 					</p>
 				</div>
 
 				<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 					<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 					<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-						A safety backup of the current state will be created automatically before restoring.
-						Any unsaved in-memory edits will be lost.
+						{t('settings.restoreWarning')}
 					</p>
 				</div>
 
 				<label class="flex items-center gap-2">
 					<Checkbox bind:checked={restoreConfirmChecked} />
-					<span class="text-[11px]">I understand this will overwrite current save files</span>
+					<span class="text-[11px]">{t('settings.restoreConfirm')}</span>
 				</label>
 			</div>
 		{/if}
 
-		<DialogFooter class="flex-row justify-end gap-2 sm:justify-end">
+		<DialogFooter class="flex-wrap flex-row justify-end gap-2 sm:justify-end">
 			<Button variant="outline" size="sm" onclick={() => (restoreDialogOpen = false)}>
-				Cancel
+				{t('settings.cancel')}
 			</Button>
 			<Button
 				variant="destructive"
@@ -913,7 +922,7 @@
 				onclick={handleRestore}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
-				Restore
+				{t('settings.restore')}
 			</Button>
 		</DialogFooter>
 	</DialogContent>
@@ -921,42 +930,40 @@
 
 <!-- ═══════ Restore Game Backup Confirmation Dialog ═══════ -->
 <Dialog bind:open={restoreGameBackupDialogOpen}>
-	<DialogContent class="sm:max-w-md">
+	<DialogContent closeLabel={t('common.close')} class="sm:max-w-md">
 		<DialogHeader>
 			<DialogTitle class="flex items-center gap-2 text-sm">
 				<ArrowCounterClockwiseIcon size={18} />
-				Restore Game Backup
+				{t('settings.restoreGameBackup')}
 			</DialogTitle>
 			<DialogDescription>
-				Restore from the game's own backup/ subdirectory inside the save profile.
-				{restoreOutcome(gameRestoreCheck)}
+				{t('settings.gameRestoreDescription')}
+				{restoreSummary(gameRestoreCheck)}
 			</DialogDescription>
 		</DialogHeader>
 
 		{#if gameRestoreCheck?.blocked_reason}
-			<p role="alert" class="text-sm text-destructive">{gameRestoreCheck.blocked_reason}</p>
-			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(true)}>Check again</Button>
+			<p role="alert" class="text-sm text-destructive">{t('settings.blockedDiagnostic', { detail: gameRestoreCheck.blocked_reason })}</p>
+			<Button variant="outline" size="sm" disabled={checkingRestore} onclick={() => recheckRestore(true)}>{t('settings.checkAgain')}</Button>
 		{/if}
 
 		<div class="space-y-3">
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
 				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-					This restores from the game's own backup folder (backup/ inside the profile directory).
-					A safety backup of your current state will be created automatically before restoring.
-					Any unsaved in-memory edits will be lost.
+					{t('settings.gameRestoreWarning')}
 				</p>
 			</div>
 
 			<label class="flex items-center gap-2">
 				<Checkbox bind:checked={restoreGameBackupConfirmChecked} />
-				<span class="text-[11px]">I understand this will overwrite current save files</span>
+				<span class="text-[11px]">{t('settings.restoreConfirm')}</span>
 			</label>
 		</div>
 
-		<DialogFooter class="flex-row justify-end gap-2 sm:justify-end">
+		<DialogFooter class="flex-wrap flex-row justify-end gap-2 sm:justify-end">
 			<Button variant="outline" size="sm" onclick={() => (restoreGameBackupDialogOpen = false)}>
-				Cancel
+				{t('settings.cancel')}
 			</Button>
 			<Button
 				variant="destructive"
@@ -965,7 +972,7 @@
 				onclick={handleRestoreGameBackup}
 			>
 				<ArrowCounterClockwiseIcon size={14} class="mr-1" />
-				Restore
+				{t('settings.restore')}
 			</Button>
 		</DialogFooter>
 	</DialogContent>

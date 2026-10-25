@@ -1,0 +1,10 @@
+{
+	"sourceLocale": "en",
+	"pilotLocales": ["de", "ru", "ja"],
+	"untranslatedLocales": "Fall back per message to bundled English until their catalogs are drafted.",
+	"syntax": ["variables", "plural", "selectordinal", "select", "emphasis", "code", "link"],
+	"inlineNumberDateTimeFormats": false,
+	"linkDestinations": "Owned by application snippets; never supplied by a catalog.",
+	"runtimePolicy": "P1 acceptance targets only Chromium and WebKit bundled with the exact @playwright/test pin. Passing H1 does not certify a packaged Tauri webview. Packaged platform support requires the P4 evidence ledger.",
+	"translationStatus": "pilot, unreviewed"
+}

@@ -66,7 +66,7 @@
 		getHeroes,
 		CLASS_DISPLAY_NAMES
 	} from '#lib/stores/save-data.svelte.js';
-	import { setNameTable, setQuirks, setTrinkets, setClassStats, setClassSkills, setRosterCapacityRules } from '#lib/stores/game-data.svelte.js';
+	import { setQuirks, setTrinkets, setClassStats, setClassSkills, setRosterCapacityRules } from '#lib/stores/game-data.svelte.js';
 	import {
 		Select,
 		SelectContent,
@@ -76,7 +76,10 @@
 	import { isGameRunning, detectSaveLocations, type SaveLocation } from '#lib/api/detect.js';
 	import { saveProfile } from '#lib/api/save.js';
 	import { createBackup } from '#lib/api/backup.js';
-	import { ensureNameTable, loadLocalization } from '#lib/api/names.js';
+	import { getGameTextState, requestGameText } from '#lib/stores/game-text.svelte.js';
+	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
+	import { showPersistentError } from '#lib/i18n/notifications.js';
+	import { ensureNameTable } from '#lib/api/names.js';
 	import { loadQuirkLibrary, loadTrinketLibrary, loadClassStats, loadClassSkills, loadRosterCapacityRules } from '#lib/api/gamedata.js';
 	import { scanModDirectories } from '#lib/api/mods.js';
 	import { runPreSaveValidation, type ValidationIssue } from '#lib/validation.js';
@@ -100,7 +103,7 @@
 
 	// ── Profile Selector ──
 
-	// Detected save locations — populated once on first successful setup.
+	// Detected save locations; populated once on first successful setup.
 	let sidebarSaveLocations = $state<SaveLocation[]>([]);
 
 	/** Switch to a different profile from the sidebar selector. */
@@ -133,18 +136,20 @@
 
 	// ── Name table + localization + mod-scan pipeline ──
 
+	$effect(() => requestGameText(settings.gamePath, settings.gameTextLanguage));
+	const gameText = getGameTextState();
+	let notifiedGameTextRequest = 0;
 	$effect(() => {
-		const path = settings.gamePath;
-		const language = settings.gameTextLanguage;
-		let current = true;
-		if (path) {
-			loadLocalization(path, language).then((table) => {
-				if (current) setNameTable(table);
-			}).catch((error) => {
-				if (current) toast.error(`Could not load game text: ${error}`);
-			});
+		if (!gameText.error) {
+			toast.dismiss('game-text-load');
+			return;
 		}
-		return () => { current = false; };
+		if (gameText.failedRequest === notifiedGameTextRequest) return;
+		notifiedGameTextRequest = gameText.failedRequest;
+		showPersistentError({ id: 'settings.gameTextFailed', params: {
+			requested: GAME_TEXT_LANGUAGES[gameText.requestedLanguage],
+			effective: GAME_TEXT_LANGUAGES[gameText.effectiveLanguage]
+		} }, gameText.errorDetail, 'game-text-load');
 	});
 
 	async function initGameData(gamePath: string) {
@@ -191,7 +196,7 @@
 					sidebarSaveLocations = locs;
 				})
 				.catch(() => {
-					// Non-fatal — sidebar selector will show current profile only
+					// Non-fatal; sidebar selector will show current profile only
 				});
 
 			loadProfileFromBackend(settings.savePath)
@@ -378,10 +383,10 @@
 		}
 
 		// Ctrl/Cmd+R: Prevent WebView reload. e.preventDefault() intercepts it
-		// before the WebView acts on it — no Tauri config changes needed.
+		// before the WebView acts on it; no Tauri config changes needed.
 		if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
 			e.preventDefault();
-			// Ctrl+R reserved — no action (prevents WebView reload)
+			// Ctrl+R reserved; no action (prevents WebView reload)
 		}
 	}
 
@@ -638,7 +643,7 @@
 							</SelectContent>
 						</Select>
 					{:else}
-						<!-- Single profile or locations not yet detected — static display -->
+						<!-- Single profile or locations not yet detected; static display -->
 						<div class="h-7 flex items-center px-3 text-xs text-muted-foreground border border-border bg-muted/20 rounded-sm">
 							Profile: {settings.profileId}
 						</div>

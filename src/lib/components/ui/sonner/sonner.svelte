@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Toaster as Sonner, type ToasterProps as SonnerProps } from "svelte-sonner";
+	import { t } from '#lib/i18n/index.svelte.js';
 	import { mode } from "mode-watcher";
 	import SpinnerIcon from 'phosphor-svelte/lib/SpinnerIcon';
 	import CheckCircleIcon from 'phosphor-svelte/lib/CheckCircleIcon';
@@ -12,6 +13,8 @@
 
 <Sonner
 	theme={mode.current}
+	containerAriaLabel={t('common.notifications')}
+	closeButtonAriaLabel={t('common.closeToast')}
 	class="toaster group"
 	style="--normal-bg: var(--color-popover); --normal-text: var(--color-popover-foreground); --normal-border: var(--color-border);"
 	{...restProps}

@@ -1,0 +1,555 @@
+{
+	"settings.gameLanguage": {
+		"context": "Settings game-text card title and native select label; changes installed-game names only.",
+		"lengthHint": "Card title and select label, ideally under 28 characters.",
+		"tone": "Neutral setting label.",
+		"slots": []
+	},
+	"settings.gameLanguageHelp": {
+		"context": "Help below game-text language title; explains installed files and per-entry English fallback.",
+		"lengthHint": "Two short lines in a 640 px card.",
+		"tone": "Factual; do not promise every name is translated.",
+		"slots": []
+	},
+	"settings.unavailable": {
+		"context": "Suffix on a saved language option absent from this installation; leading space is intentional.",
+		"lengthHint": "Short parenthesized suffix inside a select option.",
+		"tone": "Neutral availability status.",
+		"slots": []
+	},
+	"settings.languagesLoading": {
+		"context": "Status below game-text select while installed-language discovery runs.",
+		"lengthHint": "One short status line.",
+		"tone": "Temporary progress.",
+		"slots": []
+	},
+	"settings.languagesFailed": {
+		"context": "Status when installed-language discovery fails; saved choice remains selected.",
+		"lengthHint": "One or two short lines.",
+		"tone": "Reassuring; distinguish discovery from game-text load failure.",
+		"slots": []
+	},
+	"settings.languageUnavailable": {
+		"context": "Warning below game-text select for a language absent from the installation.",
+		"lengthHint": "Two wrapping lines.",
+		"tone": "Explain English fallback without implying data loss.",
+		"slots": []
+	},
+	"settings.paths": {
+		"context": "Settings card heading for game installation and save profile paths.",
+		"lengthHint": "Short card heading.",
+		"tone": "Neutral heading.",
+		"slots": []
+	},
+	"settings.pathsHelp": {
+		"context": "Description below Paths heading.",
+		"lengthHint": "One short line.",
+		"tone": "Factual scope of the card.",
+		"slots": []
+	},
+	"settings.gameInstallation": {
+		"context": "Label above read-only game installation path and its accessible input name.",
+		"lengthHint": "Short field label.",
+		"tone": "Neutral label.",
+		"slots": []
+	},
+	"settings.gamePathPlaceholder": {
+		"context": "Placeholder when no game installation path is configured.",
+		"lengthHint": "Single input line; may clip while empty.",
+		"tone": "Describe expected folder.",
+		"slots": []
+	},
+	"settings.browse": {
+		"context": "Both path-row Browse buttons; opens the corresponding native directory picker.",
+		"lengthHint": "Compact button, ideally under 12 characters.",
+		"tone": "Action verb; distinguish by surrounding path label.",
+		"slots": []
+	},
+	"settings.browseGameHelp": {
+		"context": "Tooltip for game-installation Browse button.",
+		"lengthHint": "One short tooltip sentence.",
+		"tone": "Explain manual folder selection.",
+		"slots": []
+	},
+	"settings.detect": {
+		"context": "Auto-detect buttons in both game and save path rows.",
+		"lengthHint": "Compact button, ideally under 18 characters.",
+		"tone": "Action label.",
+		"slots": []
+	},
+	"settings.detectGameHelp": {
+		"context": "Tooltip for game-installation Auto-detect.",
+		"lengthHint": "One short tooltip sentence.",
+		"tone": "Describe installation scan.",
+		"slots": []
+	},
+	"settings.invalidGamePath": {
+		"context": "Inline warning after no valid installation is detected in the game path row.",
+		"lengthHint": "Two wrapping lines below path input.",
+		"tone": "Clear recovery advice; no claim that files were changed.",
+		"slots": []
+	},
+	"settings.saveLocation": {
+		"context": "Label above read-only save profile path and its accessible input name.",
+		"lengthHint": "Short field label.",
+		"tone": "Neutral label.",
+		"slots": []
+	},
+	"settings.savePathPlaceholder": {
+		"context": "Empty save profile path input placeholder.",
+		"lengthHint": "One input line.",
+		"tone": "Describe expected save folder.",
+		"slots": []
+	},
+	"settings.browseSaveHelp": {
+		"context": "Tooltip for save-profile Browse button.",
+		"lengthHint": "One short tooltip sentence.",
+		"tone": "Explain manual save-folder selection.",
+		"slots": []
+	},
+	"settings.detectSaveHelp": {
+		"context": "Tooltip for save-profile Auto-detect button.",
+		"lengthHint": "One short tooltip sentence.",
+		"tone": "Describe save-folder scan.",
+		"slots": []
+	},
+	"settings.invalidSavePath": {
+		"context": "Inline warning when save detection found no usable files.",
+		"lengthHint": "Two wrapping lines.",
+		"tone": "Diagnostic; mention required files may be missing.",
+		"slots": []
+	},
+	"settings.currentProfile": {
+		"context": "Settings profile selector visible label and trigger accessible name.",
+		"lengthHint": "Short field label.",
+		"tone": "Neutral label.",
+		"slots": []
+	},
+	"settings.selectProfile": {
+		"context": "Profile trigger fallback when no profile id is selected.",
+		"lengthHint": "Short select prompt.",
+		"tone": "Action prompt.",
+		"slots": []
+	},
+	"settings.inRaid": {
+		"context": "Small destructive badge beside profiles with an active raid.",
+		"lengthHint": "Very short badge, ideally under 12 characters.",
+		"tone": "State only; no instruction.",
+		"slots": []
+	},
+	"settings.noProfiles": {
+		"context": "Empty profile-selector panel after detection yields no locations.",
+		"lengthHint": "Two or three short lines.",
+		"tone": "Practical recovery instructions.",
+		"slots": []
+	},
+	"settings.backups": {
+		"context": "Settings backup-management card heading.",
+		"lengthHint": "Short card title.",
+		"tone": "Neutral heading.",
+		"slots": []
+	},
+	"settings.backupsHelp": {
+		"context": "Description below Backups heading.",
+		"lengthHint": "One short line.",
+		"tone": "Explain backup management.",
+		"slots": []
+	},
+	"settings.autoBackup": {
+		"context": "Toggle label and accessible switch name for backup before each save.",
+		"lengthHint": "One setting label line.",
+		"tone": "Describe behavior when enabled.",
+		"slots": []
+	},
+	"settings.autoBackupHelp": {
+		"context": "Help under the automatic-backup toggle label.",
+		"lengthHint": "One or two wrapping lines.",
+		"tone": "Factual; backup occurs before saving.",
+		"slots": []
+	},
+	"settings.creating": {
+		"context": "Create Backup button while its request is pending.",
+		"lengthHint": "Compact button width.",
+		"tone": "Temporary progress.",
+		"slots": []
+	},
+	"settings.createBackup": {
+		"context": "Button that immediately creates an editor backup for current profile.",
+		"lengthHint": "Compact action button.",
+		"tone": "Direct action; operates on disk.",
+		"slots": []
+	},
+	"settings.openBackupFolder": {
+		"context": "Button opening the editor backup directory in the file manager.",
+		"lengthHint": "Compact action button.",
+		"tone": "Direct action; opens a folder.",
+		"slots": []
+	},
+	"settings.restoring": {
+		"context": "Backup-row Restore button while that backup request is in progress.",
+		"lengthHint": "Compact button width.",
+		"tone": "Temporary progress.",
+		"slots": []
+	},
+	"settings.restoreGameBackup": {
+		"context": "Button and dialog title for restoring the game-owned backup/ folder.",
+		"lengthHint": "Button and compact modal heading.",
+		"tone": "Explicitly distinguish the game backup from editor backups.",
+		"slots": []
+	},
+	"settings.recentBackups": {
+		"context": "Subheading above timestamped editor backup rows.",
+		"lengthHint": "Short subheading.",
+		"tone": "Neutral heading.",
+		"slots": []
+	},
+	"settings.noBackups": {
+		"context": "Empty backup-list panel.",
+		"lengthHint": "Two short sentences in a wrapping row.",
+		"tone": "Suggest creating a backup.",
+		"slots": []
+	},
+	"settings.backupFiles": {
+		"context": "File-count and raw profile-id line in each backup row and restore confirmation.",
+		"lengthHint": "Compact metadata line; wraps if needed.",
+		"tone": "Factual plural count; profile is an opaque id, preserve verbatim.",
+		"slots": [
+			"count",
+			"profile"
+		]
+	},
+	"settings.restore": {
+		"context": "Backup-row button opens confirmation; destructive dialog button executes the selected restore after confirmation.",
+		"lengthHint": "Very short action label on both buttons.",
+		"tone": "Direct action; surrounding confirmation explains overwrite.",
+		"slots": []
+	},
+	"settings.display": {
+		"context": "Settings appearance card title.",
+		"lengthHint": "Short card heading.",
+		"tone": "Neutral heading.",
+		"slots": []
+	},
+	"settings.displayHelp": {
+		"context": "Description below Display title.",
+		"lengthHint": "One short line.",
+		"tone": "Neutral description.",
+		"slots": []
+	},
+	"settings.darkMode": {
+		"context": "Dark-mode toggle label and accessible switch name.",
+		"lengthHint": "Short setting label.",
+		"tone": "Neutral label.",
+		"slots": []
+	},
+	"settings.darkModeHelp": {
+		"context": "Help below dark-mode toggle label.",
+		"lengthHint": "One short line.",
+		"tone": "Describe switching light/dark appearance.",
+		"slots": []
+	},
+	"settings.about": {
+		"context": "Settings product-information card heading.",
+		"lengthHint": "Short heading.",
+		"tone": "Neutral heading.",
+		"slots": []
+	},
+	"settings.version": {
+		"context": "Label beside the app version badge in About.",
+		"lengthHint": "Short metadata label.",
+		"tone": "Neutral label.",
+		"slots": []
+	},
+	"settings.disclaimer": {
+		"context": "Amber About notice disclaiming official affiliation and responsibility.",
+		"lengthHint": "Wrapping paragraph in a 640 px card; preserve full meaning.",
+		"tone": "Formal disclaimer; retain product and company names.",
+		"slots": []
+	},
+	"settings.repository": {
+		"context": "Repository link in About; app code owns the destination and wraps translated link text.",
+		"lengthHint": "Short link label.",
+		"tone": "Neutral navigation label; retain GitHub brand.",
+		"slots": [
+			"link"
+		]
+	},
+	"settings.restoreBackup": {
+		"context": "Modal title when confirming a selected editor backup.",
+		"lengthHint": "Compact modal heading.",
+		"tone": "Explicit action heading.",
+		"slots": []
+	},
+	"settings.restoreDescription": {
+		"context": "Selected-backup modal description before the file-change summary.",
+		"lengthHint": "One or two wrapping lines.",
+		"tone": "Safety text; current files on disk will be replaced.",
+		"slots": []
+	},
+	"settings.checkAgain": {
+		"context": "Button rerunning restore preflight after a blocked result.",
+		"lengthHint": "Compact button.",
+		"tone": "Recovery action; rechecks without restoring.",
+		"slots": []
+	},
+	"settings.restoreWarning": {
+		"context": "Amber warning inside selected-backup restore modal.",
+		"lengthHint": "Full wrapping safety paragraph.",
+		"tone": "Preserve safety-backup guarantee and loss of unsaved in-memory edits.",
+		"slots": []
+	},
+	"settings.restoreConfirm": {
+		"context": "Checkbox text required before either restore can run.",
+		"lengthHint": "Wrapping checkbox label.",
+		"tone": "Explicit acknowledgement that current save files are overwritten.",
+		"slots": []
+	},
+	"settings.cancel": {
+		"context": "Cancel buttons in both restore dialogs.",
+		"lengthHint": "Very short button.",
+		"tone": "Dismiss without restoring.",
+		"slots": []
+	},
+	"settings.gameRestoreDescription": {
+		"context": "Game-backup restore modal description, before preflight summary.",
+		"lengthHint": "Two wrapping lines.",
+		"tone": "Factual; backup/ is a literal folder name.",
+		"slots": []
+	},
+	"settings.gameRestoreWarning": {
+		"context": "Amber warning inside game-owned backup restore modal.",
+		"lengthHint": "Full wrapping safety paragraph.",
+		"tone": "Preserve backup source, safety backup and loss of unsaved edits.",
+		"slots": []
+	},
+	"settings.restoreOutcome": {
+		"context": "Preflight file-change summary appended to either restore modal description.",
+		"lengthHint": "Complete wrapping sentence; both counts must stay in the same message.",
+		"tone": "Precise safety information; adds/removes count files, addsText is formatted adds.",
+		"slots": [
+			"adds",
+			"addsText",
+			"removes"
+		]
+	},
+	"settings.gameDetected": {
+		"context": "Success toast title after a detected installation path is applied.",
+		"lengthHint": "Short toast title; path shown separately.",
+		"tone": "Completed action.",
+		"slots": []
+	},
+	"settings.noGame": {
+		"context": "Error toast title when installation scan finds nothing.",
+		"lengthHint": "Short toast title.",
+		"tone": "Factual failure; manual-browse help follows.",
+		"slots": []
+	},
+	"settings.browseHelp": {
+		"context": "Toast description for empty installation or save detection.",
+		"lengthHint": "One short recovery sentence.",
+		"tone": "Practical instruction.",
+		"slots": []
+	},
+	"settings.detectionFailed": {
+		"context": "Error toast title when either path scan throws.",
+		"lengthHint": "Short toast title.",
+		"tone": "Diagnostic failure.",
+		"slots": []
+	},
+	"settings.savesDetected": {
+		"context": "Success toast title after save-profile detection and selection.",
+		"lengthHint": "Short toast title.",
+		"tone": "Completed detection.",
+		"slots": []
+	},
+	"settings.noSaves": {
+		"context": "Error toast title when save detection finds no locations.",
+		"lengthHint": "Short toast title.",
+		"tone": "Factual failure.",
+		"slots": []
+	},
+	"settings.gamePanel": {
+		"context": "Native directory picker title for choosing a game installation.",
+		"lengthHint": "OS dialog title, one line if possible.",
+		"tone": "Explicit selection instruction.",
+		"slots": []
+	},
+	"settings.savePanel": {
+		"context": "Native directory picker title for choosing a save profile folder.",
+		"lengthHint": "OS dialog title, one line if possible.",
+		"tone": "Explicit selection instruction.",
+		"slots": []
+	},
+	"settings.gameLoadFailed": {
+		"context": "Error toast when browsing/changing the game installation throws; raw diagnostic follows.",
+		"lengthHint": "Short toast title.",
+		"tone": "Failure; do not hide the raw diagnostic.",
+		"slots": []
+	},
+	"settings.profileLoadFailed": {
+		"context": "Error toast when browsing/changing a profile throws; raw diagnostic follows.",
+		"lengthHint": "Short toast title.",
+		"tone": "Failure of the selected profile load.",
+		"slots": []
+	},
+	"settings.profileLoaded": {
+		"context": "Success toast after choosing a detected profile.",
+		"lengthHint": "Short toast title.",
+		"tone": "Completed load.",
+		"slots": []
+	},
+	"settings.profileFailed": {
+		"context": "Error toast after profile-selector load throws; raw diagnostic follows.",
+		"lengthHint": "Short toast title.",
+		"tone": "Failure, no claim that edits were saved.",
+		"slots": []
+	},
+	"settings.backupCreated": {
+		"context": "Success toast after manual editor backup creation.",
+		"lengthHint": "Short toast title.",
+		"tone": "Completed disk backup.",
+		"slots": []
+	},
+	"settings.backupFailed": {
+		"context": "Error toast for manual backup creation; raw diagnostic follows.",
+		"lengthHint": "Short toast title.",
+		"tone": "Failure; no claim of backup protection.",
+		"slots": []
+	},
+	"settings.openBackupFailed": {
+		"context": "Error toast when opening editor backup folder fails.",
+		"lengthHint": "Short toast title.",
+		"tone": "Folder-open failure; does not imply backup corruption.",
+		"slots": []
+	},
+	"settings.restoreUnavailable": {
+		"context": "Persistent error toast when restore preflight throws; raw diagnostic stays copyable.",
+		"lengthHint": "Short persistent title.",
+		"tone": "Safety failure; restoring has not started.",
+		"slots": []
+	},
+	"settings.backupRestored": {
+		"context": "Success toast after selected editor backup restore and reload.",
+		"lengthHint": "Short toast title.",
+		"tone": "Completed disk restore.",
+		"slots": []
+	},
+	"settings.restoreFailed": {
+		"context": "Persistent error toast if either restore workflow fails; raw diagnostic follows.",
+		"lengthHint": "Short persistent title.",
+		"tone": "Safety failure; preserve recovery detail separately.",
+		"slots": []
+	},
+	"settings.gameBackupRestored": {
+		"context": "Success toast after game-owned backup restore and profile reload.",
+		"lengthHint": "Short toast title.",
+		"tone": "Completed game-backup restore.",
+		"slots": []
+	},
+	"settings.gameBackupRestoredHelp": {
+		"context": "Description below game-backup success toast.",
+		"lengthHint": "One wrapping sentence.",
+		"tone": "Confirm successful restoration.",
+		"slots": []
+	},
+	"settings.profilesFound": {
+		"context": "Pluralized description below save-detection success toast.",
+		"lengthHint": "One short count sentence.",
+		"tone": "Factual number of detected profiles.",
+		"slots": [
+			"count"
+		]
+	},
+	"settings.profileSwitched": {
+		"context": "Description below profile-selector success toast.",
+		"lengthHint": "One short sentence with raw profile id.",
+		"tone": "Completed switch; preserve id verbatim.",
+		"slots": [
+			"profile"
+		]
+	},
+	"settings.restoredFrom": {
+		"context": "Description below selected-backup restore success toast.",
+		"lengthHint": "One wrapping sentence with formatted timestamp.",
+		"tone": "Completed restore; timestamp is already formatted.",
+		"slots": [
+			"timestamp"
+		]
+	},
+	"settings.sourceManual": {
+		"context": "Small badge in profile selector for manually configured locations.",
+		"lengthHint": "Very short badge.",
+		"tone": "Source label.",
+		"slots": []
+	},
+	"settings.sourceGog": {
+		"context": "Small profile-source badge for GOG saves.",
+		"lengthHint": "Brand-length badge.",
+		"tone": "Invariant platform brand.",
+		"slots": []
+	},
+	"settings.sourceEpic": {
+		"context": "Small profile-source badge for Epic saves.",
+		"lengthHint": "Brand-length badge.",
+		"tone": "Invariant platform brand.",
+		"slots": []
+	},
+	"settings.sourceSteam": {
+		"context": "Small profile-source badge for Steam saves.",
+		"lengthHint": "Brand-length badge.",
+		"tone": "Invariant platform brand.",
+		"slots": []
+	},
+	"common.close": {
+		"context": "Accessible close-button name for translated Settings restore dialogs.",
+		"lengthHint": "Very short accessible action.",
+		"tone": "Close without confirming restore.",
+		"slots": []
+	},
+	"common.notifications": {
+		"context": "Sonner notification-region accessible label.",
+		"lengthHint": "Short screen-reader region name.",
+		"tone": "Neutral region label.",
+		"slots": []
+	},
+	"common.closeToast": {
+		"context": "Sonner dismiss-button accessible name for notifications, including persistent errors.",
+		"lengthHint": "Short screen-reader action.",
+		"tone": "Dismiss the notice only.",
+		"slots": []
+	},
+	"settings.blockedDiagnostic": {
+		"context": "Inline restore-blocker alert in either confirmation modal; raw backend reason stays visible.",
+		"lengthHint": "Wrapping diagnostic; never truncate recovery paths.",
+		"tone": "Verbatim diagnostic; presence keeps Restore disabled.",
+		"slots": [
+			"detail"
+		]
+	},
+	"settings.gameTextFailed": {
+		"context": "Settings fallback alert and layout persistent toast after game-text loading fails.",
+		"lengthHint": "Wrapping sentence naming requested and retained effective languages.",
+		"tone": "Clear failure with honest fallback; names are autonyms, not inflected.",
+		"slots": [
+			"effective",
+			"requested"
+		]
+	},
+	"pilot.rich": {
+		"context": "Temporary dev-only proof of reordered emphasis, code and app-owned link with hostile-looking literal user name.",
+		"lengthHint": "One wrapping proof line; all approved slots may move.",
+		"tone": "Test copy; name is literal user text, backup/ is a folder, link destination stays in code.",
+		"slots": [
+			"code",
+			"emphasis",
+			"link",
+			"name"
+		]
+	},
+	"settings.developmentVersion": {
+		"context": "Fallback beside the Settings version label when the native app version is unavailable in development.",
+		"lengthHint": "Short version badge, ideally under 14 characters.",
+		"tone": "Neutral development build label.",
+		"slots": []
+	}
+}

@@ -33,14 +33,65 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Catalog and generated-type checks
+        run: pnpm i18n:check
+
       - name: Svelte check
         run: pnpm check
 
       - name: Build frontend
         run: pnpm build
 
+      - name: Keep mounted harness out of production
+        run: |
+          if grep -R -n -E '__h1|installHarness|PilotProof|Pilot editor locale|mockIPC' build/; then
+            echo 'Mounted test harness leaked into the production build'
+            exit 1
+          fi
+
       - name: Frontend tests
         run: pnpm test
+
+  mounted-i18n:
+    name: Mounted i18n invariants
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install exact locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check catalogs and generated types
+        run: pnpm i18n:check
+
+      - name: Type-check mounted tests and Playwright config
+        run: pnpm exec tsc --noEmit -p tests/e2e/tsconfig.json
+
+      - name: Install Chromium and WebKit from pinned Playwright
+        run: pnpm exec playwright install --with-deps chromium webkit
+
+      - name: Mounted invariants in Chromium and WebKit
+        run: pnpm test:h1
+        env:
+          H1_OUTPUT_DIR: test-results/h1
+
+      - name: Upload mounted i18n evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mounted-i18n-evidence
+          path: test-results/h1
+          if-no-files-found: warn
 
   rust:
     name: Rust checks
