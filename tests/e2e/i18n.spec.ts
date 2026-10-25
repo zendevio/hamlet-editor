@@ -1,6 +1,6 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
-import { GAME_TEXT_LANGUAGES } from '../../src/lib/data/game-text-languages.js';
+import { GAME_TEXT_LANGUAGES, GAME_TEXT_LOCALES } from '../../src/lib/data/game-text-languages.js';
 import type {} from '../../src/lib/dev/harness.js';
 async function evidence(info: TestInfo, name: string, body: string | Uint8Array, contentType: string) {
 	const path = info.outputPath(name);
@@ -8,15 +8,13 @@ async function evidence(info: TestInfo, name: string, body: string | Uint8Array,
 	await info.attach(name, { path, contentType });
 }
 
-// is_game_running is the layout's independent five-second safety poll. It is
-// read-only and may interleave with switches; every other allowed IPC is either
-// the display table request or persistence of the explicit language choice
-// (settings.svelte.ts opens a LazyStore per write, so each write also loads it).
-const switchCommands = new Set(['load_localization', 'plugin:store|load', 'plugin:store|set', 'plugin:store|delete', 'plugin:store|save', 'is_game_running']);
+// Locale switches may only request display text, native menu labels and persist
+// evidence and the three language keys. All profile and setup settings remain protected.
+const switchCommands = new Set(['load_localization', 'plugin:store|load', 'plugin:store|set', 'plugin:store|delete', 'plugin:store|save', 'is_game_running', 'set_native_menu_language', 'collect_language_evidence']);
 function expectSwitchCalls(calls: { command: string; args: Record<string, unknown> }[], persisted: Record<string, unknown>) {
 	expect(calls.filter(({ command }) => !switchCommands.has(command))).toEqual([]);
 	for (const { command, args } of calls) {
-		if (!['plugin:store|set', 'plugin:store|delete'].includes(command) || args.key === 'gameTextLanguage') continue;
+		if (!['plugin:store|set', 'plugin:store|delete'].includes(command) || ['gameTextLanguage', 'gameTextMode', 'editorLanguage'].includes(String(args.key))) continue;
 		expect(command).toBe('plugin:store|set');
 		expect(persisted).toHaveProperty(String(args.key));
 		expect(args.value).toEqual(persisted[String(args.key)]);
@@ -37,26 +35,48 @@ const renderedCopy: Record<string, { files: string; summary: string; repository:
 async function open(page: Page) {
 	await page.goto('/settings?h1');
 	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
-	await expect(page.getByLabel('Pilot editor locale')).toBeVisible();
+	await expect(page.locator('#editor-language')).toBeVisible();
 	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
 	await expect(page.getByTestId('settings-page').getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
 }
 const persistedSettings = (page: Page) => page.evaluate(() => {
-	const { gameTextLanguage: _language, ...values } = window.__h1!.persistedSettings();
+	const { gameTextLanguage: _language, gameTextMode: _mode, editorLanguage: _editor, ...values } = window.__h1!.persistedSettings();
 	return values;
 });
+const editorId = (locale: string) => Object.entries(GAME_TEXT_LOCALES).find(([, tag]) => tag === locale)![0];
 const snapshot = (page: Page) => page.evaluate(() => window.__h1!.snapshot());
 async function switchEditor(page: Page, locale: string) {
 	const persisted = await persistedSettings(page);
-	await page.getByLabel('Pilot editor locale').selectOption(locale);
+	await page.locator('#editor-language').selectOption(editorId(locale), { force: true });
+	await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().editorLanguage)).toBe(editorId(locale));
 	expect(await persistedSettings(page)).toEqual(persisted);
 }
 async function switchGame(page: Page, language: string) {
 	const persisted = await persistedSettings(page);
-	await page.locator('#game-text-language').selectOption(language);
+	await page.locator('#game-text-language').selectOption(language, { force: true });
 	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
 	await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().gameTextLanguage)).toBe(language);
 	expect(await persistedSettings(page)).toEqual(persisted);
+}
+
+// These are the same production pickers, with a game-options signal distinct
+// from the supported system language in the default harness fixture.
+async function switchAutomaticModes(page: Page) {
+	for (const [id, choice, locale, language] of [
+		['editor-language', 'system', 'en', 'koreana'],
+		['game-text-language', 'match-game', 'en', 'russian'],
+		['game-text-language', 'same-as-editor', 'en', 'english']
+	]) {
+		const previous = await page.evaluate(() => window.__h1!.gameText().requested);
+		const marker = await page.evaluate(() => window.__h1!.calls.length);
+		await page.locator(`#${id}`).selectOption(choice, { force: true });
+		await expect.poll(() => page.evaluate((key) => window.__h1!.persistedSettings()[key],
+			id === 'editor-language' ? 'editorLanguage' : 'gameTextMode'), { message: `Persist ${choice}` }).toBe(choice);
+		await expect(page.locator('html')).toHaveAttribute('lang', locale);
+		await expect.poll(() => page.evaluate(() => window.__h1!.gameText())).toMatchObject({ requested: language, effective: language, loading: false });
+		const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
+		expect(calls.filter(({ command }) => command === 'load_localization').map(({ args }) => args.language)).toEqual(previous === language ? [] : [language]);
+	}
 }
 
 async function expectSettingsCopy(page: Page, messages: Record<string, string>) {
@@ -85,13 +105,13 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 	await open(page);
 	await page.evaluate(() => window.__h1!.edit());
 	const before = await snapshot(page);
-	await page.getByLabel('Pilot selected hero').selectOption(before.heroes[0].id);
-	await page.getByLabel('Pilot uncommitted name').fill('partially typed <name');
+	await page.getByLabel('Harness selected hero').selectOption(before.heroes[0].id);
+	await page.getByLabel('Harness uncommitted name').fill('partially typed <name');
 	await page.getByTestId('settings-page').getByRole('button', { name: 'Restore', exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	await expect(dialog).toBeVisible();
 	const dialogNode = await dialog.elementHandle();
-	const inputNode = await page.getByLabel('Pilot uncommitted name').elementHandle();
+	const inputNode = await page.getByLabel('Harness uncommitted name').elementHandle();
 	const componentNode = await page.getByTestId('settings-page').elementHandle();
 	const pathNode = await page.getByPlaceholder('Path to Darkest Dungeon installation...').elementHandle();
 	const persisted = await persistedSettings(page);
@@ -101,8 +121,8 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 
 	for (const locale of cycle) {
 		// The real picker lives outside the modal. Dispatching its change emulates
-		// the dev query seam while keeping the restore dialog open and focused.
-		await page.getByLabel('Pilot editor locale').selectOption(locale, { force: true });
+		// a real Settings change while keeping the restore dialog open and focused.
+		await switchEditor(page, locale);
 		const messages = await catalog(locale);
 		await expectSettingsCopy(page, messages);
 		await expect(page.getByTestId('settings-page').getByText(renderedCopy[locale].files, { exact: true })).toHaveCount(1);
@@ -116,13 +136,13 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 		await expect(dialog.getByText(messages['settings.restoreConfirm'], { exact: true })).toBeVisible();
 		await expect(dialog.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
 		await expect(dialog.getByRole('button', { name: messages['settings.restore'], exact: true })).toBeDisabled();
-		await expect(page.getByLabel('Pilot uncommitted name')).toHaveValue('partially typed <name');
-		await expect(page.getByLabel('Pilot selected hero')).toHaveValue(before.heroes[0].id);
+		await expect(page.getByLabel('Harness uncommitted name')).toHaveValue('partially typed <name');
+		await expect(page.getByLabel('Harness selected hero')).toHaveValue(before.heroes[0].id);
 		expect(await snapshot(page)).toEqual(before);
 		expect(await persistedSettings(page)).toEqual(persisted);
 		expect(await dialogNode!.evaluate((element) => element === document.querySelector('[role=dialog]'))).toBe(true);
 		expect(await componentNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page]'))).toBe(true);
-		expect(await inputNode!.evaluate((element) => element === document.querySelector('[aria-label="Pilot uncommitted name"]'))).toBe(true);
+		expect(await inputNode!.evaluate((element) => element === document.querySelector('[aria-label="Harness uncommitted name"]'))).toBe(true);
 		expect(await pathNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page] input[readonly]'))).toBe(true);
 		const rich = page.getByTestId('rich-proof');
 		await expect(rich).toContainText('<img src=x onerror=alert(1)>');
@@ -135,7 +155,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 		await evidence(info, `settings-${locale}.aria.txt`, await page.getByTestId('settings-page').ariaSnapshot(), 'text/plain');
 	}
 	for (const locale of allLocales) {
-		await page.getByLabel('Pilot editor locale').selectOption(locale, { force: true });
+		await switchEditor(page, locale);
 		expect(await persistedSettings(page)).toEqual(persisted);
 	}
 	for (const language of gameLanguages) {
@@ -145,13 +165,13 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 		expect(await snapshot(page)).toEqual(before);
 		expect(await persistedSettings(page)).toEqual(persisted);
 	}
-	await expect(page.getByLabel('Pilot uncommitted name')).toHaveValue('partially typed <name');
-	await expect(page.getByLabel('Pilot selected hero')).toHaveValue(before.heroes[0].id);
+	await expect(page.getByLabel('Harness uncommitted name')).toHaveValue('partially typed <name');
+	await expect(page.getByLabel('Harness selected hero')).toHaveValue(before.heroes[0].id);
 	expect(await snapshot(page)).toEqual(before);
 	expect(await persistedSettings(page)).toEqual(persisted);
 	expect(await dialogNode!.evaluate((element) => element === document.querySelector('[role=dialog]'))).toBe(true);
 	expect(await componentNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page]'))).toBe(true);
-	expect(await inputNode!.evaluate((element) => element === document.querySelector('[aria-label="Pilot uncommitted name"]'))).toBe(true);
+	expect(await inputNode!.evaluate((element) => element === document.querySelector('[aria-label="Harness uncommitted name"]'))).toBe(true);
 	expect(await pathNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page] input[readonly]'))).toBe(true);
 	const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
 	expectSwitchCalls(calls, persisted);
@@ -249,6 +269,7 @@ test('I2: identical edit scripts capture identical save payloads with and withou
 		if (switches) {
 			for (const locale of allLocales) await switchEditor(page, locale);
 			for (const language of gameLanguages) await switchGame(page, language);
+			await switchAutomaticModes(page);
 		}
 		await page.evaluate(() => window.__h1!.save());
 		const calls = await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'));
@@ -318,13 +339,13 @@ for (const route of ['heroes', 'estate'] as const) {
 			const marker = await page.evaluate(() => window.__h1!.calls.length);
 			if (switches) {
 				for (const locale of allLocales) {
-					await page.evaluate((locale) => window.__h1!.setEditorLocale(locale), locale);
+					await switchEditor(page, locale);
 					await expect(input).toHaveValue('english:crusader');
 					expect(await snapshot(page)).toEqual(before);
 					expect(await persistedSettings(page)).toEqual(persisted);
 				}
 				for (const language of gameLanguages) {
-					await page.evaluate((language) => window.__h1!.setGameTextLanguage(language), language);
+					await switchGame(page, language);
 					await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
 					await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().gameTextLanguage)).toBe(language);
 					if (route === 'heroes') await expect(page.getByText(`${language}:crusader`, { exact: true })).toBeVisible();
@@ -333,6 +354,9 @@ for (const route of ['heroes', 'estate'] as const) {
 					expect(await snapshot(page)).toEqual(before);
 					expect(await persistedSettings(page)).toEqual(persisted);
 				}
+				await switchAutomaticModes(page);
+				await expect(input).toHaveValue('english:crusader');
+				expect(await snapshot(page)).toEqual(before);
 			}
 			expect(await inputNode!.evaluate((element) => element.isConnected && element === document.activeElement)).toBe(true);
 			if (selectedRow) expect(await selectedRow.evaluate((element) => element.isConnected && element.classList.contains('bg-accent'))).toBe(true);
@@ -377,14 +401,14 @@ test('D12: a failed game-text request on Heroes raises one live persistent diagn
 	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
 	await page.evaluate(() => {
 		window.__h1!.plans.push({ command: 'load_localization', fail: 'fixture: unreadable /h1/game' });
-		window.__h1!.setGameTextLanguage('koreana');
 	});
+	await switchGame(page, 'koreana');
 	const alert = page.getByRole('alert').filter({ hasText: 'fixture: unreadable /h1/game' });
 	await expect(alert).toHaveCount(1);
 	await expect(alert).toContainText('Could not load');
 	const node = await alert.elementHandle();
 	for (const locale of cycle) {
-		await page.evaluate((locale) => window.__h1!.setEditorLocale(locale), locale);
+		await switchEditor(page, locale);
 		await expect(alert).toHaveCount(1);
 		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
 		const expected = (await catalog(locale))['settings.gameTextFailed']
@@ -394,19 +418,260 @@ test('D12: a failed game-text request on Heroes raises one live persistent diagn
 	}
 	await page.evaluate(() => {
 		window.__h1!.plans.push({ command: 'load_localization', fail: 'fixture: second failure' });
-		window.__h1!.setGameTextLanguage('polish');
 	});
+	await switchGame(page, 'polish');
 	const gameAlerts = page.getByRole('alert').filter({ hasText: /fixture: (unreadable|second failure)/ });
 	await expect(page.getByRole('alert').filter({ hasText: 'fixture: second failure' })).toHaveCount(1);
 	await expect(gameAlerts).toHaveCount(1);
 	await expect(alert).toHaveCount(0);
 	await page.evaluate(() => {
 		window.__h1!.plans.push({ command: 'load_localization', language: 'german', hold: 'recovery' });
-		window.__h1!.setGameTextLanguage('german');
 	});
+	await page.locator('#game-text-language').selectOption('german');
 	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('recovery');
 	await expect(gameAlerts).toHaveCount(0);
 	await page.evaluate(() => window.__h1!.release('recovery'));
 	await expect.poll(() => page.evaluate(() => window.__h1!.gameText())).toMatchObject({ loading: false, error: false, effective: 'german' });
 	await expect(gameAlerts).toHaveCount(0);
+});
+
+for (const scenario of ['hanging-read', 'unreadable', 'late-detection']) {
+	test(`D9: ${scenario} opens in English, never writes defaults and ignores late results`, async ({ page }, info) => {
+		await page.goto(`/settings?h1&startup=${scenario}`);
+		if (scenario !== 'unreadable') {
+			await expect(page.getByTestId('startup-shell')).toBeVisible();
+			await expect(page.getByTestId('startup-shell')).toHaveText('');
+		}
+		await expect(page.locator('#editor-language')).toBeVisible({ timeout: 4000 });
+		await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+		const notice = scenario === 'hanging-read' ? 'Settings could not be read in time. Changes will not be saved for this launch.'
+			: scenario === 'unreadable' ? 'Settings could not be read. Changes will not be saved for this launch.'
+			: 'Language detection was unavailable at startup. Automatic language choices use English for this launch.';
+		await expect(page.getByText(notice, { exact: true })).toBeVisible();
+		const elapsed = await page.evaluate(() => window.__h1!.getSettings().startupElapsedMs);
+		if (scenario !== 'unreadable') expect(elapsed).toBeGreaterThanOrEqual(1900);
+		expect(elapsed).toBeLessThan(2800);
+		const stored = await page.evaluate(() => window.__h1!.persistedSettings());
+		if (scenario === 'hanging-read') await page.evaluate(() => window.__h1!.release('startup-read'));
+		if (scenario === 'late-detection') {
+			// A manual choice remains active even after the abandoned launch result arrives.
+			await page.locator('#editor-language').selectOption('japanese');
+			await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+			await page.evaluate(() => window.__h1!.release('startup-detection'));
+		} else await page.locator('#editor-language').selectOption('german');
+		await expect(page.locator('html')).toHaveAttribute('lang', scenario === 'late-detection' ? 'ja' : 'de');
+		// Drain two animation frames after the held IPC response and assert again.
+		await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+		await expect(page.locator('html')).toHaveAttribute('lang', scenario === 'late-detection' ? 'ja' : 'de');
+		if (scenario === 'late-detection') {
+			await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().editorLanguage)).toBe('japanese');
+			expect(await persistedSettings(page)).toEqual(Object.fromEntries(Object.entries(stored).filter(([key]) => !['editorLanguage', 'gameTextMode', 'gameTextLanguage'].includes(key))));
+		} else {
+			expect(await page.evaluate(() => window.__h1!.persistedSettings())).toEqual(stored);
+			expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => /plugin:store\|(set|delete|save)/.test(command)))).toEqual([]);
+		}
+		await evidence(info, `bootstrap-${scenario}.json`, JSON.stringify({ elapsedMs: elapsed, persistedUnchanged: true }), 'application/json');
+	});
+}
+
+test('D2: late path detection cannot override a manual choice in either picker', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => window.__h1!.plans.push(
+		{ command: 'collect_language_evidence', gamePath: '/h1/new-game', hold: 'detect-path', value: {
+			os_locales: { status: 'ok', value: ['de-DE'] },
+			game_options: { status: 'ok', value: { language: 'koreana', path_kind: 'linux_data', verified: false } },
+			steam_manifest: { status: 'ok', value: 'german' }
+		} },
+		{ command: 'plugin:dialog|open', value: '/h1/new-game' }
+	));
+	await page.getByTestId('settings-page').getByRole('button', { name: 'Browse', exact: true }).first().click();
+	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('detect-path');
+	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().gamePath)).toBe('/h1/new-game');
+	await switchEditor(page, 'ru');
+	await switchGame(page, 'japanese');
+	await page.evaluate(() => window.__h1!.release('detect-path'));
+	await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().effective)).toBe('japanese');
+	await expect(page.locator('#editor-language')).toHaveValue('russian');
+	await expect(page.locator('#game-text-language')).toHaveValue('japanese');
+});
+
+test('D1/D8: before setup, real pickers update html lang and CJK typography live', async ({ page }) => {
+	await page.goto('/settings?h1&preSetup');
+	await expect(page.locator('#editor-language')).toBeVisible();
+	const protectedSettings = await persistedSettings(page);
+	for (const [locale, firstFont] of [['zh-Hans', 'PingFang SC'], ['ja', 'Hiragino Sans'], ['ko', 'Apple SD Gothic Neo'], ['en', 'JetBrains Mono Variable']]) {
+		await switchEditor(page, locale);
+		await expect(page.locator('html')).toHaveAttribute('lang', locale);
+		await expect(page.locator('html')).toHaveClass(locale === 'en' ? /^(?!.*\bcjk\b)/ : /\bcjk\b/);
+		expect(await page.locator('body').evaluate((element) => getComputedStyle(element).fontFamily)).toContain(firstFont);
+		if (locale !== 'en') {
+			const styles = await page.locator('main [class*="text-[11px]"]').first().evaluate((element) => {
+				const style = getComputedStyle(element); return { size: parseFloat(style.fontSize), spacing: style.letterSpacing, transform: style.textTransform };
+			});
+			expect(styles).toEqual({ size: 12, spacing: 'normal', transform: 'none' });
+		}
+	}
+	await page.locator('#game-text-language').selectOption('same-as-editor');
+	await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().gameTextMode)).toBe('same-as-editor');
+	expect(await page.evaluate(() => window.__h1!.persistedSettings())).not.toHaveProperty('gameTextLanguage');
+	expect(await persistedSettings(page)).toEqual(protectedSettings);
+	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'load_profile'))).toEqual([]);
+});
+
+test('M1: corrupt settings recover with a live persistent kept-copy notice and working writes', async ({ page }) => {
+	await page.goto('/settings?h1&startup=corrupt');
+	await expect(page.locator('#editor-language')).toBeVisible();
+	const notice = page.getByRole('alert').filter({ hasText: 'settings.json.corrupt-123' });
+	await expect(notice).toHaveCount(1);
+	await expect(notice).toContainText('/h1/settings');
+	await expect(notice).toContainText('Starting with defaults; new settings can be saved.');
+	const node = await notice.elementHandle();
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	await switchEditor(page, 'de');
+	await expect(notice).toContainText((await catalog('de'))['startup.settingsRecovered'].replace('{folder}', '/h1/settings').replace('{copy}', 'settings.json.corrupt-123'));
+	expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	await expect(page.locator('#game-text-language')).toHaveValue('match-game');
+	expect(await page.evaluate((start) => window.__h1!.calls.slice(start).some(({ command }) => command === 'plugin:store|save'), marker)).toBe(true);
+});
+
+test('F4: a stored manual editor choice survives detection timeout and matches its picker', async ({ page }) => {
+	await page.goto('/settings?h1&startup=manual-timeout');
+	await expect(page.locator('#editor-language')).toBeVisible({ timeout: 4000 });
+	await expect(page.locator('#editor-language')).toHaveValue('german');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+	await expect(page.getByTestId('editor-language-source')).toHaveText('Deutsch: Ihre Auswahl');
+	await expect(page.getByRole('alert').filter({ hasText: (await catalog('de'))['startup.gameTextFallback'] })).toHaveCount(1);
+	await expect.poll(() => page.evaluate(() => window.__h1!.getSettings().language)).toBe('german');
+	await page.evaluate(() => {
+		window.__h1!.plans.push({ command: 'collect_language_evidence', hold: 'first-refresh' });
+		(window as unknown as { localeChanges: string[] }).localeChanges = [];
+		new MutationObserver((records) => {
+			for (const record of records) (window as unknown as { localeChanges: string[] }).localeChanges.push(record.oldValue ?? '');
+		}).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'], attributeOldValue: true });
+	});
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	await page.locator('#editor-language').selectOption('system');
+	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('first-refresh');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+	expect(await page.evaluate((start) => window.__h1!.calls.slice(start).filter(({ command, args }) =>
+		command === 'set_native_menu_language' && args.locale === 'en' || command === 'load_localization' && args.language === 'english'), marker)).toEqual([]);
+	expect(await page.evaluate(() => (window as unknown as { localeChanges: string[] }).localeChanges)).toEqual([]);
+	await expect.poll(() => page.evaluate(() => window.__h1!.getSettings().language)).toBe('german');
+	await page.evaluate(() => window.__h1!.release('first-refresh'));
+	await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+	await switchEditor(page, 'ja');
+	await page.evaluate(() => window.__h1!.release('startup-detection'));
+	await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+});
+
+test('M2/F8: System, Match game and Same as editor preserve dirty state and diagnostics without a locale flap or extra table request', async ({ page }) => {
+	await page.goto('/settings?h1&automatic');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	// The unsupported OS fixture makes System use the Russian game-options signal.
+	await switchEditor(page, 'en');
+	await page.evaluate(() => window.__h1!.edit());
+	const before = await snapshot(page);
+	await page.getByLabel('Harness selected hero').selectOption(before.heroes[0].id);
+	await page.getByLabel('Harness uncommitted name').fill('automatic partially typed name');
+	await page.getByTestId('settings-page').getByRole('button', { name: 'Restore', exact: true }).click();
+	const dialog = page.getByRole('dialog');
+	const dialogNode = await dialog.elementHandle();
+	const input = page.getByLabel('Harness uncommitted name');
+	const inputNode = await input.elementHandle();
+	await switchEditor(page, 'de');
+	await page.evaluate(() => window.__h1!.plans.push({ command: 'load_localization', language: 'russian', fail: 'automatic mode fixture diagnostic' }));
+	await switchGame(page, 'russian');
+	const diagnostic = page.locator('[role=alert]').filter({ hasText: 'automatic mode fixture diagnostic' });
+	await expect(diagnostic).toHaveCount(1);
+	const diagnosticNode = await diagnostic.elementHandle();
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => {
+		window.__h1!.plans.push({ command: 'collect_language_evidence', hold: 'system-refresh' });
+		return window.__h1!.calls.length;
+	});
+	const locales = await page.evaluateHandle(() => {
+		const seen: string[] = [document.documentElement.lang];
+		const observer = new MutationObserver((records) => {
+			for (const record of records) seen.push(record.oldValue ?? '');
+			seen.push(document.documentElement.lang);
+		});
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'], attributeOldValue: true });
+		return { seen, stop() { observer.disconnect(); } };
+	});
+	await page.locator('#editor-language').selectOption('system', { force: true });
+	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('system-refresh');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+	for (const mode of ['same-as-editor', 'match-game', 'same-as-editor']) {
+		await page.locator('#game-text-language').selectOption(mode, { force: true });
+		await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().gameTextMode)).toBe(mode);
+		await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+		await expect.poll(() => page.evaluate(() => window.__h1!.gameText())).toMatchObject({ requested: 'russian', effective: 'english', loading: false, error: true, errorDetail: 'Error: automatic mode fixture diagnostic' });
+		await expect(input).toHaveValue('automatic partially typed name');
+		await expect(page.getByLabel('Harness selected hero')).toHaveValue(before.heroes[0].id);
+		expect(await snapshot(page)).toEqual(before);
+		expect(await persistedSettings(page)).toEqual(persisted);
+		expect(await dialogNode!.evaluate((element) => element.isConnected && element === document.querySelector('[role=dialog]'))).toBe(true);
+		expect(await inputNode!.evaluate((element) => element.isConnected)).toBe(true);
+		expect(await diagnosticNode!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	await page.evaluate(() => window.__h1!.release('system-refresh'));
+	await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+	const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
+	expectSwitchCalls(calls, persisted);
+	expect(calls.filter(({ command }) => command === 'load_localization')).toEqual([]);
+	expect(calls.filter(({ command }) => command === 'set_native_menu_language').map(({ args }) => args.locale)).not.toContain('en');
+	expect(await locales.evaluate((history) => { history.stop(); return history.seen; })).not.toContain('en');
+	await locales.dispose();
+	await expect(diagnostic).toHaveCount(1);
+	expect(await snapshot(page)).toEqual(before);
+	await page.evaluate(() => window.__h1!.markStale());
+	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true }).last()).toBeDisabled();
+	await expect(dialog).toBeVisible();
+});
+
+test('F5: unavailable options are marked only after the installed-language check succeeds', async ({ page }) => {
+	await page.goto('/settings?h1&installed=limited');
+	await expect.poll(() => page.evaluate(() => window.__h1?.held() ?? [])).toContain('installed-languages');
+	await expect(page.locator('#game-text-language option[value=koreana]')).toHaveText('한국어');
+	await page.evaluate(() => window.__h1!.release('installed-languages'));
+	await expect(page.locator('#game-text-language option[value=koreana]')).toHaveText('한국어 (not available)');
+	await expect(page.locator('#game-text-language option[value=russian]')).toHaveText('Русский');
+	await expect(page.locator('#game-text-language option[value=match-game]')).toHaveText('Match game');
+	await page.goto('/settings?h1&installed=failed');
+	await expect(page.getByText('Installed languages could not be checked. Your saved selection is retained.', { exact: true })).toBeVisible();
+	await expect(page.locator('#game-text-language option[value=koreana]')).toHaveText('한국어');
+});
+
+test('M2: changing installation keeps OD2 languages until fresh path evidence arrives', async ({ page }) => {
+	await page.goto('/settings?h1&automatic');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+	await page.locator('#game-text-language').selectOption('match-game');
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText())).toMatchObject({ effective: 'russian', loading: false });
+	const marker = await page.evaluate(() => {
+		window.__h1!.plans.push(
+			{ command: 'plugin:dialog|open', value: '/h1/new-game' },
+			{ command: 'collect_language_evidence', gamePath: '/h1/new-game', hold: 'new-installation', value: {
+				os_locales: { status: 'ok', value: ['tr-TR'] },
+				game_options: { status: 'ok', value: { language: 'japanese', path_kind: 'fixture', verified: false } },
+				steam_manifest: { status: 'absent', value: null }
+			} }
+		);
+		return window.__h1!.calls.length;
+	});
+	await page.getByTestId('settings-page').getByRole('button', { name: (await catalog('ru'))['settings.browse'], exact: true }).first().click();
+	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('new-installation');
+	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().gamePath)).toBe('/h1/new-game');
+	await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText())).toMatchObject({ requested: 'russian', effective: 'russian', path: '/h1/new-game', loading: false });
+	await page.evaluate(() => window.__h1!.release('new-installation'));
+	await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText())).toMatchObject({ requested: 'japanese', effective: 'japanese', path: '/h1/new-game', loading: false });
+	const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
+	expect(calls.filter(({ command }) => command === 'load_localization').map(({ args }) => [args.gamePath, args.language])).toEqual([
+		['/h1/new-game', 'russian'], ['/h1/new-game', 'japanese']
+	]);
+	expect(calls.filter(({ command }) => command === 'set_native_menu_language').map(({ args }) => args.locale)).not.toContain('en');
 });

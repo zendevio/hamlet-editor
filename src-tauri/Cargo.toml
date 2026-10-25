@@ -39,6 +39,7 @@ steamlocate = "2"
 sysinfo = "0.39"
 dirs = "7"
 regex = "1"
+sys-locale = "=0.3.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winreg = "0.56"

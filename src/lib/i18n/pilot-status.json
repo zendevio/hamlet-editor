@@ -602,17 +602,311 @@
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		},
-		"pilot.rich": {
-			"status": "pilot, unreviewed",
-			"sourceHash": "965fa6403b3ae7f4907f0b6ef1ec13bb825d499a31c7af749b2131470919ec61",
-			"translationHash": "6af56f2af65864fdccc7ac2b46d5f0d4abe4fdef75de618fbd248d219d7cc82a",
-			"drafter": "Codex, 2026-10-25",
-			"reviewer": null
-		},
 		"settings.developmentVersion": {
 			"status": "pilot, unreviewed",
 			"sourceHash": "ef260e9aa3c673af240d17a2660480361a8e081d1ffeca2a5ed0e3219fc18567",
 			"translationHash": "9f1efd4753f6eb49df7f17e6d8dd3bd1260995756ffd23f0a0bc0349d8f2e63e",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.editorLanguage": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "a50a595a4771fc8e50bbce6d472f5a5c5212f5e604ed32b6d6091a69bd186a63",
+			"translationHash": "8692ea2d0f76ff2925d686f3e3ffad0124daed912b2511a84d7e821a98c64382",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.editorLanguageHelp": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "795d8e9aaba569ce3d7ecf94afc0778604db6484c7d25206572316e6e7c53ccd",
+			"translationHash": "bb6b9e14fe2b1c48640e6ddf771bd7d2faa201f53648f879b4ba751ca824a629",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.system": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a",
+			"translationHash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.matchGame": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d6168b4e41cf92e45a678698c8d90384ab608b4c951c9b9e3c23323dcfed7f11",
+			"translationHash": "a8b2363312bde51f37dcfdfc7230d746b467baf9aba9fcaaaa89685c2d302790",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.sameAsEditor": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "7edcc257ec542f22fc814572821e174686e891f80965c54c9b731c0f34bc59fb",
+			"translationHash": "8a996eb4ea3d6459f4bdeaccbc38c8496c6ee89020b50c12e13e6c3cdd9da709",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.resolvedLanguage": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "04611d689af0e92949a776913e0506cf0d2e28bb0c6bd0ece4ae586c5bdc54e5",
+			"translationHash": "04611d689af0e92949a776913e0506cf0d2e28bb0c6bd0ece4ae586c5bdc54e5",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.system": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "db67503c21c677353a176d41b854127a35d2ca754d7019c64245400aba5b5ee0",
+			"translationHash": "c5347521ea634390076722387f949840e9a76ef0401bb8bfd7f42f3533b694e7",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.game": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "bb90921c30c03c374bab3ba0ecc953fc5592d9741e66e823b61bc9fa54e38779",
+			"translationHash": "af601164093744532bab4fcdfc11ddbadd47c8acbcb1e23824085702b6a11883",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.game-settings": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "6e04da1b13fd6f2d5fc91179cac049c629dc7b5114ed5411fdb3f3029025a8fb",
+			"translationHash": "4b80af3015e94f294dd6d068d0d7f80c23b0c4b33c101a6bbe73b38426db043a",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.steam": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c45068ea0612f2cb8fa8a298b2688cdbcec5f427b5818b568c23b22f1b5a79cd",
+			"translationHash": "4b3d2cafa7d0a19c87a9774a5bcb87e076f05bacc7087df3b85316df032aa223",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.editor-fallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "4ca594055d1b1aa9f404a0a47d86b460ce1c24e8133051e698ea08d8acbdb201",
+			"translationHash": "d64021fe8ee45992860b8cdd0d3e9e00d74f78184c423c39f1416d6f05a95901",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.editor": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "ae380f737bcb04e870c36a78125513f8c46c65dbf05639a554cdae1bf11993d5",
+			"translationHash": "bda8a617400ce358fb03564bcfcf34ba6267be8a55ffc449892c15b2d0ddd755",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.choice": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "2ddd4e5956d4fe0d3f119b9249943cfbfc44c8e5ca744ac4469ee62f50d56425",
+			"translationHash": "3823e2043877c1cac9aa757a8570c099e1ad18b9103e1570a79faddeb69a4e08",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.english": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "9ac89cc8eba2071914d8dbba9a8a59224cb458c117dd65d79b728910a146cd99",
+			"translationHash": "98d18b83af72870651d3c733c1aa537acaa5486b543d1eacf884924b3dfc7b49",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.persistenceFailed": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3f5dd08ff09be2ea6070a216f395640b38453c6dedcfcb172eb29cecd34c0a8b",
+			"translationHash": "45ad4f085ee2b12227f594bd9bb442c7a78c05990fba31323b734b59e03f7646",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.languageFallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3c0965ae14935957f4137220b16b8eb70dce93aca6e0b26fe60b2591efeed532",
+			"translationHash": "010fc5b6ddb8a17ce282020df7e2fded6d4ece2cefd7a4128b2024ee34252687",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.openLanguages": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "bbfc3caeaa9f68c36936a13ebf7209fefd1b1c1141e51b7d79284ae42d30443a",
+			"translationHash": "782fad68f22b30cda423493e9ff64b80586d8152eb5133be750ea4b3bb0b2d61",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.file": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "50009ce1da4d15e1c4a04024df691eed5f0d598e2c4c67092f205366d0adf99e",
+			"translationHash": "852fe31379e8d1cdb2d1400560afa8295dfcd7a7de6c8cdf2a355ca4f79a89e7",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.edit": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "464c4ffd019e1e9691dcf0537c797353ef2b1c1d4833d3d463e5b74ae4547344",
+			"translationHash": "84e45ee7341134db76d539d9ea4806d7ef7c23f846c73063848335a3f481c6bd",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.view": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "dcc839a4015c4b7dd9db959a8f757833b8adb92462a751b973386e453c6d58a3",
+			"translationHash": "1da7a3b4eea2f86e3d8f5970042197338aa903ce46aeb349b27723bf7cc472d2",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.window": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "19734a1b58cabc22cae1f88493289ee94f40ff2b350f7f1b9f7011ea84096916",
+			"translationHash": "22c9783f5077bb8db7af2cb5f2a669cb2ae906d3160b30bed46f72479fa9f4be",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.help": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "b79cac926e0b2e347e72cc91d5174037c9e17ae7733fd7bdb570f71b10cd7bfc",
+			"translationHash": "95472f650a2b647ff8fa66450c77b281ac2846cbe9d8df6354cbcd8c5e589455",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.about": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "8bb0264de4d560cfbc3282968d744d07387cae8a7a4fb5e62246d11b1796f54d",
+			"translationHash": "d916126a25d9b11e760ac453672528ce5b5c2956e3ab0c50b93aca35679347d9",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.services": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "604dce445e326d952308addc99bd3d0e3ffb0ed9a455e4aa0190641fc5facccc",
+			"translationHash": "a6f5acc69db6b9a09ecf864f4cb9bdb417031112b93cf1db3715842cbff475c4",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.hide": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3022fce33befd4e1369c7faac593b0e60b9161a94822dba818e7dec179aa7310",
+			"translationHash": "a98934390214b860ac0cc28f1b9802c93b94e98028553a4785c61cb1de0b699f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.hideOthers": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "1753e2264a96a94b685c9b9bd14a77ea86e3360683da6557bcad530d020d4246",
+			"translationHash": "88b7ec9a250ff8ba13b08910e53209fe4fd0250f007698e98e4775c09ea7852c",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.quit": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "2683010477b1ae332efe9307336106e645d0775f9e900da17ffebb398d13cfc2",
+			"translationHash": "678aeaf327bf8a907bd3f4217918c6fb0856dc1b9d43ece5e8325e65a4872dfc",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.close": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "32fd144c1f4b399d6437cdf06de3dbea637a981eb794a52930b392a91bd0527f",
+			"translationHash": "5680f4c53e18e7c9aefd99750720ede11bf393c728261d5b530bba5d5f3f5e17",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.undo": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "a8283ade31856f71220db0e6f60a257c6889dc4dad0f275f66ad44b9ed9bf8d5",
+			"translationHash": "d1a9bdb8adc5263af7e5c95eb4b91317a36a9e30568370014a2d0348625faabb",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.redo": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "74273989b0966e2369b6d01aadb23af4ad6a9e724643fa88f2bde99202a36708",
+			"translationHash": "e0ef009b5456146475f49e8687e1d87afd88ea9abcb815fb1e9505b19bc8f433",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.cut": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "1f45f02561f41db9483cfc00675900237967b8e382b9750d33f677812fe70842",
+			"translationHash": "b07403190e1b37e7f2294bdcd6ede4465a24f3724fa27852d0ce266156a785b0",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.copy": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c",
+			"translationHash": "472050b730a60f23e264f09fcbb2fd33e1673fac4f2b68669d6f345b53de7650",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.paste": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f3380f7b44bd70af2a369de6026bf2ca2a7b36fde9086935efcd62a0e379cc7a",
+			"translationHash": "caf2e6d16a0ebe081540697792beb658d8ae8f853afbe90ab29bc6b3ccb96d9d",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.selectAll": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d1ec69e64b9609d089aae09f7adc5c566d2cd222f8d8325f0ab3b523f0ac2690",
+			"translationHash": "051da525afd3f2b95262854c7b5313dda9ca70dda77de49e428580f272d34764",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.fullscreen": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "534ab6506ea1e384dda0f41941ef124a104f4969986a82c5b7cf173704c5a5cb",
+			"translationHash": "d69f2754186443bfccd283a1979474b64ed2b714a346c51c9a4ecda5bb60e8e6",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.minimize": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d72e311c4ddaf4ac6f39136038420b3b01a9eefc09790efa74616ad8a65478d5",
+			"translationHash": "7dea662fcf79675ccf9f2a652667d6a328254f79d6a15c07f9f6f4d1db59cd6e",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.maximize": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "509c517ede79fef060a5f3a109fd1f45951eef2c7970b25c20992011e36a4070",
+			"translationHash": "88fd2ad8b7c0326f80701dbf7418e1adc66fe9bae7319b95018c29fb9b115aaa",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.startup-fallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c1b70ae65801cb4671bb7d63ee29299eda9bd3c6d62d3fbc27fcd8fd83123800",
+			"translationHash": "f3ef1e4bffc426bbf468e8f7b6f53575c1d7288fbeb38692b1805bd3abe653c9",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsRecovered": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "543ce703b73ac8fe56ac85501de2400b8e50d9a84eaabd0da636ec3023463f3f",
+			"translationHash": "baa7ea4ac0a42e105aa5f079b5e38dbaf56b3bbb7ece05b491abaf8f545e1b93",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsUnreadable": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "22c02a281bd5e705fd85438730ff39fd721e35503c1a04bbb2ec58a2cf9be47e",
+			"translationHash": "05809fee31e6a4115b09eb86cfac3076419ad279d4a51488ad4c37b4b95f4d29",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsReadFailed": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c7211c1328a17459a19afc6ba9045fba8713799cd560c24755a14e1866200740",
+			"translationHash": "76b9d809a5a2992c2a4e8cd063332842dc7df14d6f70c95f4355254b03877eb7",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsTimeout": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
+			"translationHash": "7602b10b77da9f4845e4acd164f8150da0823a3401e767faf25139114a63cb35",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.gameTextFallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "9c5732e9a3b615c65433c4451eeb5a2bbcb4f70523fc3a755560f228a7217884",
+			"translationHash": "0a8bbf39eda5fe4a9659d6e5aef0831a33e679875b272ea3ea762d356eae4663",
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		}
@@ -1220,17 +1514,311 @@
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		},
-		"pilot.rich": {
-			"status": "pilot, unreviewed",
-			"sourceHash": "965fa6403b3ae7f4907f0b6ef1ec13bb825d499a31c7af749b2131470919ec61",
-			"translationHash": "1dc13973e56628c1d96733206350628268f23fcaff149846c638714ba7928494",
-			"drafter": "Codex, 2026-10-25",
-			"reviewer": null
-		},
 		"settings.developmentVersion": {
 			"status": "pilot, unreviewed",
 			"sourceHash": "ef260e9aa3c673af240d17a2660480361a8e081d1ffeca2a5ed0e3219fc18567",
 			"translationHash": "e076f05a03bb2d6a443e4dfc8177c18fbee0692bd02bb5fc648093c77aefc51f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.editorLanguage": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "a50a595a4771fc8e50bbce6d472f5a5c5212f5e604ed32b6d6091a69bd186a63",
+			"translationHash": "073dfbee7dffada541386ea711933f465fb9b0fc9024c1fca9340d4fa136c558",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.editorLanguageHelp": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "795d8e9aaba569ce3d7ecf94afc0778604db6484c7d25206572316e6e7c53ccd",
+			"translationHash": "7a1ebd69c32fe2d5cac780a066d5c197e54ad7cd4c33bb7b7c600ce1d9c866b4",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.system": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a",
+			"translationHash": "bb86915009ae31565d1b0d3d4a23a308d933ce90531d8b08fa135eb9003a8c6c",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.matchGame": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d6168b4e41cf92e45a678698c8d90384ab608b4c951c9b9e3c23323dcfed7f11",
+			"translationHash": "7cab2c072f54a0bcf98352d6f2cc55d34837c4ce18dc34f0ea5e7663afb40e42",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.sameAsEditor": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "7edcc257ec542f22fc814572821e174686e891f80965c54c9b731c0f34bc59fb",
+			"translationHash": "653052377de81591e017695dad51f50e4bc69e5d4a31b804fa352de02874d69a",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.resolvedLanguage": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "04611d689af0e92949a776913e0506cf0d2e28bb0c6bd0ece4ae586c5bdc54e5",
+			"translationHash": "04611d689af0e92949a776913e0506cf0d2e28bb0c6bd0ece4ae586c5bdc54e5",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.system": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "db67503c21c677353a176d41b854127a35d2ca754d7019c64245400aba5b5ee0",
+			"translationHash": "c6a71c530b6adc008e587194543adb2c905681553941d2f856f8a5b8dbbb5cbf",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.game": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "bb90921c30c03c374bab3ba0ecc953fc5592d9741e66e823b61bc9fa54e38779",
+			"translationHash": "7d5f0d4daa7083a3de732294b2c68ad1bb7537d360b443b1ae583337a1e462d5",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.game-settings": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "6e04da1b13fd6f2d5fc91179cac049c629dc7b5114ed5411fdb3f3029025a8fb",
+			"translationHash": "28dcb8662a7e2af582229dc76c8ce4d6d578214adf44aec63e57870b3a0231b9",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.steam": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c45068ea0612f2cb8fa8a298b2688cdbcec5f427b5818b568c23b22f1b5a79cd",
+			"translationHash": "7f8582b6b2ced1c9d0e705c3a7687edca9c8512aa777eb734963814b32a06991",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.editor-fallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "4ca594055d1b1aa9f404a0a47d86b460ce1c24e8133051e698ea08d8acbdb201",
+			"translationHash": "18295d4f0ef2e0041153b95cdde8831cdff0c356da8bac8cc1116e5b6acb729b",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.editor": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "ae380f737bcb04e870c36a78125513f8c46c65dbf05639a554cdae1bf11993d5",
+			"translationHash": "b2c186550357741631299867b7155c31fc232d25d58bb11e6871757edeadb4ce",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.choice": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "2ddd4e5956d4fe0d3f119b9249943cfbfc44c8e5ca744ac4469ee62f50d56425",
+			"translationHash": "c806067411aef35f827f14f489ad9f7eed6c00385a0149790543ce8bcf7de7db",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.english": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "9ac89cc8eba2071914d8dbba9a8a59224cb458c117dd65d79b728910a146cd99",
+			"translationHash": "a22a199b97ac07265b5e523842d6167f96f7ad8044bb6d6908c7afec64bc24e6",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.persistenceFailed": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3f5dd08ff09be2ea6070a216f395640b38453c6dedcfcb172eb29cecd34c0a8b",
+			"translationHash": "f4cebeb8703f06ab8af01c305468b8b107dd282cd3d4db452e8d02c83f46bf5f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.languageFallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3c0965ae14935957f4137220b16b8eb70dce93aca6e0b26fe60b2591efeed532",
+			"translationHash": "eb8a83032ca7a8a6aed01079eaf1dcb966f358207d7e17b3e903923ea2632b1f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.openLanguages": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "bbfc3caeaa9f68c36936a13ebf7209fefd1b1c1141e51b7d79284ae42d30443a",
+			"translationHash": "d9ea451d9bfda6a9d3d434751541d740e3982f8340d4c0a348c161d50dbb72b8",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.file": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "50009ce1da4d15e1c4a04024df691eed5f0d598e2c4c67092f205366d0adf99e",
+			"translationHash": "f242456b2273697924884957ca98ce331557c9b7238f413269e73e1504ddcff2",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.edit": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "464c4ffd019e1e9691dcf0537c797353ef2b1c1d4833d3d463e5b74ae4547344",
+			"translationHash": "a97b464eb8c2bce2d8c50133fd3a6e1cda0719fd33365e2d912e5868e265ee69",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.view": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "dcc839a4015c4b7dd9db959a8f757833b8adb92462a751b973386e453c6d58a3",
+			"translationHash": "9022ba3739723a99b8a86b37f492f7fad278187934a97735dd3b3450beab8102",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.window": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "19734a1b58cabc22cae1f88493289ee94f40ff2b350f7f1b9f7011ea84096916",
+			"translationHash": "9521194df66377533ac82a2c7bcd273f16781c49b0b3037add757c82a9bf108f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.help": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "b79cac926e0b2e347e72cc91d5174037c9e17ae7733fd7bdb570f71b10cd7bfc",
+			"translationHash": "3e202cd422f5fdfa478045d5d97c8236330d16ff1770c8390f24cc2d73d39ba9",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.about": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "8bb0264de4d560cfbc3282968d744d07387cae8a7a4fb5e62246d11b1796f54d",
+			"translationHash": "9160ee0efd70660e05fd4f541f744a465bcffe723777e257ce80044cfd498120",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.services": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "604dce445e326d952308addc99bd3d0e3ffb0ed9a455e4aa0190641fc5facccc",
+			"translationHash": "f556c531064f1bb5b718afc1449c97c51389563632ba5532d48e70f2ef64c1b9",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.hide": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3022fce33befd4e1369c7faac593b0e60b9161a94822dba818e7dec179aa7310",
+			"translationHash": "3e517f77379764ba6f8a33ebdead273f686a91677be93da03c3251e841ead9d5",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.hideOthers": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "1753e2264a96a94b685c9b9bd14a77ea86e3360683da6557bcad530d020d4246",
+			"translationHash": "804e1220f7b4fe0d89688bc600bbded33f4658c0c492203070bac4fddad1e014",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.quit": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "2683010477b1ae332efe9307336106e645d0775f9e900da17ffebb398d13cfc2",
+			"translationHash": "0dc5bd12bbd8f0ea6d6047d03d76843da9f7316a7bb416fa71bae15cec9ad8bc",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.close": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "32fd144c1f4b399d6437cdf06de3dbea637a981eb794a52930b392a91bd0527f",
+			"translationHash": "db9cc7b22ffdf3236e0eb6d4499400d10cb7929f5512b821817f735b2c5f93b2",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.undo": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "a8283ade31856f71220db0e6f60a257c6889dc4dad0f275f66ad44b9ed9bf8d5",
+			"translationHash": "7c47f7292ba4f2aea68a98e724879e78ca67a84dc3c5415714096c1321e2574f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.redo": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "74273989b0966e2369b6d01aadb23af4ad6a9e724643fa88f2bde99202a36708",
+			"translationHash": "5189135a6110bd31b69bbcb3487109995252165ac7ee7da59ead9d789f690248",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.cut": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "1f45f02561f41db9483cfc00675900237967b8e382b9750d33f677812fe70842",
+			"translationHash": "1ea87aea0a4f1c253d4b4e029adf75d1751eafc27d96c7426d223343a335f83a",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.copy": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c",
+			"translationHash": "1ecddf40bfeb28abd0d0b91781aec11c64a25f66eeeecca9c236530dd2006d4a",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.paste": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f3380f7b44bd70af2a369de6026bf2ca2a7b36fde9086935efcd62a0e379cc7a",
+			"translationHash": "ec79f4d0c884351f2fe199260da7cbfd26f76ef65fd80d8bbf2f0947579d9ffa",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.selectAll": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d1ec69e64b9609d089aae09f7adc5c566d2cd222f8d8325f0ab3b523f0ac2690",
+			"translationHash": "57f6fe225b1cfff7e8a2f3f263267985e2967a640120a534ba250a780f71c01c",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.fullscreen": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "534ab6506ea1e384dda0f41941ef124a104f4969986a82c5b7cf173704c5a5cb",
+			"translationHash": "9ea39974988478c1e9a3bd5c8615f03b1c3c4ceec0d27241025e89993a679a6c",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.minimize": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d72e311c4ddaf4ac6f39136038420b3b01a9eefc09790efa74616ad8a65478d5",
+			"translationHash": "36c25d9ffcfd800aae3298a86e018cf15f488957bed2eb2b171a682495a98a04",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.maximize": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "509c517ede79fef060a5f3a109fd1f45951eef2c7970b25c20992011e36a4070",
+			"translationHash": "f7e30466dc1ee5bedebabf1e18ecfd8729480e8116f556e0aa57937201f65a98",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.startup-fallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c1b70ae65801cb4671bb7d63ee29299eda9bd3c6d62d3fbc27fcd8fd83123800",
+			"translationHash": "096821f75be147dd0e8843f1ec0840ba53a1c1c9c739861ba2142aba698453a7",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsRecovered": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "543ce703b73ac8fe56ac85501de2400b8e50d9a84eaabd0da636ec3023463f3f",
+			"translationHash": "07343474e53587c380088065fd6637c1723d60c18adc3d95b1afc3d4adb3193d",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsUnreadable": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "22c02a281bd5e705fd85438730ff39fd721e35503c1a04bbb2ec58a2cf9be47e",
+			"translationHash": "3b9f01160dad3d6053c1d2752fd292aaec61e6eeda2f3c354907a2af478c8f89",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsReadFailed": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c7211c1328a17459a19afc6ba9045fba8713799cd560c24755a14e1866200740",
+			"translationHash": "98b1e81b870d263acb883c90ef6d8394225a09ec4392892bb2dc2c7859d0abe0",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsTimeout": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
+			"translationHash": "5a33b824992d415daaa4cc09f0cb2010801adac06cd820fc3f1aceedae1c95b8",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.gameTextFallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "9c5732e9a3b615c65433c4451eeb5a2bbcb4f70523fc3a755560f228a7217884",
+			"translationHash": "c68f49d144d97e0ba86996a32f3c5dc85ebf6ec37f48af538a3f35683ae1a243",
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		}
@@ -1838,17 +2426,311 @@
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		},
-		"pilot.rich": {
-			"status": "pilot, unreviewed",
-			"sourceHash": "965fa6403b3ae7f4907f0b6ef1ec13bb825d499a31c7af749b2131470919ec61",
-			"translationHash": "8c773d579be20acd1a07b550b5f8c78441425eeda2c5635e109fd030a0d791ca",
-			"drafter": "Codex, 2026-10-25",
-			"reviewer": null
-		},
 		"settings.developmentVersion": {
 			"status": "pilot, unreviewed",
 			"sourceHash": "ef260e9aa3c673af240d17a2660480361a8e081d1ffeca2a5ed0e3219fc18567",
 			"translationHash": "96d1223643d9c6f8d350658b624afa192dd499bd3a2b9fc312a23a9b320c67ce",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.editorLanguage": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "a50a595a4771fc8e50bbce6d472f5a5c5212f5e604ed32b6d6091a69bd186a63",
+			"translationHash": "8f7919e72dc2f30b8e30c12aba17284527ce21c015618db7d09cb970def9e01b",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.editorLanguageHelp": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "795d8e9aaba569ce3d7ecf94afc0778604db6484c7d25206572316e6e7c53ccd",
+			"translationHash": "8dcdcefa247f554d445dc47fb632021c871f8363c2c6f7e2d15de119c9e7466f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.system": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "6725e7bbcd28f3a8a586fa34bf191fd72dde8b61756932cd3237c17a6f196f1a",
+			"translationHash": "088462f65b7e8bc00db9fd7d87cf33cea200daceb9094dea9dc851b2a1851090",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.matchGame": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d6168b4e41cf92e45a678698c8d90384ab608b4c951c9b9e3c23323dcfed7f11",
+			"translationHash": "f7cbd1353202170543fb538f2aaafad56d444b5274baf1d37e9b09702ccbe41e",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.sameAsEditor": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "7edcc257ec542f22fc814572821e174686e891f80965c54c9b731c0f34bc59fb",
+			"translationHash": "68418e3fe880afb6b6f71e7a0f9574dfc3dcf94add9ff087fab4db34c8bd8c76",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.resolvedLanguage": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "04611d689af0e92949a776913e0506cf0d2e28bb0c6bd0ece4ae586c5bdc54e5",
+			"translationHash": "d4dd66c87a6f00f2c05fedeb9264ece6a0bae679b9aabd8e571907853d1d1d4f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.system": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "db67503c21c677353a176d41b854127a35d2ca754d7019c64245400aba5b5ee0",
+			"translationHash": "4277e53baa640248bacf7bd9ac9567d54ef3d09a0183d0e2d206a4fc56989008",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.game": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "bb90921c30c03c374bab3ba0ecc953fc5592d9741e66e823b61bc9fa54e38779",
+			"translationHash": "9a7b6c53847ab965611c20ef782e142f97b7f6e5d226516e696fdb71a22426e0",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.game-settings": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "6e04da1b13fd6f2d5fc91179cac049c629dc7b5114ed5411fdb3f3029025a8fb",
+			"translationHash": "5f2852ebbdf9814acfa87e503f4aa7d6b0839345cd5cc45646b4926f53eefb38",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.steam": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c45068ea0612f2cb8fa8a298b2688cdbcec5f427b5818b568c23b22f1b5a79cd",
+			"translationHash": "2633f774da76c7bdb2c23c70449526b30e665bc2636ed4c037305e16c6104ebd",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.editor-fallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "4ca594055d1b1aa9f404a0a47d86b460ce1c24e8133051e698ea08d8acbdb201",
+			"translationHash": "bb904e6edc56ee1d9d201f4fea53c2312d2c369a789271dd55d0cd0d08b8b30a",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.editor": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "ae380f737bcb04e870c36a78125513f8c46c65dbf05639a554cdae1bf11993d5",
+			"translationHash": "faf74ddc6bc575c59c671eaecee5fda1430531b251079ab38570cad624bd6290",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.choice": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "2ddd4e5956d4fe0d3f119b9249943cfbfc44c8e5ca744ac4469ee62f50d56425",
+			"translationHash": "941bf3bcf7e202efaae2336a5bf98b0a6051900021550890e32845ccc19711a3",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.english": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "9ac89cc8eba2071914d8dbba9a8a59224cb458c117dd65d79b728910a146cd99",
+			"translationHash": "0b2fdbd9978afada32a223af18cc87ea467f84511a13755d9de29b338e3d572f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.persistenceFailed": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3f5dd08ff09be2ea6070a216f395640b38453c6dedcfcb172eb29cecd34c0a8b",
+			"translationHash": "fcdd0de9ed9e3e6ce9e6566778ecfbae9f45c40a2cd09183e014d977137cf040",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.languageFallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3c0965ae14935957f4137220b16b8eb70dce93aca6e0b26fe60b2591efeed532",
+			"translationHash": "2ebcf7e1d56a2d5f5d9996a549dc6bd8d5c1e8874f1f1cc13f010066a26b1c33",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.openLanguages": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "bbfc3caeaa9f68c36936a13ebf7209fefd1b1c1141e51b7d79284ae42d30443a",
+			"translationHash": "ae6b675cfdf102bcb75135c8eb975190a9b6a0755884f93c46c8b1fb1bf80aac",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.file": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "50009ce1da4d15e1c4a04024df691eed5f0d598e2c4c67092f205366d0adf99e",
+			"translationHash": "2b39ec3da17eef3982b84bc544c1ee0010438b9f7480914d7382fad80c8504d1",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.edit": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "464c4ffd019e1e9691dcf0537c797353ef2b1c1d4833d3d463e5b74ae4547344",
+			"translationHash": "11f9049ddab593adbbeccbad6d070f959cb4d60f41351acce2a9ead4281028b8",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.view": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "dcc839a4015c4b7dd9db959a8f757833b8adb92462a751b973386e453c6d58a3",
+			"translationHash": "17efc6654ed280c70117040bebd3d505951acc41c48335ad31e6c09ba86db84b",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.window": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "19734a1b58cabc22cae1f88493289ee94f40ff2b350f7f1b9f7011ea84096916",
+			"translationHash": "1a0a641583167075a072c7832beda632dcf15320c4b7b9ce55ac194135dca309",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.help": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "b79cac926e0b2e347e72cc91d5174037c9e17ae7733fd7bdb570f71b10cd7bfc",
+			"translationHash": "30672835496bc40946ae5ba5662ad70f4b557fdf2a2f9d529aa4ff56e725b9f2",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.about": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "8bb0264de4d560cfbc3282968d744d07387cae8a7a4fb5e62246d11b1796f54d",
+			"translationHash": "6b5b7ab27cfcfea9f6e89ebd9e592c79df5bfad503c0d0c5bd8de29c908b4e66",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.services": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "604dce445e326d952308addc99bd3d0e3ffb0ed9a455e4aa0190641fc5facccc",
+			"translationHash": "061256ee80e991170e1df7b943571e427dd2e3f7434313472d66f51953c71845",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.hide": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "3022fce33befd4e1369c7faac593b0e60b9161a94822dba818e7dec179aa7310",
+			"translationHash": "3275775b9147d576cf37f0beff96b368636596c8cf06fae3dcb75d695f2dc24c",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.hideOthers": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "1753e2264a96a94b685c9b9bd14a77ea86e3360683da6557bcad530d020d4246",
+			"translationHash": "f8dc8c0af01bca60f26438b834e0b0704c479fa62384c1eb20d574b68b5cdb5b",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.quit": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "2683010477b1ae332efe9307336106e645d0775f9e900da17ffebb398d13cfc2",
+			"translationHash": "48230590dd11c8206a31befb320fe784c4a964830fbf2c8db675cc11eb61a512",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.close": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "32fd144c1f4b399d6437cdf06de3dbea637a981eb794a52930b392a91bd0527f",
+			"translationHash": "286f9ed86097ff81f0e93a49b620642c276ce1c7c7e6cc830b9b8417d88156fe",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.undo": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "a8283ade31856f71220db0e6f60a257c6889dc4dad0f275f66ad44b9ed9bf8d5",
+			"translationHash": "3804deb71bca18ffaac6ddd15f910edaa89c5e25892d82bfb8390627e8988966",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.redo": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "74273989b0966e2369b6d01aadb23af4ad6a9e724643fa88f2bde99202a36708",
+			"translationHash": "bb9965eed1aa97abf04f3227e657fdb46d2dafcd72820db6a0ae2ae135c74cee",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.cut": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "1f45f02561f41db9483cfc00675900237967b8e382b9750d33f677812fe70842",
+			"translationHash": "41155f0df3d54b6a06cd2865d7e524f77e67aa20abfe97cc6e71b0ece3e6e3fb",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.copy": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "e21f935f11d7e966dbbae78da9daa378fe8142a14e7c0cd7434183005faa6c5c",
+			"translationHash": "70f7ae4afacd9b24f204752da2e75f48a120dc133901c3834dde318bb412a514",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.paste": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f3380f7b44bd70af2a369de6026bf2ca2a7b36fde9086935efcd62a0e379cc7a",
+			"translationHash": "7e9bec37560e6404c7a1e30d8eabacdd5f4ed24f785530c3a1d5e91ab4b59be3",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.selectAll": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d1ec69e64b9609d089aae09f7adc5c566d2cd222f8d8325f0ab3b523f0ac2690",
+			"translationHash": "81c2d5ee8f73fc420a021163b193dfe5b6a3e1b06c409af6266261337073192e",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.fullscreen": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "534ab6506ea1e384dda0f41941ef124a104f4969986a82c5b7cf173704c5a5cb",
+			"translationHash": "49295ec974070844e52a7be76a89ce6f56c4a5ab720557d58cf814ac99fd1a95",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.minimize": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "d72e311c4ddaf4ac6f39136038420b3b01a9eefc09790efa74616ad8a65478d5",
+			"translationHash": "fab102aae87d558841811251159ad1d3229deef7e9f24245ee2947f92fc2ed11",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"native.maximize": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "509c517ede79fef060a5f3a109fd1f45951eef2c7970b25c20992011e36a4070",
+			"translationHash": "ee7cebb9592ad1bdac27ea9d85bacf19b65ab121eb18a33d88c37bafae1d0b19",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"settings.languageSource.startup-fallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c1b70ae65801cb4671bb7d63ee29299eda9bd3c6d62d3fbc27fcd8fd83123800",
+			"translationHash": "0757671382138e1c0e4774a4e7be81dcd378176aa68dad7a15b6a344dead8ad8",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsRecovered": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "543ce703b73ac8fe56ac85501de2400b8e50d9a84eaabd0da636ec3023463f3f",
+			"translationHash": "9347ebd32a1273bb30ab38c3eb19c2c310cba7782071f494e668f2c4f62005a3",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsUnreadable": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "22c02a281bd5e705fd85438730ff39fd721e35503c1a04bbb2ec58a2cf9be47e",
+			"translationHash": "65bdb1371efa8ab50a9d3d20fd8259effc2d4a4e86421f709740228dc58c9533",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsReadFailed": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "c7211c1328a17459a19afc6ba9045fba8713799cd560c24755a14e1866200740",
+			"translationHash": "33f985266c42880ff8c28446f4f68b45387b13fa7e28c63a2bd80902120b8726",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsTimeout": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
+			"translationHash": "90ef6a1785257087a7419f48f44d409451976212ee53632db27b2245001f355f",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.gameTextFallback": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "9c5732e9a3b615c65433c4451eeb5a2bbcb4f70523fc3a755560f228a7217884",
+			"translationHash": "a877e0e2d2c1dd0c6034a095706cc2b1384dd7099a7938804408771f20a7748e",
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		}

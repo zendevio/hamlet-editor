@@ -37,6 +37,8 @@ pub fn run() {
         )
         .manage(NameTableState::default())
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            app.set_menu(commands::native_menu::build(app.handle(), "en")?)?;
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -73,6 +75,10 @@ pub fn run() {
             commands::names::set_name_table,
             commands::save::load_profile,
             commands::save::save_profile,
+            commands::settings::read_settings,
+            commands::settings::recover_corrupt_settings,
+            commands::language::collect_language_evidence,
+            commands::native_menu::set_native_menu_language,
             commands::detect::detect_save_locations,
             commands::detect::detect_game_installations,
             commands::detect::is_game_running,

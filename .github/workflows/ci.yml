@@ -44,7 +44,7 @@ jobs:
 
       - name: Keep mounted harness out of production
         run: |
-          if grep -R -n -E '__h1|installHarness|PilotProof|Pilot editor locale|mockIPC' build/; then
+          if grep -R -n -E '__h1|installHarness|PilotProof|InvariantFixture|rich-fixture|Pilot editor locale|mockIPC' build/; then
             echo 'Mounted test harness leaked into the production build'
             exit 1
           fi

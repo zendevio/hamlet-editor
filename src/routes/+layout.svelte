@@ -6,7 +6,9 @@
 	import { toast } from 'svelte-sonner';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { onMount, setContext } from 'svelte';
+	import { onMount, setContext, tick, type Component } from 'svelte';
+	import { invoke } from '@tauri-apps/api/core';
+	import { getEditorLocale, t } from '#lib/i18n/index.svelte.js';
 	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, createWindowCloseGuard, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
 	import {
 		SidebarProvider,
@@ -53,7 +55,7 @@
 	} from '#lib/components/ui/dialog/index.js';
 	import LoadingScreen from '#lib/components/LoadingScreen.svelte';
 	import GameAssetIcon from '#lib/components/GameAssetIcon.svelte';
-	import { getSettings, setSavePath, setProfileId } from '#lib/stores/settings.svelte.js';
+	import { getSettings, initializeSettings, setSavePath, setProfileId } from '#lib/stores/settings.svelte.js';
 	import {
 		getSaveData,
 		hasDirtyFiles,
@@ -90,7 +92,27 @@
 
 	const settings = getSettings();
 	const saveData = getSaveData();
-	let showSetupWizard = $derived(!settings.isSetupComplete);
+	let showSetupWizard = $derived(settings.ready && !settings.isSetupComplete && page.url.pathname !== '/settings');
+	let HarnessFixture = $state<Component<{ showLanguageControls: boolean }> | null>(null);
+	onMount(() => {
+		void initializeSettings().then(async () => {
+			await tick();
+			for (const [index, notice] of settings.startupNotices.entries()) showPersistentError(notice, '', `settings-startup-${index}`);
+		});
+		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1')) {
+			void import('#lib/dev/InvariantFixture.svelte').then((module) => { HarnessFixture = module.default; });
+		}
+	});
+	$effect(() => {
+		const locale = getEditorLocale();
+		document.documentElement.lang = locale;
+		document.documentElement.classList.toggle('cjk', ['zh-Hans', 'ja', 'ko'].includes(locale));
+		if (settings.ready) void invoke('set_native_menu_language', { locale }).catch((error) => console.warn('Native menu language failed', error));
+	});
+	$effect(() => {
+		if (settings.ready && settings.persistenceFailed) showPersistentError({ id: 'settings.persistenceFailed' }, '', 'settings-persistence');
+		else toast.dismiss('settings-persistence');
+	});
 
 	// ── Game Running Detection ──
 
@@ -136,7 +158,7 @@
 
 	// ── Name table + localization + mod-scan pipeline ──
 
-	$effect(() => requestGameText(settings.gamePath, settings.gameTextLanguage));
+	$effect(() => { if (settings.ready) return requestGameText(settings.gamePath, settings.gameTextLanguage); });
 	const gameText = getGameTextState();
 	let notifiedGameTextRequest = 0;
 	$effect(() => {
@@ -182,6 +204,7 @@
 	// with the shared name-table barrier, then load game libraries. Display localization loads independently.
 	// Also detect save locations to populate the sidebar profile selector.
 	$effect(() => {
+		if (!settings.ready) return;
 		const profileKey = `${settings.savePath}\0${settings.gamePath}`;
 		if (!settings.isSetupComplete) attemptedProfile = '';
 		if (
@@ -217,6 +240,7 @@
 
 	// Poll game running status every 5 seconds
 	$effect(() => {
+		if (!settings.ready) return;
 		let cancelled = false;
 		const observeGameStatus = createGameStoppedObserver(markProfileStale);
 
@@ -564,7 +588,11 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+<svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <ModeWatcher />
+{#if !settings.ready}
+	<div data-testid="startup-shell" class="fixed inset-0 bg-background"></div>
+{:else}
 <Toaster />
 <ValidationDialog
 	bind:open={showValidation}
@@ -594,7 +622,6 @@
 	onConfirm={handleDiscard}
 	onCancel={() => (showDiscardDialog = false)}
 />
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <Dialog bind:open={showAbout}>
 	<DialogContent class="sm:max-w-sm">
@@ -855,6 +882,7 @@
 		</header>
 
 		<main inert={isSaving} class="min-h-0 flex-1 overflow-hidden p-4">
+			{#if HarnessFixture}<HarnessFixture showLanguageControls={currentPath !== '/settings'} />{/if}
 			{@render children()}
 		</main>
 	</SidebarInset>
@@ -862,4 +890,6 @@
 
 {#if isProfileLoading}
 	<LoadingScreen status="Loading profile..." />
+{/if}
+
 {/if}

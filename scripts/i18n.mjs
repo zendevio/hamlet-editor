@@ -58,6 +58,10 @@ for (const filename of (await readdir(new URL('catalogs/', root))).filter((name)
 		assert.ok(!/[\u2014\u200B-\u200F\u202A-\u202E\u2060-\u2069\uE000-\uF8FF\uFFFD]/u.test(message), `${locale}:${id}: unexpected Unicode`);
 		const sourceContract = contract(new IntlMessageFormat(en[id], 'en').getAst());
 		const ast = new IntlMessageFormat(message, locale).getAst();
+		if (id.startsWith('native.')) {
+			assert.ok(ast.length === 1 && ast[0].type === 0 && ast[0].value === message,
+				`${locale}:${id}: native labels must be a single unchanged ICU literal`);
+		}
 		const actualContract = contract(ast);
 		assert.deepEqual(Object.keys(actualContract.params), Object.keys(sourceContract.params), `${locale}:${id}: placeholders`);
 		assert.deepEqual(actualContract.slots, sourceContract.slots, `${locale}:${id}: slots`);

@@ -15,7 +15,7 @@ export function getEditorLocale(): EditorLocale {
 	return locale;
 }
 
-/** Session locale only. P1b owns persisted modes and detection. */
+/** Internal catalog state. Settings owns persisted choices and resolution. */
 export function setEditorLocale(next: string): void {
 	if (Object.values(GAME_TEXT_LOCALES).includes(next as EditorLocale)) locale = next as EditorLocale;
 }

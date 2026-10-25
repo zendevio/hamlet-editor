@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { t } from '#lib/i18n/index.svelte.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -109,7 +111,7 @@
 	async function browseGamePath() {
 		try {
 			const { open } = await import('@tauri-apps/plugin-dialog');
-			const selected = await open({ directory: true, title: 'Select Darkest Dungeon installation folder' });
+			const selected = await open({ directory: true, title: t('settings.gamePanel') });
 			if (selected && typeof selected === 'string') {
 				const fakeInstall: GameInstall = {
 					path: selected,
@@ -132,7 +134,7 @@
 	async function browseSavePath() {
 		try {
 			const { open } = await import('@tauri-apps/plugin-dialog');
-			const selected = await open({ directory: true, title: 'Select save file folder' });
+			const selected = await open({ directory: true, title: t('settings.savePanel') });
 			if (selected && typeof selected === 'string') {
 				const fakeLoc: SaveLocation = {
 					path: selected,
@@ -182,6 +184,7 @@
 		onInteractOutside={(e) => e.preventDefault()}
 		onEscapeKeydown={(e) => e.preventDefault()}
 	>
+		<Button variant="outline" onclick={() => goto('/settings')}>{t('settings.openLanguages')}</Button>
 		<!-- Step indicator -->
 		<div role="list" class="flex items-center justify-center gap-2 pb-2">
 			{#each [1, 2, 3] as s}

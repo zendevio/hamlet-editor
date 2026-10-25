@@ -535,21 +535,276 @@
 			"requested"
 		]
 	},
-	"pilot.rich": {
-		"context": "Temporary dev-only proof of reordered emphasis, code and app-owned link with hostile-looking literal user name.",
-		"lengthHint": "One wrapping proof line; all approved slots may move.",
-		"tone": "Test copy; name is literal user text, backup/ is a folder, link destination stays in code.",
-		"slots": [
-			"code",
-			"emphasis",
-			"link",
-			"name"
-		]
-	},
 	"settings.developmentVersion": {
 		"context": "Fallback beside the Settings version label when the native app version is unavailable in development.",
 		"lengthHint": "Short version badge, ideally under 14 characters.",
 		"tone": "Neutral development build label.",
+		"slots": []
+	},
+	"settings.editorLanguage": {
+		"context": "Settings language controls, editorLanguage label or help. Available before game setup; changes display language only.",
+		"lengthHint": "Short label or two help lines in a settings card.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.editorLanguageHelp": {
+		"context": "Settings language controls, editorLanguageHelp label or help. Available before game setup; changes display language only.",
+		"lengthHint": "Short label or two help lines in a settings card.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.system": {
+		"context": "Settings language controls, system label or help. Available before game setup; changes display language only.",
+		"lengthHint": "Short label or two help lines in a settings card.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.matchGame": {
+		"context": "Settings language controls, matchGame label or help. Available before game setup; changes display language only.",
+		"lengthHint": "Short label or two help lines in a settings card.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.sameAsEditor": {
+		"context": "Settings language controls, sameAsEditor label or help. Available before game setup; changes display language only.",
+		"lengthHint": "Short label or two help lines in a settings card.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.resolvedLanguage": {
+		"context": "Settings language resolution: language is its autonym, source is a translated provenance description.",
+		"lengthHint": "One wrapping status line.",
+		"tone": "Neutral and factual.",
+		"slots": [
+			"language",
+			"source"
+		]
+	},
+	"settings.languageSource.system": {
+		"context": "Settings resolved language explanation for the system detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.game": {
+		"context": "Settings resolved language explanation for the game detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.game-settings": {
+		"context": "Settings resolved language explanation for the game-settings detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.steam": {
+		"context": "Settings resolved language explanation for the steam detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.editor-fallback": {
+		"context": "Settings resolved language explanation for the editor-fallback detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.editor": {
+		"context": "Settings resolved language explanation for the editor detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.choice": {
+		"context": "Settings resolved language explanation for the choice detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.english": {
+		"context": "Settings resolved language explanation for the english detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.persistenceFailed": {
+		"context": "Settings and persistent notification after a failed write or disabled persistence following a failed startup read. Session choice remains active.",
+		"lengthHint": "Two short wrapping lines.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"startup.languageFallback": {
+		"context": "Persistent startup notice when detection failed or timed out after settings were read and editor language is System. Editor and automatic game text use English for this launch.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the recovery result and persistence behavior.",
+		"slots": []
+	},
+	"settings.openLanguages": {
+		"context": "Settings language controls, openLanguages label or help. Available before game setup; changes display language only.",
+		"lengthHint": "Short label or two help lines in a settings card.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.file": {
+		"context": "macOS native menu label for the file role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.edit": {
+		"context": "macOS native menu label for the edit role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.view": {
+		"context": "macOS native menu label for the view role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.window": {
+		"context": "macOS native menu label for the window role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.help": {
+		"context": "macOS native menu label for the help role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.about": {
+		"context": "macOS native menu label for the about role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.services": {
+		"context": "macOS native menu label for the services role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.hide": {
+		"context": "macOS native menu label for the hide role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.hideOthers": {
+		"context": "macOS native menu label for the hideOthers role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.quit": {
+		"context": "macOS native menu label for the quit role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.close": {
+		"context": "macOS native menu label for the close role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.undo": {
+		"context": "macOS native menu label for the undo role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.redo": {
+		"context": "macOS native menu label for the redo role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.cut": {
+		"context": "macOS native menu label for the cut role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.copy": {
+		"context": "macOS native menu label for the copy role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.paste": {
+		"context": "macOS native menu label for the paste role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.selectAll": {
+		"context": "macOS native menu label for the selectAll role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.fullscreen": {
+		"context": "macOS native menu label for the fullscreen role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.minimize": {
+		"context": "macOS native menu label for the minimize role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"native.maximize": {
+		"context": "macOS native menu label for the maximize role; preserves the standard system action.",
+		"lengthHint": "Short native menu label, under 35 characters where possible.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"settings.languageSource.startup-fallback": {
+		"context": "Settings resolved language explanation for the startup-fallback detection source. Does not imply a verified file path.",
+		"lengthHint": "One wrapping status line beneath the language picker.",
+		"tone": "Neutral and factual.",
+		"slots": []
+	},
+	"startup.settingsRecovered": {
+		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the recovery result and persistence behavior.",
+		"slots": [
+			"folder",
+			"copy"
+		]
+	},
+	"startup.settingsUnreadable": {
+		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the recovery result and persistence behavior.",
+		"slots": [
+			"folder"
+		]
+	},
+	"startup.settingsReadFailed": {
+		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the recovery result and persistence behavior.",
+		"slots": []
+	},
+	"startup.settingsTimeout": {
+		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the recovery result and persistence behavior.",
+		"slots": []
+	},
+	"startup.gameTextFallback": {
+		"context": "Persistent startup notice when detection failed or timed out after settings were read and a stored manual editor choice is retained. Automatic game text falls back to that editor language.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the recovery result and persistence behavior.",
 		"slots": []
 	}
 }

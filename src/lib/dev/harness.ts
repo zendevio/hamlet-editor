@@ -20,9 +20,25 @@ export async function installHarness() {
 	const held = new Map<string, () => void>();
 	const values: Record<string, unknown> = {
 		gamePath: '/h1/game', savePath: '/h1/profile_0', profileId: 'profile_0',
-		autoBackup: false, isSetupComplete: true, gameInstall: null, gameTextLanguage: 'english'
+		autoBackup: false, isSetupComplete: !new URL(location.href).searchParams.has('preSetup'), gameInstall: null, gameTextLanguage: 'english', gameTextMode: 'explicit', editorLanguage: 'system'
 	};
 	const fixture = createHarnessProfile();
+	const startup = new URL(location.href).searchParams.get('startup');
+	if (startup === 'hanging-read') plans.push({ command: 'read_settings', hold: 'startup-read' });
+	if (startup === 'corrupt') {
+		for (const key of Object.keys(values)) delete values[key];
+		plans.push({ command: 'read_settings', value: { status: 'corrupt', values: {}, folder: '/h1/settings', fingerprint: { size: 1, hash: 'fixture' }, detail: '' } });
+	}
+	if (startup === 'unreadable') plans.push({ command: 'read_settings', fail: 'fixture: settings read denied' });
+	if (startup === 'manual-timeout') {
+		values.editorLanguage = 'german';
+		values.gameTextMode = 'match-game';
+		delete values.gameTextLanguage;
+	}
+	if (startup === 'late-detection' || startup === 'manual-timeout') plans.push({ command: 'collect_language_evidence', hold: 'startup-detection' });
+	const installed = new URL(location.href).searchParams.get('installed');
+	if (installed === 'limited') plans.push({ command: 'available_game_text_languages', hold: 'installed-languages', value: ['english', 'russian'] });
+	if (installed === 'failed') plans.push({ command: 'available_game_text_languages', fail: 'fixture language list unavailable' });
 
 	mockWindows('main');
 	mockIPC(async (command, input) => {
@@ -37,6 +53,14 @@ export async function installHarness() {
 		if (plan?.fail) throw new Error(plan.fail);
 		if (plan && Object.hasOwn(plan, 'value')) return plan.value;
 		if (plan?.empty) return command === 'load_localization' ? {} : [];
+		if (command === 'read_settings') return { status: 'ok', values: { ...values }, folder: '/h1/settings', fingerprint: null, detail: '' };
+		if (command === 'collect_language_evidence') return {
+			os_locales: { status: 'ok', value: new URL(location.href).searchParams.has('automatic') ? ['tr-TR'] : ['en-US'] },
+			game_options: { status: 'ok', value: { language: 'russian', path_kind: 'fixture', verified: false } },
+			steam_manifest: { status: 'absent', value: null }
+		};
+		if (command === 'recover_corrupt_settings') return 'settings.json.corrupt-123';
+		if (command === 'set_native_menu_language') return;
 		if (command === 'plugin:store|load') return 1;
 		if (command === 'plugin:store|get') return [values[String(args.key)], Object.hasOwn(values, String(args.key))];
 		if (command === 'plugin:store|set') { values[String(args.key)] = args.value; return; }
@@ -69,7 +93,6 @@ export async function installHarness() {
 	const game = await import('#lib/stores/game-data.svelte.js');
 	const text = await import('#lib/stores/game-text.svelte.js');
 	const save = await import('#lib/api/save.js');
-	const editor = await import('#lib/i18n/index.svelte.js');
 	window.__h1 = {
 		calls, plans,
 		persistedSettings: () => JSON.parse(JSON.stringify(values)),
@@ -86,12 +109,10 @@ export async function installHarness() {
 		},
 		async save() { const state = store.getSaveData(); await save.saveProfile(state.profilePath, store.getDirtyData(), state.nameTableVersion); },
 		gameText() { const state = text.getGameTextState(); return { requested: state.requestedLanguage, effective: state.effectiveLanguage, path: state.effectivePath, loading: state.loading, error: state.error, errorDetail: state.errorDetail, failedRequest: state.failedRequest }; },
-		setEditorLocale: editor.setEditorLocale,
-		setGameTextLanguage: settings.setGameTextLanguage,
 		gameNames: () => ({ ...game.getGameData().nameTable }),
 		localize: game.localize,
 		markStale: store.markProfileStale,
-		getSettings: () => ({ gamePath: settings.getSettings().gamePath, language: settings.getSettings().gameTextLanguage })
+		getSettings: () => ({ gamePath: settings.getSettings().gamePath, language: settings.getSettings().gameTextLanguage, editorLanguage: settings.getSettings().editorLanguage, ready: settings.getSettings().ready, startupElapsedMs: settings.getSettings().startupElapsedMs })
 	};
 }
 
@@ -108,12 +129,10 @@ declare global {
 			snapshot(): { dirty: Record<string, unknown>; data: Record<string, unknown>; dirtyFiles: string[]; profilePath: string; gamePath: string; version: number; heroes: { id: string; name: string; heroClass: string }[]; loaded: boolean; stale: boolean };
 			save(): Promise<void>;
 			gameText(): { requested: string; effective: string; path: string; loading: boolean; error: boolean; errorDetail: string; failedRequest: number };
-			setEditorLocale(locale: string): void;
-			setGameTextLanguage(language: string): void;
 			gameNames(): Record<string, string>;
 			localize(key: string, fallback?: string): string;
 			markStale(): void;
-			getSettings(): { gamePath: string; language: string };
+			getSettings(): { gamePath: string; language: string; editorLanguage: string; ready: boolean; startupElapsedMs: number };
 		};
 	}
 }

@@ -1,0 +1,14 @@
+{
+	"en": {
+		"rich": "<emphasis>{name}</emphasis>: <code>backup/</code> · <link>GitHub Repository</link>"
+	},
+	"de": {
+		"rich": "<link>GitHub-Repository</link> · <code>backup/</code>: <emphasis>{name}</emphasis>"
+	},
+	"ru": {
+		"rich": "<emphasis>{name}</emphasis>: <link>Репозиторий на GitHub</link> · <code>backup/</code>"
+	},
+	"ja": {
+		"rich": "<code>backup/</code>：<emphasis>{name}</emphasis> · <link>GitHubリポジトリ</link>"
+	}
+}

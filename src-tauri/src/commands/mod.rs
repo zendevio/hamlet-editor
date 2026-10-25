@@ -2,9 +2,12 @@ pub mod assets;
 pub mod backup;
 pub mod detect;
 pub mod gamedata;
+pub mod language;
 pub mod mods;
 pub mod names;
+pub mod native_menu;
 pub mod save;
+pub mod settings;
 pub(crate) mod transaction;
 
 /// Check whether a filename matches the DD1 save file pattern:

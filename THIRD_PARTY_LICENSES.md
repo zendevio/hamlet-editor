@@ -3414,6 +3414,16 @@ Source: https://github.com/mystor/synstructure
 
 Notices: LICENSE: 219920e865eee70b
 
+## Rust: sys-locale 0.3.2
+
+License: MIT OR Apache-2.0
+
+Authors: 1Password
+
+Source: https://github.com/1Password/sys-locale
+
+Notices: LICENSE-APACHE: 50e6751797c50ded; LICENSE-MIT: 5cc390ab5e5e6507
+
 ## Rust: sysinfo 0.39.6
 
 License: MIT
@@ -13503,6 +13513,30 @@ their own copyright notices and license terms:
   has chosen for the collective work, enumerated at the top
   of this file. The only difference is the retention of
   copyright itself, held by the contributor.
+
+## 5cc390ab5e5e6507
+
+MIT License
+
+Copyright (c) 2021 1Password
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ## 5cf1c9dc617e4cad
 

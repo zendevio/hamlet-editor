@@ -1,12 +1,9 @@
 <script lang="ts">
 	import Message from '#lib/i18n/Message.svelte';
+	import LanguageSettings from '#lib/components/LanguageSettings.svelte';
 	import { t } from '#lib/i18n/index.svelte.js';
 	import { formatDate, formatNumber } from '#lib/i18n/intl.js';
 	import { showPersistentError } from '#lib/i18n/notifications.js';
-	import { getGameTextState } from '#lib/stores/game-text.svelte.js';
-	import { availableGameTextLanguages } from '#lib/api/names.js';
-	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
-	import { setGameTextLanguage } from '#lib/stores/settings.svelte.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import {
 		Card,
@@ -65,7 +62,7 @@
 	} from '#lib/api/backup.js';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
-	import { onMount, getContext, type Component } from 'svelte';
+	import { onMount, getContext } from 'svelte';
 	import { DATA_CHANGE_CONTEXT, type RequestDataChange } from '#lib/save-workflow.js';
 
 	// Phosphor icons
@@ -88,39 +85,9 @@
 	const requestDataChange = getContext<RequestDataChange>(DATA_CHANGE_CONTEXT);
 	const settings = getSettings();
 	const saveData = getSaveData();
-	const gameText = getGameTextState();
-
-	let gameTextLanguages = $state<string[]>(['english']);
-	let languagesLoading = $state(true);
-	let languagesFailed = $state(false);
-	let languageOptions = $derived([...new Set([...gameTextLanguages, settings.gameTextLanguage])]);
-	$effect(() => {
-		const path = settings.gamePath;
-		let current = true;
-		languagesLoading = true;
-		languagesFailed = false;
-		if (path) {
-			availableGameTextLanguages(path).then((languages) => {
-				if (current) gameTextLanguages = languages;
-			}).catch(() => {
-				if (current) languagesFailed = true;
-			}).finally(() => {
-				if (current) languagesLoading = false;
-			});
-		} else {
-			gameTextLanguages = ['english'];
-			languagesLoading = false;
-		}
-		return () => { current = false; };
-	});
-
 	let appVersion = $state<string | null>(null);
-	let Pilot = $state<Component | null>(null);
 
 	onMount(async () => {
-		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1')) {
-			Pilot = (await import('#lib/dev/PilotProof.svelte')).default;
-		}
 		detectingSaves = true;
 		try {
 			saveLocations = await detectSaveLocations();
@@ -459,42 +426,10 @@
 	});
 </script>
 
-
-{#if Pilot}<Pilot />{/if}
-
 <ScrollArea class="h-[calc(100vh-4rem)]">
 	<div data-testid="settings-page" class="mx-auto max-w-2xl space-y-6 p-2">
 
-		<Card>
-			<CardHeader>
-				<CardTitle class="text-sm">{t('settings.gameLanguage')}</CardTitle>
-				<CardDescription>{t('settings.gameLanguageHelp')}</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<label for="game-text-language" class="sr-only">{t('settings.gameLanguage')}</label>
-				<select
-					id="game-text-language"
-					class="bg-background border px-3 py-2 text-sm"
-					value={settings.gameTextLanguage}
-					onchange={(event) => setGameTextLanguage(event.currentTarget.value)}
-				>
-					{#each languageOptions as language}
-						<option value={language}>{GAME_TEXT_LANGUAGES[language]}{!languagesLoading && !languagesFailed && !gameTextLanguages.includes(language) ? t('settings.unavailable') : ''}</option>
-					{/each}
-				</select>
-				{#if gameText.error}
-					<p role="alert" data-testid="game-text-error">{t('settings.gameTextFailed', { requested: GAME_TEXT_LANGUAGES[gameText.requestedLanguage], effective: GAME_TEXT_LANGUAGES[gameText.effectiveLanguage] })}</p>
-					<pre class="whitespace-pre-wrap break-all text-xs" data-testid="game-text-diagnostic">{gameText.errorDetail}</pre>
-				{/if}
-				{#if languagesLoading}
-					<p class="text-xs text-muted-foreground" role="status">{t('settings.languagesLoading')}</p>
-				{:else if languagesFailed}
-					<p class="text-xs text-muted-foreground" role="status">{t('settings.languagesFailed')}</p>
-				{:else if !gameTextLanguages.includes(settings.gameTextLanguage)}
-					<p class="text-xs text-muted-foreground" role="status">{t('settings.languageUnavailable')}</p>
-				{/if}
-			</CardContent>
-		</Card>
+		<LanguageSettings />
 
 		<!-- ═══════ Paths Section ═══════ -->
 		<Card>

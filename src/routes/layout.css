@@ -188,3 +188,27 @@
 		display: none;
 	}
 }
+
+/* Only the three CJK editor locales change typography. */
+html[lang="zh-Hans"] { --editor-cjk-font: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif; }
+html[lang="ja"] { --editor-cjk-font: 'Hiragino Sans', 'Yu Gothic', 'Noto Sans CJK JP', sans-serif; }
+html[lang="ko"] { --editor-cjk-font: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans CJK KR', sans-serif; }
+html.cjk body * {
+	letter-spacing: normal !important;
+	text-transform: none !important;
+}
+html.cjk [class~="text-[8px]"], html.cjk [class~="text-[9px]"], html.cjk [class~="text-[10px]"], html.cjk [class~="text-[11px]"] { font-size: 12px !important; }
+html.cjk .font-mono, html.cjk .tabular-nums, html.cjk code, html.cjk pre, html.cjk input[type="number"] {
+	font-family: 'JetBrains Mono Variable', monospace;
+}
+
+/* A digits-only face keeps numerals in Mono without taking CJK glyphs. */
+@font-face {
+	font-family: 'Editor Numerals';
+	src: url('@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+	font-style: normal;
+	font-weight: 100 800;
+	font-display: swap;
+	unicode-range: U+0030-0039;
+}
+html.cjk, html.cjk body { font-family: 'Editor Numerals', var(--editor-cjk-font); }
