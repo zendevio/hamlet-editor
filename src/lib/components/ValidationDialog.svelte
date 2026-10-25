@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatNumber } from '#lib/i18n/intl.js';
+	import { validationCategory } from '#lib/save-labels.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -30,14 +33,10 @@
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
 				<WarningIcon size={20} class="text-amber-500" />
-				Pre-Save Validation
+				{t('validation.title')}
 			</Dialog.Title>
 			<Dialog.Description>
-				{#if errorCount > 0}
-					{errorCount} error{errorCount !== 1 ? 's' : ''} and {warningCount} warning{warningCount !== 1 ? 's' : ''} found.
-				{:else}
-					{warningCount} warning{warningCount !== 1 ? 's' : ''} found.
-				{/if}
+				{t('validation.counts', { errors: errorCount, errorsText: formatNumber(errorCount), warnings: warningCount, warningsText: formatNumber(warningCount) })}
 			</Dialog.Description>
 		</Dialog.Header>
 
@@ -51,9 +50,9 @@
 					{/if}
 					<div class="flex-1">
 						<div class="flex items-center gap-2">
-							<Badge variant="outline" class="text-xs">{issue.category}</Badge>
+							<Badge variant="outline" class="text-xs">{validationCategory(issue.category)}</Badge>
 							{#if issue.fix}
-								<Badge variant="secondary" class="text-xs">Auto-fixable</Badge>
+								<Badge variant="secondary" class="text-xs">{t('validation.autoFixable')}</Badge>
 							{/if}
 						</div>
 						<p class="text-muted-foreground mt-1">{issue.message}</p>
@@ -63,14 +62,14 @@
 		</div>
 
 		<Dialog.Footer class="gap-2">
-			<Button variant="ghost" onclick={onCancel}>Cancel</Button>
+			<Button variant="ghost" onclick={onCancel}>{t('settings.cancel')}</Button>
 			{#if fixableCount > 0}
 				<Button variant="outline" onclick={onFixAll}>
-					Fix {fixableCount} Issue{fixableCount !== 1 ? 's' : ''} Automatically
+					{t('validation.fixCount', { count: fixableCount, countText: formatNumber(fixableCount) })}
 				</Button>
 			{/if}
 			{#if errorCount === 0}
-				<Button onclick={onSaveAnyway}>Save Anyway</Button>
+				<Button onclick={onSaveAnyway}>{t('validation.saveAnyway')}</Button>
 			{/if}
 		</Dialog.Footer>
 	</Dialog.Content>

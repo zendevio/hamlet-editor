@@ -15,6 +15,7 @@ const server = await createServer({
 });
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
+const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const { runPreSaveValidation } = await server.ssrLoadModule('/src/lib/validation.ts');
 const { equipTrinket, inventoryTrinkets, trinketEquipBlockReason, catalogueTrinket } = await server.ssrLoadModule('/src/lib/trinkets.ts');
@@ -113,7 +114,8 @@ test('real store dirties both files, Discard restores both, and single-hero reve
 	assert.equal(store.setHeroTrinket('1', '0', available.id, 'inventory'), null);
 	assert.ok('persist.roster.json' in store.getDirtyData());
 	assert.ok('persist.estate.json' in store.getDirtyData());
-	assert.match(store.revertHero('1'), /Discard All/);
+	assert.deepEqual(store.revertHero('1'), { id: 'store.revertTrinkets' });
+	assert.match(describeMessage(store.revertHero('1')), /Discard All/);
 	store.discardAllChanges();
 	assert.deepEqual(store.getSaveData().roster, originalRoster);
 	assert.deepEqual(store.getSaveData().estate, originalEstate);

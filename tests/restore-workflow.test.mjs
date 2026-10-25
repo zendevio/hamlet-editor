@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { createServer } from 'vite';
+import { readFile } from 'node:fs/promises';
 
 const server = await createServer({ configFile: false, server: { middlewareMode: true, watch: null, ws: false }, appType: 'custom', logLevel: 'error' });
 after(() => server.close());
 const { runRestore, restoreOutcome } = await server.ssrLoadModule('/src/lib/restore-workflow.ts');
 const { createUnsavedGuard } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
+const { createTranslator } = await server.ssrLoadModule('/src/lib/i18n/core.ts');
+const catalogs = Object.fromEntries(await Promise.all(['en', 'ru'].map(async locale => [locale, JSON.parse(await readFile(new URL('../src/lib/i18n/catalogs/' + locale + '.json', import.meta.url), 'utf8'))])));
+const translator = createTranslator(catalogs);
 const allowed = { adds: 1, removes: 0, blocked_reason: null };
 const blocked = { ...allowed, blocked_reason: 'Quit Steam' };
 
@@ -81,8 +85,12 @@ test('outcomes pluralize each count and omit zero parts', () => {
 	for (const [adds, removes, expected] of [
 		[0, 0, 'is overwrite-only'], [1, 0, 'adds 1 file'], [0, 1, 'removes 1 file'],
 		[2, 1, 'adds 2 files and removes 1 file'], [1, 2, 'adds 1 file and removes 2 files']
-	]) assert.equal(restoreOutcome({ adds, removes, blocked_reason: null }), `This restore ${expected}.`);
-	assert.equal(restoreOutcome(null), '');
+	]) {
+		const descriptor = restoreOutcome({ adds, removes, blocked_reason: null });
+		assert.deepEqual(descriptor, { id: 'settings.restoreOutcome', params: { adds, removes, addsText: adds } });
+		assert.equal(translator.text('en', descriptor.id, descriptor.params), `This restore ${expected}.`);
+	}
+	assert.equal(restoreOutcome(null), null);
 });
 
 test('unknown, malformed and legacy blocker presence keeps restore disabled before any discard or write', async () => {
@@ -94,6 +102,19 @@ test('unknown, malformed and legacy blocker presence keeps restore disabled befo
 			assert.equal(f.calls.includes('restore'), false);
 			assert.equal(f.calls.includes('discard'), false);
 			assert.equal(f.calls.includes('reopen'), true);
+		}
+	}
+});
+
+test('restore descriptors use the real Russian one, few and many catalog branches', () => {
+	for (const [count, ending] of [[1, 'файл'], [2, 'файла'], [5, 'файлов'], [21, 'файл'], [22, 'файла']]) {
+		for (const [adds, removes, expected] of [
+			[count, 0, `Восстановление добавит ${count} ${ending}.`],
+			[0, count, `Восстановление удалит ${count} ${ending}.`],
+			[count, count, `Восстановление добавит ${count} ${ending} и удалит ${count} ${ending}.`]
+		]) {
+			const descriptor = restoreOutcome({ adds, removes, blocked_reason: null });
+			assert.equal(translator.text('ru', descriptor.id, descriptor.params), expected);
 		}
 	}
 });

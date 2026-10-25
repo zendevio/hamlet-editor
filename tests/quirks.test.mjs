@@ -68,11 +68,12 @@ test('changing display strings updates hero class labels without mutating the ro
 	store.loadRoster(structuredClone(fixture.roster));
 	const before = JSON.stringify(store.getSaveData().roster);
 	const hero = store.getHeroes()[0];
+	const { heroClassName } = await server.ssrLoadModule('/src/lib/save-labels.ts');
 	data.setNameTable({ [`hero_class_name_${hero.heroClass}`]: '测试职业' });
-	assert.equal(store.getHeroes()[0].classDisplayName, '测试职业');
+	assert.equal(heroClassName(hero.heroClass), '测试职业');
 	assert.equal(JSON.stringify(store.getSaveData().roster), before);
 	data.setNameTable({});
-	assert.notEqual(store.getHeroes()[0].classDisplayName, '测试职业');
+	assert.notEqual(heroClassName(hero.heroClass), '测试职业');
 });
 
 

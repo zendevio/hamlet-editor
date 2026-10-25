@@ -6,13 +6,11 @@ export function isRestoreBlocked(check: RestoreCheck): boolean {
 	return check.blocked_reason !== null && check.blocked_reason !== undefined;
 }
 
-export function restoreOutcome(check: RestoreCheck | null): string {
-	if (!check) return '';
-	const parts = [
-		check.adds ? `adds ${check.adds} file${check.adds === 1 ? '' : 's'}` : '',
-		check.removes ? `removes ${check.removes} file${check.removes === 1 ? '' : 's'}` : ''
-	].filter(Boolean);
-	return parts.length ? `This restore ${parts.join(' and ')}.` : 'This restore is overwrite-only.';
+export function restoreOutcome(check: RestoreCheck | null) {
+	return check ? {
+		id: 'settings.restoreOutcome' as const,
+		params: { adds: check.adds, removes: check.removes, addsText: check.adds }
+	} : null;
 }
 
 /** Recheck after the unsaved choice, before the guard can discard any edits. */

@@ -1,10 +1,11 @@
 <script lang="ts">
+	import { describeMessage, type MessageDescriptor } from '#lib/i18n/index.svelte.js';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotchIcon';
 
 	let {
-		status = 'Loading...'
+		status = { id: 'common.loading' }
 	}: {
-		status?: string;
+		status?: MessageDescriptor;
 	} = $props();
 </script>
 
@@ -13,10 +14,10 @@
 	class="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
 	role="status"
 	aria-live="polite"
-	aria-label={status}
+	aria-label={describeMessage(status)}
 >
 	<div class="flex flex-col items-center gap-3">
 		<CircleNotchIcon size={32} class="animate-spin text-muted-foreground" />
-		<p class="text-sm text-muted-foreground">{status}</p>
+		<p class="text-sm text-muted-foreground">{describeMessage(status)}</p>
 	</div>
 </div>

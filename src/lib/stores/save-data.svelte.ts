@@ -6,6 +6,9 @@
  * functions so we can track dirty state and support per-entity revert.
  */
 
+import type { ActionMessage } from '#lib/i18n/index.svelte.js';
+import { compareIds } from '#lib/i18n/intl.js';
+import { compareBuildingNames } from '#lib/save-labels.js';
 import { equipTrinket, returnTrinkets, type TrinketSource } from '#lib/trinkets.js';
 import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 import { updateWallet, updateEstateItem } from '#lib/estate.js';
@@ -17,7 +20,7 @@ import { loadProfile } from '#lib/api/save.js';
 import { readTreatmentSlots, clearTreatmentSlot } from '#lib/treatment.js';
 import { stripDsonPrefix } from '#lib/utils.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
-import { getGameData, localize, getMaxHp as getGameDataMaxHp } from '#lib/stores/game-data.svelte.js';
+import { getGameData, getMaxHp as getGameDataMaxHp } from '#lib/stores/game-data.svelte.js';
 import {
 	TREATMENT_BUILDINGS,
 	BUILDING_ACTIVITIES,
@@ -228,26 +231,20 @@ export function getMaxHp(heroClass: string, armourRank: number): number {
 function heroEntryToSummary(guid: string, entry: HeroEntry): HeroSummary {
 	const root = entry.hero_file_data.raw_data.base_root;
 	const status = root['roster.status'];
-	const statusInfo = STATUS_MAP[status] ?? {
-		label: `Unknown(${status})`,
-		color: 'gray',
-		dotClass: 'bg-gray-500'
-	};
+	const statusDotClass = STATUS_MAP[status]?.dotClass ?? 'bg-gray-500';
 	const resolveLevel = xpToLevel(root.resolveXp);
 
 	return {
 		guid,
 		name: root.actor.name,
 		heroClass: root.heroClass,
-		classDisplayName: localize('hero_class_name_' + root.heroClass, CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass),
 		resolveLevel,
 		resolveXp: root.resolveXp,
 		currentHp: root.actor.current_hp,
 		maxHp: getMaxHp(root.heroClass, root.armour_rank),
 		stress: root.m_Stress,
 		status,
-		statusLabel: statusInfo.label,
-		statusDotClass: statusInfo.dotClass,
+		statusDotClass,
 		weaponRank: root.weapon_rank,
 		armourRank: root.armour_rank,
 		afflictionTypeId: root.affliction_type_id,
@@ -369,9 +366,9 @@ export function setHeroStress(guid: string, stress: number) {
 }
 
 /** Update a hero's name. */
-export function setHeroName(guid: string, name: string) {
+export function setHeroName(guid: string, name: string): ActionMessage | null {
 	const raw = getHeroRawData(guid);
-	if (!raw) return 'This hero is no longer in the roster.';
+	if (!raw) return { id: 'store.heroMissing' };
 	const parsed = validateHeroName(name);
 	if (parsed.error !== undefined) return parsed.error;
 	if (raw.actor.name !== parsed.value) {
@@ -526,21 +523,21 @@ export function getRevivalBlockReason(count = 1): string | null {
 }
 
 /** Validate the entire selection before applying a roster-only town revival. */
-export function reviveHeroes(guids: readonly string[]): string | null {
+export function reviveHeroes(guids: readonly string[]): ActionMessage | null {
 	const unique = [...new Set(guids)];
-	if (!unique.length) return 'Select a dead hero to revive.';
+	if (!unique.length) return { id: 'store.reviveSelection' };
 	const reason = getRevivalBlockReason(unique.length);
 	if (reason) return reason;
 	const heroes: HeroBaseRoot[] = [];
 	for (const guid of unique) {
 		const hero = getHeroRawData(guid);
-		if (!hero || hero['roster.status'] !== 3) return 'Only dead roster heroes can be revived.';
-		if (!hero.actor || !Number.isInteger(hero.armour_rank)) return 'This hero has incomplete actor or armour data. Reload the complete profile.';
+		if (!hero || hero['roster.status'] !== 3) return { id: 'store.reviveDeadOnly' };
+		if (!hero.actor || !Number.isInteger(hero.armour_rank)) return { id: 'store.reviveIncomplete' };
 		heroes.push(hero);
 	}
 	const maxima = heroes.map((hero) => getGameDataMaxHp(hero.heroClass, hero.armour_rank)
 		?? HP_TABLE[hero.heroClass]?.[Math.max(0, Math.min(hero.armour_rank, 4))]);
-	if (maxima.some((hp) => hp === undefined || !Number.isFinite(hp) || hp <= 0)) return 'Revival is blocked: class maximum HP unknown.';
+	if (maxima.some((hp) => hp === undefined || !Number.isFinite(hp) || hp <= 0)) return { id: 'store.reviveHpUnknown' };
 	for (const [index, hero] of heroes.entries()) {
 		hero['roster.status'] = 0;
 		hero['roster.before_on_start_town_visit_status'] = 0;
@@ -558,8 +555,8 @@ export function setHeroCurseState(guid: string, id: string) {
 }
 
 /** Update the estate name in persist.game.json. */
-export function setEstateName(name: string) {
-	if (!game) return 'No game data loaded.';
+export function setEstateName(name: string): ActionMessage | null {
+	if (!game) return { id: 'store.noGame' };
 	const parsed = validateHeroName(name);
 	if (parsed.error !== undefined) return parsed.error;
 	if (game.base_root.estatename !== parsed.value) {
@@ -574,13 +571,13 @@ export function getDismissBlockReason(guid: string): string | null {
 }
 
 /** Remove live roster/purchase references, preserving campaign and progression history. */
-export function dismissHero(guid: string): string | null {
+export function dismissHero(guid: string): ActionMessage | null {
 	const reason = getDismissBlockReason(guid);
 	if (reason) return reason;
-	if (!roster) return 'No roster loaded.';
+	if (!roster) return { id: 'store.noRoster' };
 	const count = parseInteger(roster.base_root.dismissed_hero_count, 0, 2147483646);
 	if (count.error !== undefined) return count.error;
-	if (!upgrades) return 'No upgrade data loaded.';
+	if (!upgrades) return { id: 'store.noUpgrades' };
 	const trinkets = equippedTrinkets(roster.base_root.heroes[guid].hero_file_data.raw_data.base_root)!;
 	if (trinkets.length > 0 && estate) {
 		returnTrinkets(estate.base_root.trinkets.items, trinkets);
@@ -599,9 +596,9 @@ export function dismissHero(guid: string): string | null {
 	return null;
 }
 
-export function setHeroTrinket(guid: string, slot: '0' | '1', id: string, source: TrinketSource): string | null {
+export function setHeroTrinket(guid: string, slot: '0' | '1', id: string, source: TrinketSource): ActionMessage | null {
 	const hero = getHeroRawData(guid);
-	if (!hero) return 'This hero is no longer in the roster.';
+	if (!hero) return { id: 'store.heroMissing' };
 	const result = equipTrinket(hero, estate, slot, id, source, getGameData().trinkets);
 	if (result.error) return result.error;
 	if (result.changed) markDirty('persist.roster.json');
@@ -648,7 +645,6 @@ export function getHeroesInBuilding(buildingName: TreatmentBuildingName): Treatm
 			guid,
 			name: root.actor.name,
 			heroClass: root.heroClass,
-			classDisplayName: localize('hero_class_name_' + root.heroClass, CLASS_DISPLAY_NAMES[root.heroClass] ?? root.heroClass),
 			buildingName,
 			activityType,
 			slotIndex
@@ -677,9 +673,9 @@ export function releaseHeroFromTreatment(guid: string) {
 /** Get all building upgrades grouped by building name. */
 export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 	if (!upgrades) return [];
-	const groups: Record<string, UpgradePurchase[]> = {};
+	const groups: Record<string, { id: string; purchase: UpgradePurchase }[]> = {};
 
-	for (const purchase of Object.values(upgrades.base_root.purchases)) {
+	for (const [id, purchase] of Object.entries(upgrades.base_root.purchases)) {
 		// Only building upgrades (instance_number === 0)
 		if (purchase.instance_number !== 0) continue;
 		const treeId = stripDsonPrefix(purchase.tree_id);
@@ -689,18 +685,18 @@ export function getBuildingUpgrades(): BuildingUpgradeGroup[] {
 		if (!BUILDING_UPGRADE_PREFIXES.includes(buildingName as (typeof BUILDING_UPGRADE_PREFIXES)[number]))
 			continue;
 		if (!groups[buildingName]) groups[buildingName] = [];
-		groups[buildingName].push(purchase);
+		groups[buildingName].push({ id, purchase });
 	}
 
 	return Object.entries(groups)
 		.map(([buildingName, upgrades]) => ({
 			buildingName,
-			displayName: localize('town_name_' + buildingName, BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName),
-			upgrades: upgrades.sort((a, b) => a.requirement_code.localeCompare(b.requirement_code)),
-			purchasedCount: upgrades.filter((u) => u.is_purchased).length,
+			upgrades: upgrades.sort((a, b) => compareIds(a.purchase.requirement_code, b.purchase.requirement_code)
+				|| compareIds(a.id, b.id)).map(({ purchase }) => purchase),
+			purchasedCount: upgrades.filter(({ purchase }) => purchase.is_purchased).length,
 			totalCount: upgrades.length
 		}))
-		.sort((a, b) => a.displayName.localeCompare(b.displayName));
+		.sort(compareBuildingNames);
 }
 
 /** Unresolved hashes have no verified tree, so display them as raw read-only entries. */
@@ -896,14 +892,14 @@ export function getSavedHeroHp(guid: string): number | undefined {
 }
 
 /** Revert a single hero to on-disk state. */
-export function revertHero(guid: string) {
+export function revertHero(guid: string): ActionMessage | null | undefined {
 	if (!rosterSnapshot || !roster) return;
 	const snapshot = JSON.parse(rosterSnapshot) as RosterData;
 	const original = snapshot.base_root.heroes[guid];
 	if (!original) return;
 	const current = getHeroRawData(guid);
 	if (JSON.stringify(current?.trinkets) !== JSON.stringify(original.hero_file_data.raw_data.base_root.trinkets)) {
-		return 'Use Discard All to restore trinket edits and estate inventory together.';
+		return { id: 'store.revertTrinkets' };
 	}
 	roster.base_root.heroes[guid] = JSON.parse(JSON.stringify(original));
 }

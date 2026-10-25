@@ -1,8 +1,11 @@
 <script lang="ts">
+	import { showActionError } from '#lib/i18n/notifications.js';
+	import { describeActionMessage, type ActionMessage } from '#lib/i18n/index.svelte.js';
+	import { heroClassName, heroStatusLabel, gameTextLocale } from '#lib/save-labels.js';
+
 	import { commitChangedValue, sliderControl, sliderValueLabel, sliderNumberLabel, hpSliderMax } from '#lib/control-events.js';
 	import { parseInteger, validateHeroName } from '#lib/input-validation.js';
 	import { canPickQuirk, CURSE_STATES } from '#lib/hero-safety.js';
-	import { toast } from 'svelte-sonner';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Input } from '#lib/components/ui/input/index.js';
@@ -95,7 +98,7 @@
 	// ── Name editing ──
 	let editingName = $state(false);
 	let nameValue = $state('');
-	let nameError = $state('');
+	let nameError = $state<ActionMessage>('');
 	let nameAtStart = '';
 	let nameHeroGuid = '';
 
@@ -270,13 +273,13 @@
 
 	function handleTrinketSelect(slot: '0' | '1', trinketId: string, source: 'inventory' | 'catalogue' = 'catalogue') {
 		const reason = setHeroTrinket(hero.guid, slot, trinketId, source);
-		if (reason) toast.error(reason);
+		if (reason) showActionError(reason);
 	}
 
 	// D8: Dismiss confirmation dialog
 	function handleDismissConfirm() {
 		const reason = dismissHero(hero.guid);
-		if (reason) { toast.error(reason); return; }
+		if (reason) { showActionError(reason); return; }
 		dismissConfirmChecked = false;
 		dismissDialogOpen = false;
 		onDismiss?.();
@@ -284,7 +287,7 @@
 
 	function handleRevert() {
 		const reason = revertHero(hero.guid);
-		if (reason) toast.error(reason);
+		if (reason) showActionError(reason);
 	}
 </script>
 
@@ -351,7 +354,7 @@
 							class="h-7 text-sm font-medium"
 							autofocus
 						/>
-						{#if nameError}<p role="alert" class="text-xs text-destructive">{nameError}</p>{/if}
+						{#if nameError}<p role="alert" class="text-xs text-destructive">{describeActionMessage(nameError)}</p>{/if}
 					{:else}
 						<button
 							type="button"
@@ -377,9 +380,9 @@
 				</div>
 				<div class="flex items-center justify-between px-1 text-xs text-muted-foreground">
 					<div class="flex items-center gap-2">
-						<span>{hero.classDisplayName}</span>
+						<span lang={gameTextLocale()}>{heroClassName(hero.heroClass)}</span>
 						<span class="h-2 w-2 shrink-0 rounded-full {hero.statusDotClass}"></span>
-						<span class="{isDead ? 'text-red-500' : ''}">{hero.statusLabel}</span>
+						<span class="{isDead ? 'text-red-500' : ''}">{heroStatusLabel(hero.status)}</span>
 					</div>
 					<Select type="single" value={String(resolveLevel)} onValueChange={(v: string) => handleLevelChange(v)}>
 						<SelectTrigger class="h-6 w-auto text-xs">
@@ -1007,7 +1010,7 @@
 							<TrashIcon size={14} />
 							Dismiss {hero.name}
 						</Button>
-						{#if dismissReason}<p class="mt-2 text-xs text-destructive">{dismissReason}</p>{/if}
+						{#if dismissReason}<p class="mt-2 text-xs text-destructive">{describeActionMessage(dismissReason)}</p>{/if}
 					</div>
 			</div>
 		</div>

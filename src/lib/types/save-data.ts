@@ -239,14 +239,12 @@ export interface HeroSummary {
 	guid: string;
 	name: string;
 	heroClass: string;
-	classDisplayName: string;
 	resolveLevel: number;
 	resolveXp: number;
 	currentHp: number;
 	maxHp: number;
 	stress: number;
 	status: number;
-	statusLabel: string;
 	statusDotClass: string;
 	weaponRank: number;
 	armourRank: number;
@@ -265,7 +263,6 @@ export interface TreatmentHero {
 	guid: string;
 	name: string;
 	heroClass: string;
-	classDisplayName: string;
 	buildingName: string;
 	activityType: string;
 	slotIndex: string;
@@ -273,7 +270,6 @@ export interface TreatmentHero {
 
 export interface BuildingUpgradeGroup {
 	buildingName: string;
-	displayName: string;
 	upgrades: UpgradePurchase[];
 	purchasedCount: number;
 	totalCount: number;

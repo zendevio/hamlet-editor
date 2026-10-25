@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.svelte.js';
 	import { loadGameAsset } from '#lib/api/assets.js';
 	import { Skeleton } from '#lib/components/ui/skeleton/index.js';
 
@@ -50,7 +51,7 @@
 	<div
 		class="bg-muted flex items-center justify-center {className}"
 		role="img"
-		aria-label={alt || 'Image unavailable'}
+		aria-label={alt || t('common.imageUnavailable')}
 	>
 		<span class="text-muted-foreground text-xs select-none">?</span>
 	</div>

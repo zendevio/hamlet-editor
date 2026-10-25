@@ -13,6 +13,7 @@ const server = await createServer({
 });
 after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
+const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const safety = await server.ssrLoadModule('/src/lib/hero-safety.ts');
 const raid = await server.ssrLoadModule('/src/lib/raid.ts');
@@ -249,7 +250,8 @@ test('unknown class maximum HP blocks the entire revival batch', () => {
 	hero.heroClass = 'unknown_mod_class';
 	gameData.setClassStats([]);
 	const before = snapshot(data);
-	assert.match(store.reviveHeroes(['58', '96']), /class maximum HP unknown/);
+	assert.deepEqual(store.reviveHeroes(['58', '96']), { id: 'store.reviveHpUnknown' });
+	assert.match(describeMessage(store.reviveHeroes(['58', '96'])), /class maximum HP unknown/);
 	assert.deepEqual(snapshot(data), before);
 	assert.equal(store.hasDirtyFiles(), false);
 });

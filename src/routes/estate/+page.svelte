@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { describeActionMessage, type ActionMessage } from '#lib/i18n/index.svelte.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { validateHeroName } from '#lib/input-validation.js';
 	import { WALLET_MAX } from '#lib/estate.js';
@@ -52,7 +53,7 @@
 	// D6: Estate name
 	let estateNameValue = $state('');
 	let estateNameEditing = $state(false);
-	let estateNameError = $state('');
+	let estateNameError = $state<ActionMessage>('');
 	let estateNameAtStart = '';
 
 	$effect(() => {
@@ -237,7 +238,7 @@
 							aria-invalid={!!estateNameError}
 							class="h-9 text-sm"
 						/>
-						{#if estateNameError}<p class="mt-1 text-xs text-destructive">{estateNameError}</p>{/if}
+						{#if estateNameError}<p class="mt-1 text-xs text-destructive">{describeActionMessage(estateNameError)}</p>{/if}
 					</div>
 				</div>
 				{#if hasColorOfMadness && estateData?.endless_wave_highscore !== undefined}

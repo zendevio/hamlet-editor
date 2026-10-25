@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { localize } from '#lib/stores/game-data.svelte.js';
+	import { heroClassName, gameTextLocale, buildingDisplayName } from '#lib/save-labels.js';
+
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
@@ -18,7 +19,6 @@
 	import UserCircleIcon from 'phosphor-svelte/lib/UserCircleIcon';
 	import SignOutIcon from 'phosphor-svelte/lib/SignOutIcon';
 	import {
-		BUILDING_DISPLAY_NAMES,
 		ACTIVITY_DISPLAY_NAMES,
 		BUILDING_ACTIVITIES,
 		TREATMENT_BUILDINGS,
@@ -42,7 +42,7 @@
 
 	let isOpen = $state(false);
 
-	let displayName = $derived(localize('town_name_' + buildingName, BUILDING_DISPLAY_NAMES[buildingName] ?? buildingName));
+	let displayName = $derived(buildingDisplayName(buildingName));
 	let isTreatmentBuilding = $derived(
 		TREATMENT_BUILDINGS.includes(buildingName as TreatmentBuildingName)
 	);
@@ -81,7 +81,7 @@
 						{:else}
 							<CaretRightIcon size={16} class="shrink-0 text-muted-foreground" />
 						{/if}
-						<CardTitle class="truncate text-base" title={displayName}>{displayName}</CardTitle>
+						<CardTitle lang={gameTextLocale()} class="truncate text-base" title={displayName}>{displayName}</CardTitle>
 					</div>
 					<div class="flex min-w-0 flex-wrap items-center gap-2">
 						{#if isTreatmentBuilding && treatmentHeroes.length > 0}
@@ -123,8 +123,8 @@
 														class="shrink-0 text-muted-foreground"
 													/>
 													<span class="min-w-0 truncate text-sm font-medium" title={hero.name}>{hero.name}</span>
-													<span class="min-w-0 truncate text-xs text-muted-foreground" title={hero.classDisplayName}>
-														{hero.classDisplayName}
+													<span lang={gameTextLocale()} class="min-w-0 truncate text-xs text-muted-foreground" title={heroClassName(hero.heroClass)}>
+														{heroClassName(hero.heroClass)}
 													</span>
 												</div>
 											{:else}

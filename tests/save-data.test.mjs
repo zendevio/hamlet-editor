@@ -17,6 +17,7 @@ after(() => server.close());
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const { runPreSaveValidation } = await server.ssrLoadModule('/src/lib/validation.ts');
 const { createMockRoster } = await server.ssrLoadModule('/src/lib/data/mock.ts');
+const { buildingDisplayName } = await server.ssrLoadModule('/src/lib/save-labels.ts');
 const { withCurrentProfile } = await server.ssrLoadModule('/src/lib/profiles.ts');
 
 function slot(hero, extra = {}) {
@@ -125,7 +126,7 @@ test('upgrades group actual camping_trainer purchases', () => {
 	} } });
 	const groups = store.getBuildingUpgrades();
 	assert.equal(groups.length, 1);
-	assert.equal(groups[0].displayName, 'Survivalist');
+	assert.equal(buildingDisplayName(groups[0].buildingName), 'Survivalist');
 });
 
 test('current profile survives empty detection and is not duplicated when detected', () => {

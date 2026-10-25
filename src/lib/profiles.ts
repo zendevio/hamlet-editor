@@ -12,7 +12,7 @@ export function withCurrentProfile(
 		...locations,
 		{
 			path,
-			profile_id: profileId || path.split(/[\\/]/).filter(Boolean).at(-1) || 'Current profile',
+			profile_id: profileId || path.split(/[\\/]/).filter(Boolean).at(-1) || '',
 			source: 'Manual',
 			steam_user_id: null,
 			has_active_raid: hasActiveRaid

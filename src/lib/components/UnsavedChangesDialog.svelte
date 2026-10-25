@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t, describeMessage, type MessageDescriptor } from '#lib/i18n/index.svelte.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
@@ -8,16 +9,16 @@
 		onSaveAndClose,
 		onDiscardAndClose,
 		onCancel,
-		saveLabel = 'Save and Close',
-		discardLabel = 'Discard and Close',
+		saveLabel = { id: 'unsaved.saveClose' },
+		discardLabel = { id: 'unsaved.discardClose' },
 		allowSave = true
 	}: {
 		open?: boolean;
 		onSaveAndClose: () => void;
 		onDiscardAndClose: () => void;
 		onCancel: () => void;
-		saveLabel?: string;
-		discardLabel?: string;
+		saveLabel?: MessageDescriptor;
+		discardLabel?: MessageDescriptor;
 		allowSave?: boolean;
 	} = $props();
 </script>
@@ -27,21 +28,21 @@
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
 				<WarningIcon size={20} class="text-amber-500" />
-				Unsaved Changes
+				{t('unsaved.title')}
 			</Dialog.Title>
 			<Dialog.Description>
-				You have unsaved changes. What would you like to do?
+				{t('unsaved.description')}
 			</Dialog.Description>
 		</Dialog.Header>
 
 		<Dialog.Footer class="flex-col gap-2 sm:flex-row">
-			<Button variant="ghost" onclick={onCancel}>Cancel</Button>
+			<Button variant="ghost" onclick={onCancel}>{t('settings.cancel')}</Button>
 			<Button variant="destructive" onclick={onDiscardAndClose}>
-				{discardLabel}
+				{describeMessage(discardLabel)}
 			</Button>
 			{#if allowSave}
 				<Button onclick={onSaveAndClose}>
-					{saveLabel}
+					{describeMessage(saveLabel)}
 				</Button>
 			{/if}
 		</Dialog.Footer>

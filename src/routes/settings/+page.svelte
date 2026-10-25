@@ -41,7 +41,7 @@
 		setProfileId,
 		setAutoBackup
 	} from '#lib/stores/settings.svelte.js';
-	import { runRestore, isRestoreBlocked } from '#lib/restore-workflow.js';
+	import { runRestore, isRestoreBlocked, restoreOutcome } from '#lib/restore-workflow.js';
 	import { withCurrentProfile } from '#lib/profiles.js';
 	import { getSaveData, loadProfileFromBackend } from '#lib/stores/save-data.svelte.js';
 	import {
@@ -135,7 +135,7 @@
 	let profileOptions = $derived.by(() => {
 		return availableSaveLocations.map((loc) => ({
 			id: loc.path,
-			label: `${loc.profile_id} · ${loc.steam_user_id ?? loc.path}`,
+			label: t('shell.profileOption', { profile: loc.profile_id || t('profiles.current'), location: loc.steam_user_id ?? loc.path }),
 			hasRaid: loc.has_active_raid,
 			source: loc.source
 		}));
@@ -245,7 +245,7 @@
 		if (!loc) return;
 		try {
 			if (await changeProfilePath(loc.path, loc.profile_id)) {
-				toast.success(t('settings.profileLoaded'), { description: t('settings.profileSwitched', { profile: loc.profile_id }) });
+				toast.success(t('settings.profileLoaded'), { description: t('settings.profileSwitched', { profile: loc.profile_id || t('profiles.current') }) });
 			}
 		} catch (err) {
 			showError(err, { id: 'settings.profileFailed' });
@@ -406,7 +406,8 @@
 	}
 
 	function restoreSummary(check: RestoreCheck | null): string {
-		return check ? t('settings.restoreOutcome', { adds: check.adds, removes: check.removes, addsText: formatNumber(check.adds) }) : '';
+		const outcome = restoreOutcome(check);
+		return outcome ? t(outcome.id, { ...outcome.params, addsText: formatNumber(outcome.params.adds) }) : '';
 	}
 
 	function profileSource(source: string): string {
@@ -619,7 +620,7 @@
 							onValueChange={(v: string) => handleProfileChange(v)}
 						>
 							<SelectTrigger aria-label={t('settings.currentProfile')} class="h-8 text-xs">
-								<span>{settings.profileId || t('settings.selectProfile')}</span>
+								<span>{settings.profileId || t(settings.savePath ? 'profiles.current' : 'settings.selectProfile')}</span>
 							</SelectTrigger>
 							<SelectContent>
 								{#each profileOptions as opt}

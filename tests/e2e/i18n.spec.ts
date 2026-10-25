@@ -309,8 +309,8 @@ test('I1: dirty and blocked-save guards survive switches', async ({ page }) => {
 	await open(page);
 	await page.evaluate(() => { window.__h1!.edit(); window.__h1!.markStale(); });
 	for (const locale of cycle) await switchEditor(page, locale);
-	// The header Save button sits inside its tooltip trigger, so the inner node is the real button.
-	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).last()).toBeDisabled();
+	// Save is one focusable button that also owns its tooltip trigger handlers.
+	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true })).toBeDisabled();
 	await expect(page.getByText('Profile stale: Reload required', { exact: true })).toBeVisible();
 	await page.evaluate(() => window.__h1!.plans.push({ command: 'plugin:dialog|open', value: '/h1/another-profile' }));
 	const messages = await catalog('de');
@@ -381,7 +381,7 @@ for (const route of ['heroes', 'estate'] as const) {
 			expect(edited.heroes[0].heroClass).toBe('unknown_mod_class');
 			// Exercise the actual header save and its validation choice. The synthetic
 			// roster may warn, so accept the explicit Save Anyway without auto-fixes.
-			const saveButton = page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).last();
+			const saveButton = page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true });
 			await expect(saveButton).toBeEnabled();
 			await saveButton.click();
 			await expect.poll(async () =>
@@ -395,7 +395,7 @@ for (const route of ['heroes', 'estate'] as const) {
 			expect(call.args.data).toEqual(edited.dirty);
 			payloads.push(call.args);
 			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}-save.json`, JSON.stringify(call.args, null, 2), 'application/json');
-			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}.aria.txt`, await page.locator('main main').ariaSnapshot(), 'text/plain');
+			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}.aria.txt`, await page.getByRole('main').ariaSnapshot(), 'text/plain');
 		}
 		expect(payloads[1]).toEqual(payloads[0]);
 	});
@@ -633,7 +633,7 @@ test('M2/F8: System, Match game and Same as editor preserve dirty state and diag
 	await expect(diagnostic).toHaveCount(1);
 	expect(await snapshot(page)).toEqual(before);
 	await page.evaluate(() => window.__h1!.markStale());
-	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true }).last()).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true })).toBeDisabled();
 	await expect(dialog).toBeVisible();
 });
 
@@ -770,7 +770,7 @@ test('S1: a stale save code marks the loaded profile stale without clearing dirt
 		window.__h1!.plans.push({ command: 'save_profile', fail: { code: 'save_stale', params: {}, detail: 'fixture changed bytes' } });
 	});
 	const before = await snapshot(page);
-	await page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).last().click();
+	await page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).click();
 	const validation = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Pre-Save Validation' }) });
 	await expect.poll(async () => await validation.isVisible() || await page.evaluate(() => window.__h1!.snapshot().stale)).toBe(true);
 	if (await validation.isVisible()) await validation.getByRole('button', { name: 'Save Anyway', exact: true }).click();
@@ -778,7 +778,7 @@ test('S1: a stale save code marks the loaded profile stale without clearing dirt
 	const after = await snapshot(page);
 	expect(after.dirty).toEqual(before.dirty);
 	expect(after.dirtyFiles).toEqual(before.dirtyFiles);
-	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true }).last()).toBeDisabled();
+	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true })).toBeDisabled();
 	await expect(page.getByRole('alert').filter({ hasText: 'fixture changed bytes' })).toContainText('Save failed');
 	await expect(page.getByRole('alert').filter({ hasText: 'fixture changed bytes' })).not.toContainText('Error:');
 	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'))).toHaveLength(1);
@@ -882,3 +882,327 @@ test('S1: an unknown typed restore blocker stays disabled after confirmation and
 	expectSwitchCalls(calls, await persistedSettings(page));
 	expect(calls.filter(({ command }) => ['restore_backup', 'restore_game_backup', 'save_profile'].includes(command))).toEqual([]);
 });
+
+async function expectFocusedHeaderTooltip(page: Page, button: Locator, reason: string, close = true) {
+	await page.mouse.move(0, 0);
+	await page.keyboard.press('Escape');
+	// A blocked button stays in the tab order: aria-disabled, never disabled.
+	await expect(button).not.toHaveAttribute('disabled', /.*/);
+	await expect(button).toHaveAttribute('tabindex', '0');
+	// Focus left on this button by an earlier pass would make focus() fire no
+	// event, so clear it first.
+	await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+	await button.focus();
+	// Return through the actual tab order.
+	await page.keyboard.press('Shift+Tab');
+	await page.keyboard.press('Tab');
+	await expect(button).toBeFocused();
+	await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveText(reason);
+	await expect(button).toHaveAttribute('aria-describedby', /.+/);
+	if (close) {
+		await page.keyboard.press('Escape');
+		await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveCount(0);
+	}
+}
+
+async function expectHeaderTooltip(page: Page, button: Locator, reason: string) {
+	await page.mouse.move(0, 0);
+	await button.hover();
+	await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveText(reason);
+	await page.keyboard.press('Escape');
+	await expectFocusedHeaderTooltip(page, button, reason);
+}
+
+async function activateBlockedHeaderButton(page: Page, button: Locator, shortcuts: string[]) {
+	await expect(button).toBeDisabled();
+	await expect(button).toHaveJSProperty('disabled', false);
+	const box = await button.boundingBox();
+	expect(box).not.toBeNull();
+	await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+	await button.focus();
+	for (const key of ['Enter', 'Space', ...shortcuts]) await page.keyboard.press(key);
+}
+
+for (const [state, reason] of [
+	['no edits', 'No unsaved changes'],
+	['stale', 'Save files may have changed. Reload the profile before saving.'],
+	['running', 'DD Running. Close the game before saving.'],
+	['uncertain', 'Unable to detect game status. Save blocked as precaution.'],
+	['paths changed', 'Paths changed. Reload the profile before saving.'],
+	['no profile', 'No profile loaded']
+] as const) {
+	test(`S2: blocked Save exposes ${state} on hover and keyboard focus in en and after switching to ru`, async ({ page }) => {
+		await open(page);
+		if (state === 'paths changed') await page.evaluate(() => window.__h1!.loadProfile('/h1/other-profile'));
+		if (state !== 'no edits' && state !== 'no profile') await page.evaluate(() => window.__h1!.edit());
+		if (state === 'stale') await page.evaluate(() => window.__h1!.markStale());
+		if (state === 'no profile') await page.evaluate(() => window.__h1!.resetProfile());
+		if (state === 'running' || state === 'uncertain') {
+			await page.evaluate(value => window.__h1!.gameStatus(value === 'running' ? true : 'uncertain'), state);
+		}
+		const header = page.locator('[data-slot="sidebar-inset"] > header');
+		const dirty = state !== 'no edits' && state !== 'no profile';
+		const save = header.getByRole('button', { name: dirty ? 'Unsaved changes. Save all changes.' : 'Save', exact: true });
+		await expect(save).toBeDisabled({ timeout: 10_000 });
+		const node = await save.elementHandle();
+		const before = await snapshot(page);
+		const persisted = await persistedSettings(page);
+		const marker = await page.evaluate(() => window.__h1!.calls.length);
+		for (const locale of ['en', 'ru']) {
+			await switchEditor(page, locale);
+			await expect(save).toHaveCount(1);
+			await expect(header.locator('button button')).toHaveCount(0);
+			await expectHeaderTooltip(page, save, reason);
+			await activateBlockedHeaderButton(page, save, ['Control+s', 'Meta+s']);
+			await expect(page.getByRole('dialog')).toHaveCount(0);
+			const backup = header.getByRole('button', { name: 'Backup', exact: true });
+			if (state === 'no profile') {
+				await expectHeaderTooltip(page, backup, 'No profile loaded');
+				await activateBlockedHeaderButton(page, backup, ['Control+b', 'Meta+b']);
+			} else await expect(backup).toBeEnabled();
+			await expect(header.getByRole('button', { name: 'Discard', exact: true })).toHaveCount(dirty ? 1 : 0);
+			if (dirty) await expect(header.getByRole('button', { name: 'Discard', exact: true })).toBeEnabled();
+			if (state === 'stale') await expect(header.getByRole('button', { name: 'Reload', exact: true })).toBeEnabled();
+			expect(await node!.evaluate(element => element.isConnected)).toBe(true);
+			expect(await snapshot(page)).toEqual(before);
+		}
+		const calls = await page.evaluate(start => window.__h1!.calls.slice(start), marker);
+		expectSwitchCalls(calls, persisted);
+		expect(calls.filter(({ command }) => ['save_profile', 'create_backup'].includes(command))).toEqual([]);
+	});
+}
+
+for (const phase of ['read', 'libraries']) {
+	test(`S2: profile ${phase} loading keeps Save blocked with the exact loading tooltip`, async ({ page }) => {
+		await page.goto(`/settings?h1&profileLoading=${phase}`);
+		const held = phase === 'read' ? 'profile-read' : 'profile-libraries';
+		await expect.poll(() => page.evaluate(() => window.__h1?.held())).toContain(held);
+		if (phase === 'libraries') await page.evaluate(() => window.__h1!.edit());
+		const header = page.locator('[data-slot="sidebar-inset"] > header');
+		const save = header.getByRole('button', { name: phase === 'read' ? 'Save' : 'Unsaved changes. Save all changes.', exact: true });
+		const before = await snapshot(page);
+		for (const locale of ['en', 'ru']) {
+			await switchEditor(page, locale);
+			await expect(save).toBeDisabled();
+			await expectFocusedHeaderTooltip(page, save, 'Loading profile...');
+			await save.focus();
+			for (const key of ['Enter', 'Space', 'Control+s', 'Meta+s']) await page.keyboard.press(key);
+			expect(await snapshot(page)).toEqual(before);
+		}
+		expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['save_profile', 'create_backup'].includes(command)))).toEqual([]);
+		await page.evaluate(id => window.__h1!.release(id), held);
+		await expect(page.getByRole('status', { name: 'Loading profile...' })).toHaveCount(0);
+		if (phase === 'read') {
+			// A clean profile remains blocked by its no-changes reason after loading.
+			await expect(save).toBeDisabled();
+			await expectHeaderTooltip(page, save, 'No unsaved changes');
+		} else await expect(save).toBeEnabled();
+	});
+}
+
+test('S2: saving blocks repeat Save and Discard activation while keeping their tooltips reachable', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => {
+		window.__h1!.edit();
+		window.__h1!.validationCounts(0, 0);
+		window.__h1!.plans.push({ command: 'save_profile', hold: 'header-save' });
+	});
+	const header = page.locator('[data-slot="sidebar-inset"] > header');
+	const save = header.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true });
+	await expect(save).toBeEnabled();
+	await save.click();
+	await expect.poll(async () => (await page.evaluate(() => window.__h1!.held())).includes('header-save') || await page.getByRole('dialog').isVisible()).toBe(true);
+	const validation = page.getByRole('dialog');
+	if (await validation.isVisible()) await validation.getByRole('button', { name: 'Save Anyway', exact: true }).click();
+	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('header-save');
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of ['en', 'ru']) {
+		await switchEditor(page, locale);
+		await expect(save).toHaveText('Saving...');
+		await expectHeaderTooltip(page, save, 'Saving...');
+		await activateBlockedHeaderButton(page, save, ['Control+s', 'Meta+s']);
+		const discard = header.getByRole('button', { name: 'Discard', exact: true });
+		await expectHeaderTooltip(page, discard, 'Discard all unsaved changes (Ctrl/Cmd+Shift+Z)');
+		await activateBlockedHeaderButton(page, discard, ['Control+Shift+z', 'Meta+Shift+z']);
+		for (const modifier of ['ctrlKey', 'metaKey']) {
+			await discard.dispatchEvent('keydown', { key: 'z', shiftKey: true, [modifier]: true });
+		}
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect(header.getByRole('button', { name: 'Backup', exact: true })).toBeEnabled();
+		expect(await snapshot(page)).toEqual(before);
+	}
+	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
+	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'))).toHaveLength(1);
+	await page.evaluate(() => window.__h1!.release('header-save'));
+	await expect(header.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+	await expectHeaderTooltip(page, header.getByRole('button', { name: 'Save', exact: true }), 'No unsaved changes');
+	await expect(header.getByRole('button', { name: 'Discard', exact: true })).toHaveCount(0);
+});
+
+test('S2: keyboard activation closes an enabled tooltip trigger', async ({ page }) => {
+	await open(page);
+	const theme = page.getByRole('button', { name: 'Toggle theme', exact: true });
+	for (const key of ['Enter', 'Space']) {
+		await expectFocusedHeaderTooltip(page, theme, 'Toggle dark/light mode', false);
+		const wasDark = await page.locator('html').evaluate(element => element.classList.contains('dark'));
+		await page.keyboard.press(key);
+		await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveCount(0);
+		await expect.poll(() => page.locator('html').evaluate(element => element.classList.contains('dark'))).toBe(!wasDark);
+	}
+});
+
+test('S2: one main landmark and one correctly named Save button survive dirty live locale switches', async ({ page }) => {
+	await open(page);
+	const header = page.locator('[data-slot="sidebar-inset"] > header');
+	const save = header.getByRole('button', { name: 'Save', exact: true });
+	await expect(page.getByRole('main')).toHaveCount(1);
+	await expect(page.locator('main main')).toHaveCount(0);
+	await expect(save).toHaveCount(1);
+	await expect(save).toBeDisabled();
+	await page.evaluate(() => window.__h1!.edit());
+	const dirtySave = header.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true });
+	await expect(dirtySave).toHaveCount(1);
+	await expect(dirtySave).toBeEnabled();
+	await expectHeaderTooltip(page, dirtySave, 'Save all changes');
+	await expect(header.getByRole('button', { name: 'Backup', exact: true })).toBeEnabled();
+	await expectHeaderTooltip(page, header.getByRole('button', { name: 'Backup', exact: true }), 'Create manual backup (Ctrl/Cmd+B)');
+	await expect(header.getByRole('button', { name: 'Discard', exact: true })).toBeEnabled();
+	await expectHeaderTooltip(page, header.getByRole('button', { name: 'Discard', exact: true }), 'Discard all unsaved changes (Ctrl/Cmd+Shift+Z)');
+	expect(await dirtySave.evaluate(element => !element.querySelector('button') && !element.parentElement?.closest('button'))).toBe(true);
+	await expect(header.locator('button button')).toHaveCount(0);
+	const mainNode = await page.getByRole('main').elementHandle();
+	const saveNode = await dirtySave.elementHandle();
+	const aboutNode = await page.getByRole('button', { name: 'About', exact: true }).elementHandle();
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of ['ru', 'ja', 'de', 'en']) {
+		await switchEditor(page, locale);
+		const messages = await catalog(locale);
+		await expect(page.getByRole('button', { name: messages['settings.about'], exact: true })).toBeVisible();
+		expect(await aboutNode!.evaluate((element, name) => element.isConnected && element.textContent?.trim() === name, messages['settings.about'])).toBe(true);
+		if (locale === 'ru') expect(messages['settings.about']).toBe('О программе');
+		await expect(header.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+		await expect(dirtySave).toHaveCount(1);
+		await expect(dirtySave).toBeEnabled();
+		expect(await snapshot(page)).toEqual(before);
+		expect(await mainNode!.evaluate(element => element.isConnected && element === document.querySelector('main'))).toBe(true);
+		expect(await saveNode!.evaluate(element => element.isConnected && element === document.querySelector('header button[aria-label="Unsaved changes. Save all changes."]'))).toBe(true);
+	}
+	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
+	await page.evaluate(() => window.__h1!.markStale());
+	await expect(dirtySave).toHaveCount(1);
+	await expect(dirtySave).toBeDisabled();
+	expect((await snapshot(page)).dirty).toEqual(before.dirty);
+});
+
+test('S2: About rich text and discard confirmation stay mounted with dirty data on a locale switch', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => window.__h1!.edit());
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	await page.getByRole('button', { name: 'About', exact: true }).click();
+	const about = page.getByRole('dialog');
+	await expect(about.getByRole('heading', { name: 'Hamlet Editor', exact: true })).toBeVisible();
+	await expect(about.locator('em')).toHaveCount(2);
+	await expect(about.locator('em').first()).toHaveText('Darkest Dungeon');
+	await expect(about).toContainText('Always back up your save files before editing.');
+	const aboutNode = await about.elementHandle();
+	await switchEditor(page, 'ru');
+	await expect(about.getByRole('button', { name: (await catalog('ru'))['common.close'], exact: true })).toBeVisible();
+	expect(await aboutNode!.evaluate(element => element.isConnected)).toBe(true);
+	expect(await snapshot(page)).toEqual(before);
+	await about.getByRole('button', { name: (await catalog('ru'))['common.close'], exact: true }).click();
+
+	await switchEditor(page, 'en');
+	await page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: 'Discard', exact: true }).click();
+	const discard = page.getByRole('dialog');
+	await expect(discard.getByRole('heading', { name: 'Discard All Changes', exact: true })).toBeVisible();
+	const discardNode = await discard.elementHandle();
+	await expect(discard.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+	const cancelNode = await discard.getByRole('button', { name: 'Cancel', exact: true }).elementHandle();
+	for (const locale of ['ru', 'en']) {
+		await switchEditor(page, locale);
+		const messages = await catalog(locale);
+		await expect(discard.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
+		await expect(discard.getByRole('button', { name: messages['common.close'], exact: true })).toBeVisible();
+		await expect(discard.getByRole('button', { name: 'Discard All Changes', exact: true })).toBeEnabled();
+		expect(await cancelNode!.evaluate((element, name) => element.isConnected && element.textContent?.trim() === name, messages['settings.cancel'])).toBe(true);
+		if (locale === 'ru') expect(messages['settings.cancel']).toBe('Отмена');
+		expect(await discardNode!.evaluate(element => element.isConnected)).toBe(true);
+		expect(await snapshot(page)).toEqual(before);
+	}
+	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
+	await discard.getByRole('button', { name: 'Cancel', exact: true }).click();
+	expect(await snapshot(page)).toEqual(before);
+});
+
+test('S2: the real unsaved guard keeps descriptor action labels and dirty payload through locale switches', async ({ page }) => {
+	await open(page);
+	await page.evaluate(() => window.__h1!.edit());
+	await page.getByTestId('settings-page').getByRole('button', { name: 'Restore', exact: true }).click();
+	const restore = page.getByRole('dialog');
+	await restore.getByRole('checkbox').check();
+	await restore.getByRole('button', { name: 'Restore', exact: true }).click();
+	const unsaved = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Unsaved Changes', exact: true }) });
+	await expect(unsaved).toBeVisible();
+	await expect(unsaved.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+	await expect(unsaved.getByRole('button', { name: 'Discard', exact: true })).toBeVisible();
+	const node = await unsaved.elementHandle();
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of ['ru', 'en']) {
+		await switchEditor(page, locale);
+		const messages = await catalog(locale);
+		await expect(unsaved.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
+		await expect(unsaved.getByRole('button', { name: messages['common.close'], exact: true })).toBeVisible();
+		await expect(unsaved.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
+		await expect(unsaved.getByRole('button', { name: 'Discard', exact: true })).toBeVisible();
+		expect(await node!.evaluate(element => element.isConnected)).toBe(true);
+		expect(await snapshot(page)).toEqual(before);
+	}
+	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
+	await unsaved.getByRole('button', { name: 'Cancel', exact: true }).click();
+	expect(await snapshot(page)).toEqual(before);
+	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['restore_backup', 'restore_game_backup', 'save_profile'].includes(command)))).toEqual([]);
+});
+
+for (const [errors, warnings] of [[1, 1], [2, 2], [0, 1], [0, 2]]) {
+	test(`S2: mounted validation plurals for ${errors} errors and ${warnings} warnings in en and ru`, async ({ page }) => {
+		await open(page);
+		await page.evaluate(([errorCount, warningCount]) => window.__h1!.validationCounts(errorCount, warningCount), [errors, warnings]);
+		const before = await snapshot(page);
+		await page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog.getByRole('heading', { name: 'Pre-Save Validation', exact: true })).toBeVisible();
+		const node = await dialog.elementHandle();
+		const persisted = await persistedSettings(page);
+		const marker = await page.evaluate(() => window.__h1!.calls.length);
+		const summary = errors ? `${errors} ${errors === 1 ? 'error' : 'errors'} and ${warnings} ${warnings === 1 ? 'warning' : 'warnings'} found.`
+			: `${warnings} ${warnings === 1 ? 'warning' : 'warnings'} found.`;
+		// P2 adds keys only to en.json. Selecting Russian exercises the actual per-key fallback.
+		for (const locale of ['en', 'ru']) {
+			await switchEditor(page, locale);
+			await expect(dialog.locator('[data-slot="dialog-description"]')).toHaveText(summary);
+			await expect(dialog.getByRole('button', { name: `Fix ${warnings} ${warnings === 1 ? 'Issue' : 'Issues'} Automatically`, exact: true })).toBeEnabled();
+			await expect(dialog.getByText('Auto-fixable', { exact: true })).toHaveCount(warnings);
+			await expect(dialog.getByText('Treatment', { exact: true })).toHaveCount(warnings);
+			await expect(dialog.getByText('Gear Rank', { exact: true })).toHaveCount(errors);
+			await expect(dialog.getByRole('button', { name: 'Save Anyway', exact: true })).toHaveCount(errors ? 0 : 1);
+			const messages = await catalog(locale);
+			await expect(dialog.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
+			await expect(dialog.getByRole('button', { name: messages['common.close'], exact: true })).toBeVisible();
+			expect(await node!.evaluate(element => element.isConnected)).toBe(true);
+			expect(await snapshot(page)).toEqual(before);
+		}
+		expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
+		await dialog.getByRole('button', { name: (await catalog('ru'))['settings.cancel'], exact: true }).click();
+		await expect(page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true })).toBeEnabled();
+		expect(await snapshot(page)).toEqual(before);
+		expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['save_profile', 'create_backup'].includes(command)))).toEqual([]);
+	});
+}

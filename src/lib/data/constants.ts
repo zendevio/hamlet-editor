@@ -129,7 +129,7 @@ export const CLASS_DISPLAY_NAMES: Record<string, string> = {
 	occultist: 'Occultist',
 	vestal: 'Vestal',
 	hellion: 'Hellion',
-	houndmaster: 'Hound Master',
+	houndmaster: 'Houndmaster',
 	bounty_hunter: 'Bounty Hunter',
 	man_at_arms: 'Man-at-Arms',
 	highwayman: 'Highwayman',

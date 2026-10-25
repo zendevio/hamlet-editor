@@ -4,10 +4,13 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from '#lib/components/ui/sonner/index.js';
 	import { toast } from 'svelte-sonner';
+	import { mergeProps } from 'bits-ui';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount, setContext, tick, type Component } from 'svelte';
 	import { invoke } from '@tauri-apps/api/core';
+	import Message from '#lib/i18n/Message.svelte';
+	import { formatDate, formatNumber } from '#lib/i18n/intl.js';
 	import { getEditorLocale, t, describeMessage } from '#lib/i18n/index.svelte.js';
 	import { isStaleSaveError, type MessageDescriptor } from '#lib/errors.js';
 	import { createSaveWorkflow, createUnsavedGuard, createGameStoppedObserver, createProfileReload, createWindowCloseGuard, profileSaveBlockReason, DATA_CHANGE_CONTEXT, type ValidationChoice, type UnsavedChoice, type RequestDataChange } from '#lib/save-workflow.js';
@@ -89,7 +92,7 @@
 
 	let { children } = $props();
 
-	let appVersion = $state('dev');
+	let appVersion = $state<string | null>(null);
 
 	const settings = getSettings();
 	const saveData = getSaveData();
@@ -148,7 +151,7 @@
 				if (settings.gamePath) {
 					await initGameData(settings.gamePath);
 				}
-				toast.success('Profile loaded', { description: `Switched to ${loc.profile_id}` });
+				toast.success(t('settings.profileLoaded'), { description: t('settings.profileSwitched', { profile: loc.profile_id }) });
 			} catch (err) {
 				showError(err, { id: 'error.profileSwitchFailed' });
 			} finally {
@@ -199,7 +202,7 @@
 		const mods = await scanModDirectories(gamePath);
 		modCount = mods.length;
 		if (mods.length > 0) {
-			toast.info(`${mods.length} mod${mods.length === 1 ? '' : 's'} detected`);
+			toast.info(t('shell.modsDetected', { count: mods.length, countText: formatNumber(mods.length) }));
 		}
 	}
 
@@ -276,11 +279,8 @@
 
 	let isDirty = $derived(hasDirtyFiles());
 	let isGameBlocking = $derived(gameRunning || gameDetectionUncertain);
-	let saveDisabled = $derived(
-		!saveData.isLoaded || saveData.isLoading ||
-		saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath ||
-		isGameBlocking || saveData.isStale || !isDirty || isSaving
-	);
+	let saveBlocked = $derived(saveBlockReason());
+	let saveDisabled = $derived(isSaving || saveBlocked !== null);
 
 	// C2: Modded content detection
 	let hasModdedContent = $derived.by(() => {
@@ -299,17 +299,12 @@
 	let lastBackupTime = $state<Date | null>(null);
 
 	let saveTooltip = $derived.by(() => {
-		if (saveData.isLoading) return 'Loading profile...';
-		if (!saveData.isLoaded) return 'No profile loaded';
-		if (saveData.profilePath !== settings.savePath || saveData.gamePath !== settings.gamePath) {
-			return describeMessage({ id: 'error.profile_paths_changed' });
+		if (saveBlocked?.id === 'error.profile_not_loaded') {
+			return t(saveData.isLoading || isProfileLoading ? 'shell.loadingProfile' : 'shell.noProfile');
 		}
-		if (saveData.isStale) return describeMessage({ id: 'error.profile_stale' });
-		if (gameRunning) return describeMessage({ id: 'error.save_game_running' });
-		if (gameDetectionUncertain) return describeMessage({ id: 'error.game_detection_uncertain' });
-		if (isSaving) return 'Saving...';
-		if (!isDirty) return describeMessage({ id: 'error.save_no_changes' });
-		return 'Save all changes';
+		if (saveBlocked && saveBlocked.id !== 'error.save_no_changes') return describeMessage(saveBlocked);
+		if (isSaving) return t('shell.saving');
+		return saveBlocked ? describeMessage(saveBlocked) : t('shell.saveAll');
 	});
 
 	// ── Validation Dialog ──
@@ -332,7 +327,7 @@
 		// Fetch app version from Tauri (fire-and-forget; falls back to 'dev' in browser)
 		import('@tauri-apps/api/app').then(({ getVersion }) =>
 			getVersion().then((v) => { appVersion = 'v' + v; })
-		).catch(() => { appVersion = 'dev'; });
+		).catch(() => { appVersion = null; });
 
 		let unlisten: (() => void) | undefined;
 
@@ -373,7 +368,7 @@
 		// Ctrl/Cmd+Shift+Z: Discard
 		if (mod && e.shiftKey && e.key === 'z') {
 			e.preventDefault();
-			if (isDirty) showDiscardDialog = true;
+			requestDiscard();
 		}
 		// Ctrl/Cmd+B: Backup
 		if (mod && e.key === 'b') {
@@ -442,7 +437,7 @@
 		write: async () => {
 			await saveProfile(settings.savePath, getDirtyData(), saveData.nameTableVersion);
 		},
-		saved: () => { clearAllDirty(); toast.success('Saved successfully'); },
+		saved: () => { clearAllDirty(); toast.success(t('shell.saved')); },
 		failed: (error) => {
 			if (isStaleSaveError(error)) markProfileStale();
 			showError(error, { id: 'error.saveFailed' });
@@ -505,11 +500,15 @@
 
 	// ── Discard Flow ──
 
+	function requestDiscard() {
+		if (isDirty && !isSaving) showDiscardDialog = true;
+	}
+
 	function handleDiscard() {
 		if (isSaving) return;
 		discardAllChanges();
 		showDiscardDialog = false;
-		toast.info('All changes discarded');
+		toast.info(t('shell.discarded'));
 	}
 
 	// ── Close Flow ──
@@ -548,14 +547,15 @@
 	// ── Backup ──
 
 	async function handleBackup() {
+		if (!saveData.isLoaded) return;
 		if (!settings.savePath) {
-			toast.error('No profile loaded');
+			toast.error(t('shell.noProfile'));
 			return;
 		}
 		try {
 			await createBackup(settings.savePath);
 			lastBackupTime = new Date();
-			toast.success('Backup created');
+			toast.success(t('settings.backupCreated'));
 		} catch (err) {
 			showError(err, { id: 'error.backupFailed' });
 		}
@@ -568,23 +568,18 @@
 	// ── Navigation ──
 
 	const navItems = [
-		{ href: '/heroes', label: 'Heroes', icon: UsersThreeIcon, isRaid: false, asset: 'campaign/town/buildings/stage_coach/stage_coach.upgraded_recruits.icon.png' },
-		{ href: '/estate', label: 'Estate', icon: BankIcon, isRaid: false, asset: 'campaign/town/realm_inventory/realm_inventory.icon.png' },
-		{ href: '/town', label: 'Town', icon: BuildingsIcon, isRaid: false, asset: 'campaign/town/activity_log/activity_log.icon.png' },
-		{ href: '/raid', label: 'Raid', icon: CompassIcon, isRaid: true, asset: 'campaign/town/quest_select/quest_select.icon.png' },
-		{ href: '/settings', label: 'Settings', icon: GearIcon, isRaid: false, asset: 'campaign/town/town_event/town_event.icon.png' }
-	];
-
-	const viewTitles: Record<string, string> = {
-		'/heroes': 'Heroes',
-		'/estate': 'Estate',
-		'/town': 'Town',
-		'/raid': 'Raid',
-		'/settings': 'Settings'
-	};
+		{ href: '/heroes', label: 'shell.heroes', icon: UsersThreeIcon, isRaid: false, asset: 'campaign/town/buildings/stage_coach/stage_coach.upgraded_recruits.icon.png' },
+		{ href: '/estate', label: 'shell.estate', icon: BankIcon, isRaid: false, asset: 'campaign/town/realm_inventory/realm_inventory.icon.png' },
+		{ href: '/town', label: 'shell.town', icon: BuildingsIcon, isRaid: false, asset: 'campaign/town/activity_log/activity_log.icon.png' },
+		{ href: '/raid', label: 'shell.raid', icon: CompassIcon, isRaid: true, asset: 'campaign/town/quest_select/quest_select.icon.png' },
+		{ href: '/settings', label: 'shell.settings', icon: GearIcon, isRaid: false, asset: 'campaign/town/town_event/town_event.icon.png' }
+	] as const;
 
 	let currentPath = $derived(page.url.pathname);
-	let viewTitle = $derived(viewTitles[currentPath] ?? 'Hamlet Editor');
+	let viewTitle = $derived.by(() => {
+		const item = navItems.find((item) => item.href === currentPath);
+		return item ? t(item.label) : 'Hamlet Editor';
+	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -612,8 +607,8 @@
 <UnsavedChangesDialog
 	bind:open={showChangeDialog}
 	allowSave={changeCanSave && !saveData.isStale}
-	saveLabel="Save"
-	discardLabel="Discard"
+	saveLabel={{ id: 'shell.save' }}
+	discardLabel={{ id: 'shell.discard' }}
 	onSaveAndClose={() => finishUnsaved('save')}
 	onDiscardAndClose={() => finishUnsaved('discard')}
 	onCancel={() => finishUnsaved('cancel')}
@@ -628,14 +623,22 @@
 	<DialogContent class="sm:max-w-sm">
 		<DialogHeader>
 			<DialogTitle>Hamlet Editor</DialogTitle>
-			<DialogDescription>{appVersion}</DialogDescription>
+			<DialogDescription>{appVersion ?? t('settings.developmentVersion')}</DialogDescription>
 		</DialogHeader>
 		<div class="space-y-3 text-sm text-muted-foreground">
-			<p>A save editor for <em>Darkest Dungeon</em>.</p>
+			<p>
+				<Message id="shell.aboutSummary" params={{}}>
+					{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
+					{#snippet code(children)}<code>{@render children()}</code>{/snippet}
+					{#snippet link(children)}<span>{@render children()}</span>{/snippet}
+				</Message>
+			</p>
 			<p class="text-xs leading-relaxed border border-border bg-muted/30 p-3">
-				Hamlet Editor is an unofficial fan tool and is not affiliated with, endorsed by, or
-				associated with Red Hook Studios. <em>Darkest Dungeon</em> is a registered trademark of
-				Red Hook Studios Inc. Use at your own risk. Always back up your save files before editing.
+				<Message id="shell.aboutDisclaimer" params={{}}>
+					{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
+					{#snippet code(children)}<code>{@render children()}</code>{/snippet}
+					{#snippet link(children)}<span>{@render children()}</span>{/snippet}
+				</Message>
 			</p>
 		</div>
 	</DialogContent>
@@ -652,7 +655,7 @@
 				<span class="text-lg font-bold tracking-tight">Hamlet Editor</span>
 			</div>
 			<!-- C5: Profile selector -->
-			{#if settings.isSetupComplete && settings.profileId}
+			{#if settings.isSetupComplete && settings.savePath}
 				<div class="px-2 pb-1">
 					{#if sidebarSaveLocations.length > 1}
 						<Select
@@ -662,18 +665,18 @@
 							onValueChange={handleSidebarProfileChange}
 						>
 							<SelectTrigger class="h-7 text-xs">
-								<span class="text-xs">Profile: {settings.profileId}</span>
+								<span class="text-xs">{t('shell.profile', { profile: settings.profileId || t('profiles.current') })}</span>
 							</SelectTrigger>
 							<SelectContent>
 								{#each sidebarSaveLocations as loc (loc.path)}
-									<SelectItem value={loc.path}>{loc.profile_id} · {loc.steam_user_id ?? loc.path}</SelectItem>
+									<SelectItem value={loc.path}>{t('shell.profileOption', { profile: loc.profile_id || t('profiles.current'), location: loc.steam_user_id ?? loc.path })}</SelectItem>
 								{/each}
 							</SelectContent>
 						</Select>
 					{:else}
 						<!-- Single profile or locations not yet detected; static display -->
 						<div class="h-7 flex items-center px-3 text-xs text-muted-foreground border border-border bg-muted/20 rounded-sm">
-							Profile: {settings.profileId}
+							{t('shell.profile', { profile: settings.profileId || t('profiles.current') })}
 						</div>
 					{/if}
 				</div>
@@ -695,14 +698,14 @@
 										{#snippet child({ props })}
 											<a href={item.href} {...props} class:pointer-events-none={!saveData.gameInRaid} aria-disabled={!saveData.gameInRaid} tabindex={saveData.gameInRaid ? undefined : -1}>
 												<span class="relative inline-flex">
-													<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={item.label} class="size-10">
+													<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={t(item.label)} class="size-10">
 														{#snippet fallback()}<item.icon class="size-10" />{/snippet}
 													</GameAssetIcon>
 													{#if raidActive}
 														<span class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500"></span>
 													{/if}
 												</span>
-												<span>{item.label}</span>
+												<span>{t(item.label)}</span>
 											</a>
 										{/snippet}
 									</SidebarMenuButton>
@@ -710,10 +713,10 @@
 									<SidebarMenuButton isActive={currentPath === item.href}>
 										{#snippet child({ props })}
 											<a href={item.href} {...props}>
-												<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={item.label} class="size-10">
+												<GameAssetIcon gamePath={settings.gamePath} relativePath={item.asset} alt={t(item.label)} class="size-10">
 													{#snippet fallback()}<item.icon class="size-10" />{/snippet}
 												</GameAssetIcon>
-												<span>{item.label}</span>
+												<span>{t(item.label)}</span>
 											</a>
 										{/snippet}
 									</SidebarMenuButton>
@@ -730,32 +733,36 @@
 			{#if lastBackupTime}
 				<div class="px-2 pt-1">
 					<span class="text-xs text-muted-foreground">
-						Last backup: {lastBackupTime.toLocaleTimeString()}
+						{t('shell.lastBackup', { time: formatDate(lastBackupTime, { hour: 'numeric', minute: '2-digit', second: '2-digit' }) })}
 					</span>
 				</div>
 			{/if}
 			<div class="flex items-center justify-between px-2">
 				<Tooltip>
 					<TooltipTrigger>
-						<Button variant="ghost" size="icon" onclick={toggleMode}>
-							<SunIcon class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-							<MoonIcon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-							<span class="sr-only">Toggle theme</span>
-						</Button>
+						{#snippet child({ props })}
+							<Button {...mergeProps(props, { onclick: toggleMode })} variant="ghost" size="icon">
+								<SunIcon class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+								<MoonIcon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+								<span class="sr-only">{t('shell.toggleTheme')}</span>
+							</Button>
+					{/snippet}
 					</TooltipTrigger>
-					<TooltipContent>Toggle dark/light mode</TooltipContent>
+					<TooltipContent>{t('shell.toggleThemeHelp')}</TooltipContent>
 				</Tooltip>
 				<div class="flex items-center gap-1">
 					<Tooltip>
 						<TooltipTrigger>
-							<Button variant="ghost" size="icon" onclick={() => (showAbout = true)}>
-								<InfoIcon class="h-4 w-4" />
-								<span class="sr-only">About</span>
-							</Button>
+							{#snippet child({ props })}
+								<Button {...mergeProps(props, { onclick: () => (showAbout = true) })} variant="ghost" size="icon">
+									<InfoIcon class="h-4 w-4" />
+									<span class="sr-only">{t('settings.about')}</span>
+								</Button>
+						{/snippet}
 						</TooltipTrigger>
-						<TooltipContent>About Hamlet Editor</TooltipContent>
+						<TooltipContent>{t('shell.aboutHelp')}</TooltipContent>
 					</Tooltip>
-					<span class="text-xs text-muted-foreground">{appVersion}</span>
+					<span class="text-xs text-muted-foreground">{appVersion ?? t('settings.developmentVersion')}</span>
 				</div>
 			</div>
 		</SidebarFooter>
@@ -774,32 +781,32 @@
 				{#if gameRunning}
 					<Badge variant="destructive" class="gap-1">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-red-400"></span>
-						DD Running: Save Blocked
+						{t('shell.gameRunning')}
 					</Badge>
 				{:else if gameDetectionUncertain}
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
-						Game Status Unknown: Save Blocked
+						{t('shell.gameUnknown')}
 					</Badge>
 				{/if}
 
 				{#if saveData.isStale}
-					<Badge variant="outline">Profile stale: Reload required</Badge>
-					<Button variant="outline" size="sm" disabled={isSaving || saveData.isLoading || isGameBlocking} onclick={reloadProfile}>Reload</Button>
+					<Badge variant="outline">{t('shell.stale')}</Badge>
+					<Button variant="outline" size="sm" disabled={isSaving || saveData.isLoading || isGameBlocking} onclick={reloadProfile}>{t('shell.reload')}</Button>
 				{/if}
 
 				<!-- C2: Modded content -->
 				{#if hasModdedContent}
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
-						Modded Content
+						{t('shell.modded')}
 					</Badge>
 				{/if}
 
 				<!-- Mod count badge -->
 				{#if modCount !== null && modCount > 0}
 					<Badge variant="outline" class="gap-1">
-						{modCount} mod{modCount === 1 ? '' : 's'}
+						{t('shell.mods', { count: modCount, countText: formatNumber(modCount) })}
 					</Badge>
 				{/if}
 
@@ -807,12 +814,12 @@
 				{#if raidActive}
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 rounded-full bg-amber-500"></span>
-						Raid Active
+						{t('shell.raidActive')}
 					</Badge>
 				{:else if raidInconsistent}
 					<Badge variant="outline" class="gap-1 border-amber-500 text-amber-600 dark:text-amber-400">
 						<span class="h-2 w-2 animate-pulse rounded-full bg-amber-500"></span>
-						Raid State Inconsistent
+						{t('shell.raidInconsistent')}
 					</Badge>
 				{/if}
 
@@ -820,46 +827,49 @@
 				{#if isDirty}
 					<Tooltip>
 						<TooltipTrigger>
-							<Button
-								variant="ghost"
-								size="sm"
-								disabled={isSaving}
-								onclick={() => (showDiscardDialog = true)}
-							>
-								<ArrowCounterClockwiseIcon size={16} class="mr-1" />
-								Discard
-							</Button>
+							{#snippet child({ props })}
+								<Button {...mergeProps(props, { onclick: requestDiscard })}
+									variant="ghost"
+									size="sm"
+									aria-disabled={isSaving}
+									class="aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+								>
+									<ArrowCounterClockwiseIcon size={16} class="mr-1" />
+									{t('shell.discard')}
+								</Button>
+						{/snippet}
 						</TooltipTrigger>
-						<TooltipContent>Discard all unsaved changes (Ctrl/Cmd+Shift+Z)</TooltipContent>
+						<TooltipContent>{t('shell.discardHelp')}</TooltipContent>
 					</Tooltip>
 				{/if}
 
 				<!-- Save Button -->
 				<Tooltip>
 					<TooltipTrigger>
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={saveDisabled}
-							onclick={handleSave}
-							class="relative"
-							aria-label={isDirty ? 'Unsaved changes. Save all changes.' : 'Save'}
-						>
-							{#if isSaving}
-								<CircleNotchIcon size={16} class="mr-1 animate-spin" />
-								Saving...
-							{:else}
-								<FloppyDiskIcon size={16} class="mr-1" />
-								Save
-							{/if}
-							<!-- Orange dot for unsaved changes -->
-							{#if isDirty && !isSaving}
-								<span
-									class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-orange-500"
-									aria-label="Unsaved changes"
-								></span>
-							{/if}
-						</Button>
+						{#snippet child({ props })}
+							<Button {...mergeProps(props, { onclick: handleSave })}
+								variant="outline"
+								size="sm"
+								aria-disabled={saveDisabled}
+								class="relative aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+								aria-label={t(isDirty ? 'shell.dirtySave' : 'shell.save')}
+							>
+								{#if isSaving}
+									<CircleNotchIcon size={16} class="mr-1 animate-spin" />
+									{t('shell.saving')}
+								{:else}
+									<FloppyDiskIcon size={16} class="mr-1" />
+									{t('shell.save')}
+								{/if}
+								<!-- Orange dot for unsaved changes -->
+								{#if isDirty && !isSaving}
+									<span
+										class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-orange-500"
+										aria-label={t('shell.unsaved')}
+									></span>
+								{/if}
+							</Button>
+					{/snippet}
 					</TooltipTrigger>
 					<TooltipContent>{saveTooltip}</TooltipContent>
 				</Tooltip>
@@ -867,17 +877,19 @@
 				<!-- Backup Button -->
 				<Tooltip>
 					<TooltipTrigger>
-						<Button
-							variant="ghost"
-							size="sm"
-							disabled={!saveData.isLoaded}
-							onclick={handleBackup}
-						>
-							<ArchiveIcon size={16} class="mr-1" />
-							Backup
-						</Button>
+						{#snippet child({ props })}
+							<Button {...mergeProps(props, { onclick: handleBackup })}
+								variant="ghost"
+								size="sm"
+								aria-disabled={!saveData.isLoaded}
+								class="aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+							>
+								<ArchiveIcon size={16} class="mr-1" />
+								{t('shell.backup')}
+							</Button>
+					{/snippet}
 					</TooltipTrigger>
-					<TooltipContent>{saveData.isLoaded ? 'Create manual backup (Ctrl/Cmd+B)' : 'No profile loaded'}</TooltipContent>
+					<TooltipContent>{t(saveData.isLoaded ? 'shell.backupHelp' : 'shell.noProfile')}</TooltipContent>
 				</Tooltip>
 			</div>
 		</header>
@@ -890,7 +902,7 @@
 </SidebarProvider>
 
 {#if isProfileLoading}
-	<LoadingScreen status="Loading profile..." />
+	<LoadingScreen status={{ id: 'shell.loadingProfile' }} />
 {/if}
 
 {/if}

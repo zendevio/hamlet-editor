@@ -28,3 +28,19 @@ export function formatDate(value: string | Date, options: Intl.DateTimeFormatOpt
 export function formatList(values: Iterable<string>, options: Intl.ListFormatOptions = {}): string {
 	return cached('list', options, (locale) => new Intl.ListFormat(locale, options)).format(values);
 }
+
+const collators = new Map<string, Intl.Collator>();
+
+/** Locale collation always ends with a stable, untranslated identity tiebreaker. */
+export function compareNames(a: string, aId: string, b: string, bId: string, locale: string = getEditorLocale()): number {
+	let collator = collators.get(locale);
+	if (!collator) {
+		collator = new Intl.Collator(locale);
+		collators.set(locale, collator);
+	}
+	return collator.compare(a, b) || compareIds(aId, bId);
+}
+
+export function compareIds(a: string, b: string): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}

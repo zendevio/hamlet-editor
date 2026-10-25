@@ -65,3 +65,11 @@ export function showError(error: unknown, descriptor?: MessageDescriptor, id?: s
 		componentProps: { descriptor, error, hasError: true }, duration: Infinity, closeButton: true
 	});
 }
+
+/** Transitional callers may still receive strings from logic owned by later slices. */
+export function showActionError(message: import('./index.svelte.js').ActionMessage) {
+	if (typeof message === 'string') return toast.error(message);
+	return toast.error(PersistentError, {
+		id: freshId(notificationId(undefined, message)), componentProps: { descriptor: message }
+	});
+}

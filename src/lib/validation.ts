@@ -1,3 +1,4 @@
+import { heroClassName } from '#lib/save-labels.js';
 /**
  * Pre-save cross-file validation.
  *
@@ -10,9 +11,7 @@ import {
 	getSaveData,
 	getHeroes,
 	getTreatmentSlots,
-	releaseHeroFromTreatment,
-	xpToLevel,
-	type HeroSummary
+	releaseHeroFromTreatment
 } from '#lib/stores/save-data.svelte.js';
 import type { GameInstall } from '#lib/api/detect.js';
 import { getSettings } from '#lib/stores/settings.svelte.js';
@@ -64,7 +63,7 @@ function checkGearRanks(): ValidationIssue[] {
 			issues.push({
 				severity: 'error',
 				category: 'Gear Rank',
-				message: `${hero.name} (${hero.classDisplayName}): ${kind} rank ${rank} must be a whole number from 0 to 4.`
+				message: `${hero.name} (${heroClassName(hero.heroClass)}): ${kind} rank ${rank} must be a whole number from 0 to 4.`
 			});
 		}
 	}
@@ -95,7 +94,7 @@ function checkTreatmentConsistency(): ValidationIssue[] {
 			issues.push({
 				severity: 'warning',
 				category: 'Treatment',
-				message: `${hero.name} (${hero.classDisplayName}): roster treatment status and town slot assignments disagree. Release treatment to clear both.`,
+				message: `${hero.name} (${heroClassName(hero.heroClass)}): roster treatment status and town slot assignments disagree. Release treatment to clear both.`,
 				fix: () => releaseHeroFromTreatment(hero.guid)
 			});
 		}

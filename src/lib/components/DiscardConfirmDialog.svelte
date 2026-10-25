@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '#lib/i18n/index.svelte.js';
 	import * as Dialog from '#lib/components/ui/dialog/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import ArrowCounterClockwiseIcon from 'phosphor-svelte/lib/ArrowCounterClockwiseIcon';
@@ -19,17 +20,17 @@
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
 				<ArrowCounterClockwiseIcon size={20} />
-				Discard All Changes
+				{t('discard.title')}
 			</Dialog.Title>
 			<Dialog.Description>
-				This will revert all unsaved changes and reload data from disk. This action cannot be undone.
+				{t('discard.description')}
 			</Dialog.Description>
 		</Dialog.Header>
 
 		<Dialog.Footer>
-			<Button variant="ghost" onclick={onCancel}>Cancel</Button>
+			<Button variant="ghost" onclick={onCancel}>{t('settings.cancel')}</Button>
 			<Button variant="destructive" onclick={onConfirm}>
-				Discard All Changes
+				{t('discard.confirm')}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

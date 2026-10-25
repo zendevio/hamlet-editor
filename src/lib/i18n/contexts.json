@@ -249,9 +249,9 @@
 		"slots": []
 	},
 	"settings.about": {
-		"context": "Settings product-information card heading.",
-		"lengthHint": "Short heading.",
-		"tone": "Neutral heading.",
+		"context": "Settings product-information card heading and accessible name of the shell About button.",
+		"lengthHint": "Short heading and accessible button name.",
+		"tone": "Neutral product-information label.",
 		"slots": []
 	},
 	"settings.version": {
@@ -305,9 +305,9 @@
 		"slots": []
 	},
 	"settings.cancel": {
-		"context": "Cancel buttons in both restore dialogs.",
+		"context": "Cancel buttons in Settings restore dialogs, Discard All Changes, Unsaved Changes, and Pre-Save Validation dialogs.",
 		"lengthHint": "Very short button.",
-		"tone": "Dismiss without restoring.",
+		"tone": "Neutral action that dismisses the dialog without confirming or applying the pending action.",
 		"slots": []
 	},
 	"settings.gameRestoreDescription": {
@@ -501,9 +501,9 @@
 		"slots": []
 	},
 	"common.close": {
-		"context": "Accessible close-button name for translated Settings restore dialogs.",
+		"context": "Default visible or accessible close-button name in shared dialogs and sheets throughout the app, including Settings restores, About, discard, unsaved-changes, validation, and the mobile sidebar.",
 		"lengthHint": "Very short accessible action.",
-		"tone": "Close without confirming restore.",
+		"tone": "Neutral action that closes the current surface without confirming its pending action.",
 		"slots": []
 	},
 	"common.notifications": {
@@ -536,7 +536,7 @@
 		]
 	},
 	"settings.developmentVersion": {
-		"context": "Fallback beside the Settings version label when the native app version is unavailable in development.",
+		"context": "Development version fallback in the Settings version field, shell sidebar footer, and About dialog when the native app version is unavailable.",
 		"lengthHint": "Short version badge, ideally under 14 characters.",
 		"tone": "Neutral development build label.",
 		"slots": []
@@ -1458,5 +1458,470 @@
 		],
 		"lengthHint": "May wrap; preserve paths verbatim.",
 		"tone": "Clear, factual recovery diagnostic."
+	},
+	"shell.heroes": {
+		"context": "Sidebar navigation and header title for the hero roster.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.estate": {
+		"context": "Sidebar navigation and header title for estate resources.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.town": {
+		"context": "Sidebar navigation and header title for town buildings.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.raid": {
+		"context": "Sidebar navigation and header title for the active raid.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.settings": {
+		"context": "Sidebar navigation and header title for app settings.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.loadingProfile": {
+		"context": "Loading overlay and header save tooltip during profile loading.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.noProfile": {
+		"context": "Header backup refusal and tooltip before a profile is loaded.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.saving": {
+		"context": "Header Save button and tooltip while a save is in progress.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.save": {
+		"context": "Header Save button and unsaved dialog action.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.discard": {
+		"context": "Header discard action and unsaved dialog action.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.saveAll": {
+		"context": "Header Save tooltip when saving is available.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.saved": {
+		"context": "Informational toast after a successful save.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.discarded": {
+		"context": "Informational toast after reverting in-memory edits.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.backup": {
+		"context": "Header manual backup button.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.backupHelp": {
+		"context": "Header manual backup tooltip; preserve shortcut.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.profile": {
+		"context": "Sidebar selected profile label; profile is an uninflected user identifier.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"profile"
+		]
+	},
+	"shell.profileOption": {
+		"context": "Profile option; location is a Steam user id or a path.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"profile",
+			"location"
+		]
+	},
+	"shell.lastBackup": {
+		"context": "Sidebar last successful backup time, formatted by Intl.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"time"
+		]
+	},
+	"shell.toggleTheme": {
+		"context": "Accessible name of the sidebar theme button.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.toggleThemeHelp": {
+		"context": "Tooltip of the sidebar theme button.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.aboutHelp": {
+		"context": "Tooltip of the sidebar About button.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.gameRunning": {
+		"context": "Header safety badge while the game runs.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.gameUnknown": {
+		"context": "Header safety badge when process detection is uncertain.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.stale": {
+		"context": "Header safety badge when the disk snapshot is stale.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.reload": {
+		"context": "Header action for loading a fresh disk snapshot.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.modded": {
+		"context": "Header badge for unknown mod content.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.mods": {
+		"context": "Header count of detected mods. count is used only for grammar; countText is formatted in the editor locale by Intl.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"shell.modsDetected": {
+		"context": "Informational toast after scanning game mods. count is used only for grammar; countText is formatted in the editor locale by Intl.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"shell.raidActive": {
+		"context": "Header active raid badge.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.raidInconsistent": {
+		"context": "Header badge when the game reports a raid without raid data.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.discardHelp": {
+		"context": "Header discard tooltip; preserve shortcut.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.dirtySave": {
+		"context": "Accessible name of the dirty header Save button.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.unsaved": {
+		"context": "Accessible label for the dirty marker on the header Save button.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"shell.aboutSummary": {
+		"context": "About dialog introduction; emphasis renders the game trademark.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"emphasis"
+		]
+	},
+	"shell.aboutDisclaimer": {
+		"context": "About dialog legal disclaimer; emphasis renders the game trademark.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"emphasis"
+		]
+	},
+	"unsaved.title": {
+		"context": "Unsaved changes dialog title.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"unsaved.description": {
+		"context": "Unsaved changes dialog explanation.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"unsaved.saveClose": {
+		"context": "Unsaved changes dialog action that saves and closes the window.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"unsaved.discardClose": {
+		"context": "Unsaved changes dialog action that discards and closes the window.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"discard.title": {
+		"context": "Title of the Discard All Changes confirmation dialog.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral heading naming the pending destructive action.",
+		"slots": []
+	},
+	"discard.description": {
+		"context": "Discard confirmation explanation.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"validation.title": {
+		"context": "Shared pre-save validation dialog title.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"validation.counts": {
+		"context": "Whole validation summary sentence with both error and warning quantities; omit zero errors. Numeric counts select grammar; errorsText and warningsText are formatted in the editor locale by Intl.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"errors",
+			"errorsText",
+			"warnings",
+			"warningsText"
+		]
+	},
+	"validation.fixCount": {
+		"context": "Validation dialog action to apply all available fixes. count is used only for grammar; countText is formatted in the editor locale by Intl.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"validation.autoFixable": {
+		"context": "Validation issue badge when a fix is available.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"validation.saveAnyway": {
+		"context": "Validation dialog action available only when there are no errors.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"validation.category.gear": {
+		"context": "Validation issue category badge for weapon or armour rank.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"validation.category.treatment": {
+		"context": "Validation issue category badge for town treatment consistency.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"validation.category.dlc": {
+		"context": "Validation issue category badge for expansion compatibility.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.loading": {
+		"context": "Default accessible and visible loading overlay status.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.imageUnavailable": {
+		"context": "Accessible fallback for an image whose asset cannot be loaded.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.toggleSidebar": {
+		"context": "Sidebar trigger and rail accessible names and rail tooltip.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.sidebar": {
+		"context": "Mobile sidebar sheet accessible title.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.sidebarDescription": {
+		"context": "Mobile sidebar sheet accessible description.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.commandPalette": {
+		"context": "Default command dialog accessible title.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"common.commandSearch": {
+		"context": "Default command dialog accessible description.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"profiles.current": {
+		"context": "Fallback display name for a manual profile without a profile id or path segment.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"hero.status.available": {
+		"context": "Hero status code 0 label.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"hero.status.party": {
+		"context": "Hero status code 1 label.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"hero.status.treatment": {
+		"context": "Hero status code 2 label.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"hero.status.dead": {
+		"context": "Hero status code 3 label.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"hero.status.missing": {
+		"context": "Hero status code 4 label.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"hero.status.unknown": {
+		"context": "Unknown hero status in hero summaries; status is the raw status code, preserved without number formatting.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": [
+			"status"
+		]
+	},
+	"store.heroMissing": {
+		"context": "Mutation refusal when a requested hero is missing.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.reviveSelection": {
+		"context": "Revival refusal when no heroes are selected.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.reviveDeadOnly": {
+		"context": "Revival refusal when selection contains a living or missing hero.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.reviveIncomplete": {
+		"context": "Revival refusal for incomplete hero data.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.reviveHpUnknown": {
+		"context": "Revival refusal when no maximum HP definition exists.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.noGame": {
+		"context": "Estate name edit refusal without loaded game data.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.noRoster": {
+		"context": "Dismissal refusal without roster data.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.noUpgrades": {
+		"context": "Dismissal refusal without upgrade data.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"store.revertTrinkets": {
+		"context": "Hero revert refusal to protect cross-file trinket inventory consistency.",
+		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
+		"tone": "Neutral and direct.",
+		"slots": []
+	},
+	"discard.confirm": {
+		"context": "Destructive confirmation button in the Discard All Changes dialog. Applies the discard after confirmation.",
+		"lengthHint": "Short action button; keep close to the English length.",
+		"tone": "Direct imperative naming the destructive action.",
+		"slots": []
 	}
 }

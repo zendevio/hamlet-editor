@@ -18,6 +18,7 @@ export async function installHarness() {
 	const calls: IpcCall[] = [];
 	const plans: ResponsePlan[] = [];
 	const held = new Map<string, () => void>();
+	let gameStatus: boolean | 'uncertain' = false;
 	const values: Record<string, unknown> = {
 		gamePath: '/h1/game', savePath: '/h1/profile_0', profileId: 'profile_0',
 		autoBackup: false, isSetupComplete: !new URL(location.href).searchParams.has('preSetup'), gameInstall: null, gameTextLanguage: 'english', gameTextMode: 'explicit', editorLanguage: 'system'
@@ -29,6 +30,9 @@ export async function installHarness() {
 	if (new URL(location.href).searchParams.has('emptyPaths')) { values.gamePath = ''; values.savePath = ''; }
 	const fixture = createHarnessProfile();
 	const startup = new URL(location.href).searchParams.get('startup');
+	const profileLoading = new URL(location.href).searchParams.get('profileLoading');
+	if (profileLoading === 'read') plans.push({ command: 'load_profile', hold: 'profile-read' });
+	if (profileLoading === 'libraries') plans.push({ command: 'load_quirk_library', hold: 'profile-libraries' });
 	if (startup === 'hanging-read') plans.push({ command: 'read_settings', hold: 'startup-read' });
 	if (startup === 'corrupt' || startup === 'recovery-failed') {
 		for (const key of Object.keys(values)) delete values[key];
@@ -84,7 +88,10 @@ export async function installHarness() {
 		};
 		if (command === 'available_game_text_languages') return Object.keys(GAME_TEXT_LOCALES);
 		if (command === 'detect_save_locations') return [{ path: '/h1/profile_0', source: 'Manual', steam_user_id: null, profile_id: 'profile_0', has_active_raid: false }];
-		if (command === 'is_game_running') return false;
+		if (command === 'is_game_running') {
+			if (gameStatus === 'uncertain') throw new Error('fixture: game status unavailable');
+			return gameStatus;
+		}
 		if (command === 'check_restore') return { adds: 2, removes: 1, blocked_reason: null };
 		if (command === 'list_backups') return [{ path: '/h1/backup', timestamp: '2026-10-25T10:00:00Z', file_count: 22, profile_id: 'profile_0' }];
 		if (command === 'load_roster_capacity_rules') return null;
@@ -105,6 +112,21 @@ export async function installHarness() {
 		release(id: string) { const resolve = held.get(id); if (!resolve) throw new Error(`No held response: ${id}`); held.delete(id); resolve(); },
 		held: () => [...held.keys()],
 		edit() { applyFixtureEdits(store); },
+		resetProfile: store.resetSaveData,
+		loadProfile: store.loadProfileFromBackend,
+		gameStatus(status: boolean | 'uncertain') { gameStatus = status; },
+
+		validationCounts(errors: number, warnings: number) {
+			for (const { slot } of store.getTreatmentSlots()) slot.hero = 0;
+			for (const [index, hero] of store.getHeroes().entries()) {
+				const raw = store.getHeroRawData(hero.guid)!;
+				raw.weapon_rank = index < errors ? 5 : 0;
+				raw.armour_rank = 0;
+				raw['roster.status'] = index < warnings ? 2 : 0;
+			}
+			store.markDirty('persist.roster.json');
+			store.markDirty('persist.town.json');
+		},
 		snapshot() {
 			const state = store.getSaveData();
 			return JSON.parse(JSON.stringify({ dirty: store.getDirtyData(), dirtyFiles: [...state.dirtyFiles],
@@ -132,6 +154,10 @@ declare global {
 			release(id: string): void;
 			held(): string[];
 			edit(): void;
+			resetProfile(): void;
+			loadProfile(path: string): Promise<void>;
+			gameStatus(status: boolean | 'uncertain'): void;
+			validationCounts(errors: number, warnings: number): void;
 			snapshot(): { dirty: Record<string, unknown>; data: Record<string, unknown>; dirtyFiles: string[]; profilePath: string; gamePath: string; version: number; heroes: { id: string; name: string; heroClass: string }[]; loaded: boolean; stale: boolean };
 			save(): Promise<void>;
 			gameText(): { requested: string; effective: string; path: string; loading: boolean; error: boolean; errorDetail: string; failedRequest: number };

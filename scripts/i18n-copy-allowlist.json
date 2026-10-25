@@ -67,13 +67,45 @@
 		},
 		"src/lib/components/ui/input-group/input-group-addon.svelte": {
 			"button": "Native element selector for the focus handler.",
-			"input": "Native element selector for the focus handler."
+			"input": "Native element selector for the focus handler.",
+			"inline-start": "Internal input-group alignment variant identifier."
 		},
 		"src/routes/+layout.svelte": {
 			"fix": "Validation-dialog result identifier.",
 			"save": "Unsaved-dialog result identifier.",
 			"cancel": "Unsaved-dialog result identifier.",
-			"discard": "Unsaved-dialog result identifier."
+			"discard": "Unsaved-dialog result identifier.",
+			"/estate": "Application navigation route.",
+			"/heroes": "Application navigation route.",
+			"/raid": "Application navigation route.",
+			"/settings": "Application navigation route.",
+			"/town": "Application navigation route.",
+			"2-digit": "Intl time formatting option.",
+			"Native menu language failed": "Developer console diagnostic only.",
+			"b": "Keyboard shortcut key or invariant version prefix.",
+			"campaign/town/activity_log/activity_log.icon.png": "Game asset relative path.",
+			"campaign/town/buildings/stage_coach/stage_coach.upgraded_recruits.icon.png": "Game asset relative path.",
+			"campaign/town/quest_select/quest_select.icon.png": "Game asset relative path.",
+			"campaign/town/realm_inventory/realm_inventory.icon.png": "Game asset relative path.",
+			"campaign/town/town_event/town_event.icon.png": "Game asset relative path.",
+			"cjk": "Document language or typography class token.",
+			"d": "Keyboard shortcut key or invariant version prefix.",
+			"e": "Keyboard shortcut key or invariant version prefix.",
+			"game-text-load": "Internal persistent-notification deduplication key.",
+			"h": "Keyboard shortcut key or invariant version prefix.",
+			"h1": "Development harness query or IPC command identifier.",
+			"ja": "Document language or typography class token.",
+			"ko": "Document language or typography class token.",
+			"numeric": "Intl time formatting option.",
+			"r": "Keyboard shortcut key or invariant version prefix.",
+			"s": "Keyboard shortcut key or invariant version prefix.",
+			"set_native_menu_language": "Development harness query or IPC command identifier.",
+			"settings-persistence": "Internal persistent-notification deduplication key.",
+			"settings-startup-": "Internal persistent-notification deduplication key.",
+			"t": "Keyboard shortcut key or invariant version prefix.",
+			"v": "Keyboard shortcut key or invariant version prefix.",
+			"z": "Keyboard shortcut key or invariant version prefix.",
+			"zh-Hans": "Document language or typography class token."
 		},
 		"src/routes/estate/+page.svelte": {
 			"shard": "Persisted currency/item identifier passed to the edit handler.",
@@ -82,6 +114,157 @@
 			"crimson_court_invitation_C": "Persisted currency/item identifier passed to the edit handler.",
 			"the_blood": "Persisted currency/item identifier passed to the edit handler.",
 			"blueprint": "Persisted currency/item identifier passed to the edit handler."
+		},
+		"src/lib/components/GameAssetImage.svelte": {
+			"error": "Asset loading state identifier.",
+			"loaded": "Asset loading state identifier.",
+			"loading": "Asset loading state identifier."
+		},
+		"src/lib/components/LoadingScreen.svelte": {
+			"polite": "WAI-ARIA live region politeness token."
+		},
+		"src/lib/components/ValidationDialog.svelte": {
+			"error": "Validation severity identifier; visible labels are catalogued.",
+			"warning": "Validation severity identifier; visible labels are catalogued."
+		},
+		"src/lib/components/ui/alert/alert.svelte": {
+			"default": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/badge/badge.svelte": {
+			"default": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/button/button.svelte": {
+			"button": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy.",
+			"default": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/dialog/dialog-close.svelte": {
+			"button": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/dialog/dialog-trigger.svelte": {
+			"button": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/input/input.svelte": {
+			"input": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/input-group/input-group-button.svelte": {
+			"button": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"ghost": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"xs": "Internal sidebar data attribute, visual variant, size or collapse-state identifier."
+		},
+		"src/lib/components/ui/popover/popover-content.svelte": {
+			"center": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/scroll-area/scroll-area-scrollbar.svelte": {
+			"vertical": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/scroll-area/scroll-area.svelte": {
+			"vertical": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/select/select-trigger.svelte": {
+			"default": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/separator/separator.svelte": {
+			"separator": "WAI-ARIA separator role."
+		},
+		"src/lib/components/ui/sheet/sheet-content.svelte": {
+			"right": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/sidebar/constants.ts": {
+			"16rem": "Sidebar width CSS length.",
+			"18rem": "Sidebar width CSS length.",
+			"3rem": "Sidebar width CSS length.",
+			"b": "Sidebar keyboard shortcut key.",
+			"sidebar:state": "Sidebar state cookie name."
+		},
+		"src/lib/components/ui/sidebar/context.svelte.ts": {
+			"collapsed": "Sidebar open-state identifier.",
+			"expanded": "Sidebar open-state identifier.",
+			"scn-sidebar": "Svelte sidebar context identifier."
+		},
+		"src/lib/components/ui/sidebar/sidebar-group-action.svelte": {
+			"group-action": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"sidebar-group-action": "Internal sidebar data attribute, visual variant, size or collapse-state identifier."
+		},
+		"src/lib/components/ui/sidebar/sidebar-group-label.svelte": {
+			"group-label": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"sidebar-group-label": "Internal sidebar data attribute, visual variant, size or collapse-state identifier."
+		},
+		"src/lib/components/ui/sidebar/sidebar-menu-action.svelte": {
+			"menu-action": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"sidebar-menu-action": "Internal sidebar data attribute, visual variant, size or collapse-state identifier."
+		},
+		"src/lib/components/ui/sidebar/sidebar-menu-button.svelte": {
+			"collapsed": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"default": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"menu-button": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"sidebar-menu-button": "Internal sidebar data attribute, visual variant, size or collapse-state identifier."
+		},
+		"src/lib/components/ui/sidebar/sidebar-menu-sub-button.svelte": {
+			"md": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"menu-sub-button": "Internal sidebar data attribute, visual variant, size or collapse-state identifier.",
+			"sidebar-menu-sub-button": "Internal sidebar data attribute, visual variant, size or collapse-state identifier."
+		},
+		"src/lib/components/ui/sidebar/sidebar-provider.svelte": {
+			"; path=/; max-age=": "Cookie serialization syntax for sidebar state persistence."
+		},
+		"src/lib/components/ui/sidebar/sidebar.svelte": {
+			"left": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy.",
+			"offcanvas": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy.",
+			"sidebar": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/slider/slider.svelte": {
+			"horizontal": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/switch/switch.svelte": {
+			"default": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/textarea/textarea.svelte": {
+			"textarea": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/components/ui/tooltip/tooltip-content.svelte": {
+			"top": "Internal component element, style variant, size, orientation or alignment token; never rendered as copy."
+		},
+		"src/lib/profiles.ts": {
+			"Manual": "SaveLocation source protocol identifier, not a profile label."
+		},
+		"src/lib/restore-workflow.ts": {
+			"restore blocked": "Internal Symbol description for control flow; never rendered."
+		},
+		"src/lib/save-labels.ts": {
+			"DLC": "Legacy validation category identifier mapped to its catalog label.",
+			"Gear Rank": "Legacy validation category identifier mapped to its catalog label.",
+			"Treatment": "Legacy validation category identifier mapped to its catalog label.",
+			"camping_trainer": "Game entity localization key, prefix or id for the existing namespace fallback.",
+			"hero_class_name_": "Game entity localization key, prefix or id for the existing namespace fallback.",
+			"survivalist": "Game entity localization key, prefix or id for the existing namespace fallback.",
+			"town_name_": "Game entity localization key, prefix or id for the existing namespace fallback."
+		},
+		"src/lib/stores/save-data.svelte.ts": {
+			"bg-gray-500": "Fallback status dot CSS class.",
+			"courageous": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"crimson_court_invitation_": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"disease_vampire_": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"endless_wave_highscore": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"focused": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"musketeer": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"number": "JavaScript typeof comparison.",
+			"persist.campaign_log.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.estate.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.game.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.progression.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.raid.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.roster.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.town.json": "Save filename used as a payload key or dirty-file identifier.",
+			"persist.upgrades.json": "Save filename used as a payload key or dirty-file identifier.",
+			"powerful": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"roster.before_on_start_town_visit_status": "Persisted roster field name.",
+			"roster.building_name": "Persisted roster field name.",
+			"roster.status": "Persisted roster field name.",
+			"shard": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"shieldbreaker": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"stalwart": "Game data id, field name or prefix used by safety logic; never displayed as a label.",
+			"string": "JavaScript typeof comparison.",
+			"vigorous": "Game data id, field name or prefix used by safety logic; never displayed as a label."
 		}
 	},
 	"patterns": [

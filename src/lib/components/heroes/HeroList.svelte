@@ -2,6 +2,9 @@
      For typical DD1 rosters (< 30 heroes), this performs well.
      Virtual scrolling can be added later if needed for heavily modded games. -->
 <script lang="ts">
+	import { compareNames } from '#lib/i18n/intl.js';
+	import { heroClassName, gameTextLocale } from '#lib/save-labels.js';
+
 	import { localize } from '#lib/stores/game-data.svelte.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
@@ -89,7 +92,7 @@
 				sorted.sort((a, b) => a.name.localeCompare(b.name));
 				break;
 			case 'class':
-				sorted.sort((a, b) => a.classDisplayName.localeCompare(b.classDisplayName));
+				sorted.sort((a, b) => compareNames(heroClassName(a.heroClass), a.guid, heroClassName(b.heroClass), b.guid, gameTextLocale()));
 				break;
 			case 'level':
 				sorted.sort((a, b) => b.resolveLevel - a.resolveLevel || a.name.localeCompare(b.name));
@@ -345,7 +348,7 @@
 									Lv {hero.resolveLevel}
 								</Badge>
 							</div>
-							<span class="text-muted-foreground truncate text-xs">{hero.classDisplayName}</span>
+							<span lang={gameTextLocale()} class="text-muted-foreground truncate text-xs">{heroClassName(hero.heroClass)}</span>
 						</div>
 
 						<!-- Status dot -->
