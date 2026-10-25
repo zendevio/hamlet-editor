@@ -137,7 +137,7 @@ fn recover_settings_file(path: &Path, expected: &Fingerprint) -> Result<String, 
         ));
     }
     // Reserve a fresh directory atomically. rename cannot overwrite an existing
-    // kept copy, even if another recovery happens to choose the same suffix.
+    // kept copy if the generated suffix already exists.
     let directory = path.with_file_name(format!(
         "settings.json.corrupt-{}",
         super::transaction::unique_suffix()

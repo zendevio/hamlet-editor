@@ -5,5 +5,5 @@
 
 <div role="alert" class="space-y-1">
 	<p class="font-medium">{describeMessage(descriptor)}</p>
-	{#if detail}<p class="break-all text-xs whitespace-pre-wrap">{detail}</p>{/if}
+	{#if detail}<p class="break-all text-xs whitespace-pre-wrap select-text">{detail}</p>{/if}
 </div>

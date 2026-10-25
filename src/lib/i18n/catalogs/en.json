@@ -127,6 +127,6 @@
 	"startup.settingsRecovered": "Settings in {folder} were corrupt. The original file was kept as {copy} in that folder. Starting with defaults; new settings can be saved.",
 	"startup.settingsUnreadable": "Settings in {folder} could not be read. Changes will not be saved for this launch.",
 	"startup.settingsReadFailed": "Settings could not be read. Changes will not be saved for this launch.",
-	"startup.settingsTimeout": "Settings could not be read in time. Changes will not be saved for this launch.",
-	"startup.gameTextFallback": "Language detection was unavailable at startup. Automatic game text uses the editor language for this launch."
+	"startup.gameTextFallback": "Language detection was unavailable at startup. Automatic game text uses the editor language for this launch.",
+	"startup.settingsTimeout": "Settings could not be read in time. Changes will not be saved for this launch."
 }

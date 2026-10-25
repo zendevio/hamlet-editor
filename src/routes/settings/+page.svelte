@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Message from '#lib/i18n/Message.svelte';
 	import LanguageSettings from '#lib/components/LanguageSettings.svelte';
-	import { t } from '#lib/i18n/index.svelte.js';
+	import { getEditorLocale, t } from '#lib/i18n/index.svelte.js';
 	import { formatDate, formatNumber } from '#lib/i18n/intl.js';
 	import { showPersistentError } from '#lib/i18n/notifications.js';
 	import { commitChangedValue } from '#lib/control-events.js';
@@ -14,7 +14,6 @@
 	} from '#lib/components/ui/card/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
-	import { Input } from '#lib/components/ui/input/index.js';
 	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { Separator } from '#lib/components/ui/separator/index.js';
 	import {
@@ -424,6 +423,37 @@
 			loadBackupList();
 		}
 	});
+	// Sizes a readonly path field to its full text. Native field-sizing covers
+	// paths where supported; an empty field is always measured against its
+	// placeholder because WebKit leaves placeholders out of field-sizing. The
+	// parameter carries the value and editor locale so font and text changes
+	// trigger a recompute.
+	function autosizePath(node: HTMLTextAreaElement, _deps: unknown) {
+		const native = CSS.supports('field-sizing', 'content');
+		const resize = () => {
+			const value = node.value;
+			if (native && value !== '') { node.style.height = ''; return; }
+			if (value === '') node.value = node.placeholder;
+			node.style.height = 'auto';
+			node.style.height = `${node.scrollHeight + node.offsetHeight - node.clientHeight}px`;
+			if (value === '') node.value = value;
+		};
+		let width = 0;
+		const observer = new ResizeObserver(() => {
+			if (node.clientWidth !== width) { width = node.clientWidth; resize(); }
+		});
+		observer.observe(node);
+		const fontsLoaded = () => resize();
+		document.fonts?.addEventListener('loadingdone', fontsLoaded);
+		queueMicrotask(resize);
+		return {
+			update(_deps: unknown) { queueMicrotask(resize); },
+			destroy() {
+				observer.disconnect();
+				document.fonts?.removeEventListener('loadingdone', fontsLoaded);
+			}
+		};
+	}
 </script>
 
 <ScrollArea class="h-[calc(100vh-4rem)]">
@@ -442,14 +472,17 @@
 				<div class="space-y-2">
 					<span class="text-[11px] font-medium text-muted-foreground">{t('settings.gameInstallation')}</span>
 					<div class="flex flex-wrap items-center gap-2">
-						<div class="relative min-w-40 flex-1">
-							<Input
-								aria-label={t('settings.gameInstallation')}
-								value={settings.gamePath}
-								placeholder={t('settings.gamePathPlaceholder')}
+						<div class="relative min-w-64 flex-1">
+							<textarea
 								readonly
-								class="h-8 pr-8 text-xs"
-							/>
+								rows={1}
+								aria-label={t('settings.gameInstallation')}
+								data-testid="game-folder-path"
+								placeholder={t('settings.gamePathPlaceholder')}
+								value={settings.gamePath}
+								use:autosizePath={[settings.gamePath, getEditorLocale()]}
+								class="block dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 min-h-8 w-full min-w-0 resize-none rounded-none border bg-transparent px-2.5 py-1 pr-8 text-xs transition-colors placeholder:text-muted-foreground outline-none focus-visible:ring-1 [field-sizing:content] [overflow-wrap:anywhere] select-text"
+							></textarea>
 							{#if gamePathValid === true}
 								<CheckCircleIcon
 									size={16}
@@ -511,14 +544,17 @@
 				<div class="space-y-2">
 					<span class="text-[11px] font-medium text-muted-foreground">{t('settings.saveLocation')}</span>
 					<div class="flex flex-wrap items-center gap-2">
-						<div class="relative min-w-40 flex-1">
-							<Input
-								aria-label={t('settings.saveLocation')}
-								value={settings.savePath}
-								placeholder={t('settings.savePathPlaceholder')}
+						<div class="relative min-w-64 flex-1">
+							<textarea
 								readonly
-								class="h-8 pr-8 text-xs"
-							/>
+								rows={1}
+								aria-label={t('settings.saveLocation')}
+								data-testid="save-folder-path"
+								placeholder={t('settings.savePathPlaceholder')}
+								value={settings.savePath}
+								use:autosizePath={[settings.savePath, getEditorLocale()]}
+								class="block dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 min-h-8 w-full min-w-0 resize-none rounded-none border bg-transparent px-2.5 py-1 pr-8 text-xs transition-colors placeholder:text-muted-foreground outline-none focus-visible:ring-1 [field-sizing:content] [overflow-wrap:anywhere] select-text"
+							></textarea>
 							{#if savePathValid === true}
 								<CheckCircleIcon
 									size={16}

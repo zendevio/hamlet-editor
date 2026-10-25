@@ -26,7 +26,7 @@ installed and a real campaign.
    `persist.options.json`) and play windowed. After each game session, read the
    new lines of `Darkest.app/Contents/Resources/data/app.log` (macOS) for
    errors, asserts and save/load warnings.
-5. Launch the editor with `HAMLET_WINDOW=maximized` for a predictable layout.
+5. Quit any running Hamlet Editor first; only one instance runs. Launch the editor with `HAMLET_WINDOW=maximized` for a predictable layout.
 
 The game rewrites several save files whenever a campaign is loaded. That is
 expected; compare the editor's own writes before launching the game.

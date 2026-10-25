@@ -97,7 +97,7 @@
 	onMount(() => {
 		void initializeSettings().then(async () => {
 			await tick();
-			for (const [index, notice] of settings.startupNotices.entries()) showPersistentError(notice, '', `settings-startup-${index}`);
+			for (const [index, notice] of settings.startupNotices.entries()) showPersistentError(notice, notice.detail, `settings-startup-${index}`);
 		});
 		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1')) {
 			void import('#lib/dev/InvariantFixture.svelte').then((module) => { HarnessFixture = module.default; });

@@ -773,7 +773,7 @@
 		"slots": []
 	},
 	"startup.settingsRecovered": {
-		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"context": "Persistent startup notice after corrupt settings were moved aside and defaults loaded. Folder and copy are literal filesystem names.",
 		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
 		"tone": "Clear and factual, with the recovery result and persistence behavior.",
 		"slots": [
@@ -782,7 +782,7 @@
 		]
 	},
 	"startup.settingsUnreadable": {
-		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"context": "Persistent startup notice when settings cannot be read or recovered. A raw untranslated diagnostic line is shown below this message. Folder, when present, is a literal filesystem path. Changes are not saved for this launch.",
 		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
 		"tone": "Clear and factual, with the recovery result and persistence behavior.",
 		"slots": [
@@ -790,13 +790,7 @@
 		]
 	},
 	"startup.settingsReadFailed": {
-		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
-		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
-		"tone": "Clear and factual, with the recovery result and persistence behavior.",
-		"slots": []
-	},
-	"startup.settingsTimeout": {
-		"context": "Persistent startup notice. Distinguishes recovered corrupt settings, unreadable settings, read timeout and unavailable language detection. Folder and copy are literal filesystem names.",
+		"context": "Persistent startup notice when settings cannot be read or recovered. A raw untranslated diagnostic line is shown below this message. Folder, when present, is a literal filesystem path. Changes are not saved for this launch.",
 		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
 		"tone": "Clear and factual, with the recovery result and persistence behavior.",
 		"slots": []
@@ -805,6 +799,12 @@
 		"context": "Persistent startup notice when detection failed or timed out after settings were read and a stored manual editor choice is retained. Automatic game text falls back to that editor language.",
 		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
 		"tone": "Clear and factual, with the recovery result and persistence behavior.",
+		"slots": []
+	},
+	"startup.settingsTimeout": {
+		"context": "Persistent startup notice only when the frontend startup deadline expires before settings can be read or recovered. No raw diagnostic line is shown. Changes are not saved for this launch.",
+		"lengthHint": "One or two sentences in a persistent notification; allow wrapping.",
+		"tone": "Clear and factual, with the timeout result and persistence behavior.",
 		"slots": []
 	}
 }

@@ -896,17 +896,17 @@
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		},
-		"startup.settingsTimeout": {
-			"status": "pilot, unreviewed",
-			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
-			"translationHash": "7602b10b77da9f4845e4acd164f8150da0823a3401e767faf25139114a63cb35",
-			"drafter": "Codex, 2026-10-25",
-			"reviewer": null
-		},
 		"startup.gameTextFallback": {
 			"status": "pilot, unreviewed",
 			"sourceHash": "9c5732e9a3b615c65433c4451eeb5a2bbcb4f70523fc3a755560f228a7217884",
 			"translationHash": "0a8bbf39eda5fe4a9659d6e5aef0831a33e679875b272ea3ea762d356eae4663",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsTimeout": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
+			"translationHash": "7602b10b77da9f4845e4acd164f8150da0823a3401e767faf25139114a63cb35",
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		}
@@ -1808,17 +1808,17 @@
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		},
-		"startup.settingsTimeout": {
-			"status": "pilot, unreviewed",
-			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
-			"translationHash": "5a33b824992d415daaa4cc09f0cb2010801adac06cd820fc3f1aceedae1c95b8",
-			"drafter": "Codex, 2026-10-25",
-			"reviewer": null
-		},
 		"startup.gameTextFallback": {
 			"status": "pilot, unreviewed",
 			"sourceHash": "9c5732e9a3b615c65433c4451eeb5a2bbcb4f70523fc3a755560f228a7217884",
 			"translationHash": "c68f49d144d97e0ba86996a32f3c5dc85ebf6ec37f48af538a3f35683ae1a243",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsTimeout": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
+			"translationHash": "5a33b824992d415daaa4cc09f0cb2010801adac06cd820fc3f1aceedae1c95b8",
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		}
@@ -2720,17 +2720,17 @@
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		},
-		"startup.settingsTimeout": {
-			"status": "pilot, unreviewed",
-			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
-			"translationHash": "90ef6a1785257087a7419f48f44d409451976212ee53632db27b2245001f355f",
-			"drafter": "Codex, 2026-10-25",
-			"reviewer": null
-		},
 		"startup.gameTextFallback": {
 			"status": "pilot, unreviewed",
 			"sourceHash": "9c5732e9a3b615c65433c4451eeb5a2bbcb4f70523fc3a755560f228a7217884",
 			"translationHash": "a877e0e2d2c1dd0c6034a095706cc2b1384dd7099a7938804408771f20a7748e",
+			"drafter": "Codex, 2026-10-25",
+			"reviewer": null
+		},
+		"startup.settingsTimeout": {
+			"status": "pilot, unreviewed",
+			"sourceHash": "f172311366e3e2d6ea9008314c0fb79a4f4f7a2fbd1c02935c5f59e726252bac",
+			"translationHash": "90ef6a1785257087a7419f48f44d409451976212ee53632db27b2245001f355f",
 			"drafter": "Codex, 2026-10-25",
 			"reviewer": null
 		}

@@ -91,7 +91,7 @@ async function expectSettingsCopy(page: Page, messages: Record<string, string>) 
 		await expect(settings.getByText(messages[`settings.${key}`], { exact: true }).first()).toHaveCount(1);
 	}
 	for (const [index, key, placeholder] of [[0, 'gameInstallation', 'gamePathPlaceholder'], [1, 'saveLocation', 'savePathPlaceholder']] as const) {
-		const input = settings.locator('input[readonly]').nth(index);
+		const input = settings.locator('textarea[readonly]').nth(index);
 		await expect(input).toHaveAttribute('aria-label', messages[`settings.${key}`]);
 		await expect(input).toHaveAttribute('placeholder', messages[`settings.${placeholder}`]);
 	}
@@ -113,7 +113,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 	const dialogNode = await dialog.elementHandle();
 	const inputNode = await page.getByLabel('Harness uncommitted name').elementHandle();
 	const componentNode = await page.getByTestId('settings-page').elementHandle();
-	const pathNode = await page.getByPlaceholder('Path to Darkest Dungeon installation...').elementHandle();
+	const pathNode = await page.getByTestId('game-folder-path').elementHandle();
 	const persisted = await persistedSettings(page);
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	const navigations: string[] = [];
@@ -143,7 +143,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 		expect(await dialogNode!.evaluate((element) => element === document.querySelector('[role=dialog]'))).toBe(true);
 		expect(await componentNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page]'))).toBe(true);
 		expect(await inputNode!.evaluate((element) => element === document.querySelector('[aria-label="Harness uncommitted name"]'))).toBe(true);
-		expect(await pathNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page] input[readonly]'))).toBe(true);
+		expect(await pathNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page] [data-testid=game-folder-path]'))).toBe(true);
 		const rich = page.getByTestId('rich-proof');
 		await expect(rich).toContainText('<img src=x onerror=alert(1)>');
 		await expect(rich.locator('img')).toHaveCount(0);
@@ -172,7 +172,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 	expect(await dialogNode!.evaluate((element) => element === document.querySelector('[role=dialog]'))).toBe(true);
 	expect(await componentNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page]'))).toBe(true);
 	expect(await inputNode!.evaluate((element) => element === document.querySelector('[aria-label="Harness uncommitted name"]'))).toBe(true);
-	expect(await pathNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page] input[readonly]'))).toBe(true);
+	expect(await pathNode!.evaluate((element) => element === document.querySelector('[data-testid=settings-page] [data-testid=game-folder-path]'))).toBe(true);
 	const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
 	expectSwitchCalls(calls, persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
@@ -444,8 +444,8 @@ for (const scenario of ['hanging-read', 'unreadable', 'late-detection']) {
 		}
 		await expect(page.locator('#editor-language')).toBeVisible({ timeout: 4000 });
 		await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-		const notice = scenario === 'hanging-read' ? 'Settings could not be read in time. Changes will not be saved for this launch.'
-			: scenario === 'unreadable' ? 'Settings could not be read. Changes will not be saved for this launch.'
+		const notice = scenario === 'hanging-read' ? (await catalog('en'))['startup.settingsTimeout']
+			: scenario === 'unreadable' ? (await catalog('en'))['startup.settingsUnreadable'].replace('{folder}', '/h1/settings')
 			: 'Language detection was unavailable at startup. Automatic language choices use English for this launch.';
 		await expect(page.getByText(notice, { exact: true })).toBeVisible();
 		const elapsed = await page.evaluate(() => window.__h1!.getSettings().startupElapsedMs);
@@ -522,14 +522,14 @@ test('D1/D8: before setup, real pickers update html lang and CJK typography live
 test('M1: corrupt settings recover with a live persistent kept-copy notice and working writes', async ({ page }) => {
 	await page.goto('/settings?h1&startup=corrupt');
 	await expect(page.locator('#editor-language')).toBeVisible();
-	const notice = page.getByRole('alert').filter({ hasText: 'settings.json.corrupt-123' });
+	const notice = page.getByRole('alert').filter({ hasText: 'settings.json.corrupt-123/settings.json' });
 	await expect(notice).toHaveCount(1);
 	await expect(notice).toContainText('/h1/settings');
 	await expect(notice).toContainText('Starting with defaults; new settings can be saved.');
 	const node = await notice.elementHandle();
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	await switchEditor(page, 'de');
-	await expect(notice).toContainText((await catalog('de'))['startup.settingsRecovered'].replace('{folder}', '/h1/settings').replace('{copy}', 'settings.json.corrupt-123'));
+	await expect(notice).toContainText((await catalog('de'))['startup.settingsRecovered'].replace('{folder}', '/h1/settings').replace('{copy}', 'settings.json.corrupt-123/settings.json'));
 	expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
 	await expect(page.locator('#game-text-language')).toHaveValue('match-game');
 	expect(await page.evaluate((start) => window.__h1!.calls.slice(start).some(({ command }) => command === 'plugin:store|save'), marker)).toBe(true);
@@ -674,4 +674,85 @@ test('M2: changing installation keeps OD2 languages until fresh path evidence ar
 		['/h1/new-game', 'russian'], ['/h1/new-game', 'japanese']
 	]);
 	expect(calls.filter(({ command }) => command === 'set_native_menu_language').map(({ args }) => args.locale)).not.toContain('en');
+});
+
+for (const locale of ['en', 'de', 'ja']) {
+	for (const viewport of [{ width: 800, height: 600 }, { width: 1366, height: 768 }]) {
+		test(`P1c: full folder paths at ${viewport.width}x${viewport.height} (${locale})`, async ({ page }, info) => {
+			await page.setViewportSize(viewport);
+			await page.goto('/settings?h1&longPaths');
+			await expect.poll(() => page.evaluate(() => window.__h1?.getSettings().ready)).toBe(true);
+			await switchEditor(page, locale);
+			for (const kind of ['game', 'save']) {
+				const path = page.getByTestId(`${kind}-folder-path`);
+				const fullPath = await page.evaluate((key) => String(window.__h1!.persistedSettings()[key]), `${kind}Path`);
+				await expect(path).toHaveValue(fullPath);
+				// Center the field so the sticky header and the viewport edge cannot hide it.
+				await path.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+				await expect(path).toBeVisible();
+				const geometry = await path.evaluate((element) => {
+					const rect = element.getBoundingClientRect();
+					const style = getComputedStyle(element);
+					const singleLineHeight = parseFloat(style.lineHeight) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+					return {
+						unclipped: element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight,
+						fullTextVisible: rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight && element.scrollTop === 0 && element.scrollLeft === 0,
+						wrapped: rect.height > singleLineHeight + 1
+					};
+				});
+				expect(geometry).toEqual({ unclipped: true, fullTextVisible: true, wrapped: true });
+				await evidence(info, `p1c-${locale}-${viewport.width}-${kind}-path.png`, await page.screenshot(), 'image/png');
+			}
+		});
+	}
+}
+
+for (const [scenario, detail] of [['unreadable', 'fixture: settings read denied'], ['recovery-failed', 'fixture: settings recovery denied']]) {
+	test(`P1c: settings raw diagnostic survives locale changes (${scenario})`, async ({ page }) => {
+		await page.goto(`/settings?h1&startup=${scenario}`);
+		await expect.poll(() => page.evaluate(() => window.__h1?.getSettings().ready)).toBe(true);
+		const raw = page.getByRole('alert').getByText(detail, { exact: false });
+		await expect(raw).toBeVisible();
+		const text = await raw.textContent();
+		await page.locator('#editor-language').selectOption('german', { force: true });
+		await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+		await expect(raw).toHaveText(text!);
+		const expected = (await catalog('de'))['startup.settingsUnreadable'].replace('{folder}', '/h1/settings');
+		await expect(page.getByRole('alert').filter({ hasText: expected })).toHaveCount(1);
+	});
+}
+
+test('P1c: path fields retain keyboard focus and empty translated placeholders', async ({ page }) => {
+	await page.goto('/settings?h1&emptyPaths');
+	await expect.poll(() => page.evaluate(() => window.__h1?.getSettings().ready)).toBe(true);
+	// A single-line field shares its center line with the Browse button.
+	const gameField = page.getByTestId('game-folder-path');
+	const gameRow = gameField.locator('xpath=ancestor::div[contains(@class, "flex-wrap")][1]');
+	const centers = await gameRow.evaluate((row) => {
+		const center = (element: Element) => { const rect = element.getBoundingClientRect(); return rect.top + rect.height / 2; };
+		return { field: center(row.querySelector('textarea')!), button: center(row.querySelector('button')!) };
+	});
+	expect(Math.abs(centers.field - centers.button)).toBeLessThanOrEqual(1);
+	// At the narrowest supported width a wrapping placeholder is never clipped.
+	await page.setViewportSize({ width: 800, height: 600 });
+	for (const locale of ['en', 'de', 'ru', 'ja']) {
+		await switchEditor(page, locale);
+		const messages = await catalog(locale);
+		for (const [kind, label] of [['game', 'gameInstallation'], ['save', 'saveLocation']]) {
+			const field = page.getByTestId(`${kind}-folder-path`);
+			await expect(field).toHaveValue('');
+			await expect(field).toHaveAttribute('placeholder', messages[`settings.${kind}PathPlaceholder`]);
+			await expect(field).toHaveAttribute('aria-label', messages[`settings.${label}`]);
+			await expect.poll(() => field.evaluate((element) => element.scrollHeight <= element.clientHeight)).toBe(true);
+		}
+	}
+	await page.locator('#game-text-language').focus();
+	for (const kind of ['game', 'save']) {
+		const field = page.getByTestId(`${kind}-folder-path`);
+		for (let step = 0; step < 40; step++) {
+			await page.keyboard.press('Tab');
+			if (await field.evaluate((element) => element === document.activeElement)) break;
+		}
+		await expect(field).toBeFocused();
+	}
 });

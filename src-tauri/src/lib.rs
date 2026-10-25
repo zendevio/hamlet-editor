@@ -4,6 +4,7 @@ pub use commands::{backup, save};
 
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::Manager;
 
 // ── Managed state ──
 
@@ -27,7 +28,22 @@ impl Default for NameTableState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        #[cfg(target_os = "macos")]
+        if let Err(error) = app.show() {
+            log::warn!("Could not unhide the existing application: {error}");
+        }
+        if let Some(window) = app.get_webview_window("main") {
+            for result in [window.show(), window.unminimize(), window.set_focus()] {
+                if let Err(error) = result {
+                    log::warn!("Could not activate the existing main window: {error}");
+                }
+            }
+        }
+    }));
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(

@@ -14,7 +14,8 @@ let evidence = $state<{ path: string | null; value: LanguageEvidence }>({ path: 
 let pendingEditor = $state<Resolution | undefined>();
 let ready = $state(false);
 let persistenceFailed = $state(false);
-let startupNotices = $state<MessageDescriptor[]>([]);
+type StartupNotice = MessageDescriptor & { detail?: string };
+let startupNotices = $state<StartupNotice[]>([]);
 let startupElapsedMs = $state(0);
 let launchFallback = $state(false);
 let editor = $derived(launchFallback ? { language: 'english' as const, source: 'startup-fallback' as const } : settings.editorLanguage === 'system' && pendingEditor ? pendingEditor : resolveEditor(settings.editorLanguage, evidence.value));
@@ -37,7 +38,7 @@ function applyLocale() { setEditorLocale(GAME_TEXT_LOCALES[editor.language]); }
 // validates the file instead, before this launch ever enables the single writer.
 interface SettingsRead { status: 'ok' | 'missing' | 'corrupt' | 'io_error'; values: Record<string, unknown>; folder: string; fingerprint: { size: number; hash: string } | null; detail: string }
 let validatedRead: { raw: Record<string, unknown>; loaded: Settings; notice?: MessageDescriptor } | undefined;
-let readFailure: MessageDescriptor | undefined;
+let readFailure: StartupNotice | undefined;
 const bootstrap = createBootstrap(async (signal, deadline) => {
 	const expired = () => signal.aborted || performance.now() >= deadline;
 	let result: SettingsRead;
@@ -53,10 +54,12 @@ const bootstrap = createBootstrap(async (signal, deadline) => {
 		}
 	} catch (error) {
 		if (!expired()) {
-			const failure = error as { kind?: string; folder?: string } | null;
-			readFailure = failure?.kind === 'timeout' ? { id: 'startup.settingsTimeout' }
-				: failure?.folder ? { id: 'startup.settingsUnreadable', params: { folder: failure.folder } }
-				: { id: 'startup.settingsReadFailed' };
+			const failure = error as { folder?: string; detail?: string } | null;
+			readFailure = {
+				...(failure?.folder ? { id: 'startup.settingsUnreadable' as const, params: { folder: failure.folder } }
+					: { id: 'startup.settingsReadFailed' as const }),
+				detail: failure?.detail ?? String(error)
+			};
 		}
 		throw error;
 	}

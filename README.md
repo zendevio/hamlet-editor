@@ -128,6 +128,8 @@ When you restore a backup that adds or removes save files, quit Steam completely
 
 You need [Node.js](https://nodejs.org) 24, [pnpm](https://pnpm.io) 12, [Rust](https://rustup.rs) (the version in `src-tauri/rust-toolchain.toml` is installed automatically) and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your system.
 
+Quit any running Hamlet Editor first; only one instance runs.
+
 ```sh
 pnpm install
 pnpm tauri dev      # run in development
@@ -155,7 +157,7 @@ The save format work builds on robojumper's open-source editor (see Credits).
 
 ## Languages and privacy
 
-Language detection reads your system language preferences and only the language values from the game's options file and the Steam app manifest. This happens locally; these values are never sent anywhere. The editor and game text languages can be chosen separately in Settings, including before game setup. Automatic choices are resolved again at launch. If detection is unavailable at startup, automatic editor language uses English for that launch; a stored manual choice is retained. Corrupt settings are kept as a timestamped copy in the settings folder before starting from defaults. Unreadable settings and read timeouts disable settings writes for that launch. A persistent notice explains what happened.
+Language detection reads your system language preferences and only the language values from the game's options file and the Steam app manifest. This happens locally; these values are never sent anywhere. The editor and game text languages can be chosen separately in Settings, including before game setup. Automatic choices are resolved again at launch. If detection is unavailable at startup, automatic editor language uses English for that launch; a stored manual choice is retained. Corrupt settings are moved into a timestamped folder in the settings folder before starting from defaults. Unreadable settings and read timeouts disable settings writes for that launch. A persistent notice explains what happened.
 
 On Linux, Chinese, Japanese and Korean need system CJK fonts, for example the `fonts-noto-cjk` package on Debian/Ubuntu or `noto-fonts-cjk` on Arch. CJK fonts are not bundled. App-owned macOS menu items follow the editor language. Items macOS adds or manages and native panel buttons follow the system language; installers follow the OS language or English. Languages without a drafted catalog fall back to English per message during the translation beta.
 

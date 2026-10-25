@@ -127,6 +127,6 @@
 	"startup.settingsRecovered": "Die Einstellungen in {folder} waren beschädigt. Die Originaldatei wurde dort als {copy} aufbewahrt. Die Standardeinstellungen werden verwendet; neue Einstellungen können gespeichert werden.",
 	"startup.settingsUnreadable": "Die Einstellungen in {folder} konnten nicht gelesen werden. Änderungen werden für diesen Start nicht gespeichert.",
 	"startup.settingsReadFailed": "Die Einstellungen konnten nicht gelesen werden. Änderungen werden für diesen Start nicht gespeichert.",
-	"startup.settingsTimeout": "Die Einstellungen konnten nicht rechtzeitig gelesen werden. Änderungen werden für diesen Start nicht gespeichert.",
-	"startup.gameTextFallback": "Die Spracherkennung war beim Start nicht verfügbar. Automatisch gewählte Spieltexte verwenden für diesen Start die Sprache des Editors."
+	"startup.gameTextFallback": "Die Spracherkennung war beim Start nicht verfügbar. Automatisch gewählte Spieltexte verwenden für diesen Start die Sprache des Editors.",
+	"startup.settingsTimeout": "Die Einstellungen konnten nicht rechtzeitig gelesen werden. Änderungen werden für diesen Start nicht gespeichert."
 }

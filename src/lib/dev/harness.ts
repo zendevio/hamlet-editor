@@ -7,7 +7,7 @@ export interface ResponsePlan {
 	language?: string;
 	gamePath?: string;
 	delayMs?: number;
-	fail?: string;
+	fail?: string | { kind: string; folder: string; detail: string };
 	empty?: boolean;
 	hold?: string;
 	value?: unknown;
@@ -22,14 +22,20 @@ export async function installHarness() {
 		gamePath: '/h1/game', savePath: '/h1/profile_0', profileId: 'profile_0',
 		autoBackup: false, isSetupComplete: !new URL(location.href).searchParams.has('preSetup'), gameInstall: null, gameTextLanguage: 'english', gameTextMode: 'explicit', editorLanguage: 'system'
 	};
+	if (new URL(location.href).searchParams.has('longPaths')) {
+		values.gamePath = '/h1/' + 'x'.repeat(200) + '/DarkestDungeon';
+		values.savePath = '/h1/' + 'y'.repeat(200) + '/profile_0';
+	}
+	if (new URL(location.href).searchParams.has('emptyPaths')) { values.gamePath = ''; values.savePath = ''; }
 	const fixture = createHarnessProfile();
 	const startup = new URL(location.href).searchParams.get('startup');
 	if (startup === 'hanging-read') plans.push({ command: 'read_settings', hold: 'startup-read' });
-	if (startup === 'corrupt') {
+	if (startup === 'corrupt' || startup === 'recovery-failed') {
 		for (const key of Object.keys(values)) delete values[key];
 		plans.push({ command: 'read_settings', value: { status: 'corrupt', values: {}, folder: '/h1/settings', fingerprint: { size: 1, hash: 'fixture' }, detail: '' } });
 	}
-	if (startup === 'unreadable') plans.push({ command: 'read_settings', fail: 'fixture: settings read denied' });
+	if (startup === 'unreadable') plans.push({ command: 'read_settings', value: { status: 'io_error', values: {}, folder: '/h1/settings', fingerprint: null, detail: 'fixture: settings read denied' } });
+	if (startup === 'recovery-failed') plans.push({ command: 'recover_corrupt_settings', fail: { kind: 'io_error', folder: '/h1/settings', detail: 'fixture: settings recovery denied' } });
 	if (startup === 'manual-timeout') {
 		values.editorLanguage = 'german';
 		values.gameTextMode = 'match-game';
@@ -50,7 +56,7 @@ export async function installHarness() {
 		const plan = index < 0 ? undefined : plans.splice(index, 1)[0];
 		if (plan?.hold) await new Promise<void>((resolve) => held.set(plan.hold!, resolve));
 		if (plan?.delayMs) await new Promise((resolve) => setTimeout(resolve, plan.delayMs));
-		if (plan?.fail) throw new Error(plan.fail);
+		if (plan?.fail) throw typeof plan.fail === 'string' ? new Error(plan.fail) : plan.fail;
 		if (plan && Object.hasOwn(plan, 'value')) return plan.value;
 		if (plan?.empty) return command === 'load_localization' ? {} : [];
 		if (command === 'read_settings') return { status: 'ok', values: { ...values }, folder: '/h1/settings', fingerprint: null, detail: '' };
@@ -59,7 +65,7 @@ export async function installHarness() {
 			game_options: { status: 'ok', value: { language: 'russian', path_kind: 'fixture', verified: false } },
 			steam_manifest: { status: 'absent', value: null }
 		};
-		if (command === 'recover_corrupt_settings') return 'settings.json.corrupt-123';
+		if (command === 'recover_corrupt_settings') return 'settings.json.corrupt-123/settings.json';
 		if (command === 'set_native_menu_language') return;
 		if (command === 'plugin:store|load') return 1;
 		if (command === 'plugin:store|get') return [values[String(args.key)], Object.hasOwn(values, String(args.key))];
