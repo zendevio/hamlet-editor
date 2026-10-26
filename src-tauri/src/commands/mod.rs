@@ -4,6 +4,7 @@ pub mod detect;
 pub mod error;
 pub mod gamedata;
 pub mod language;
+pub mod links;
 pub mod mods;
 pub mod names;
 pub mod native_menu;

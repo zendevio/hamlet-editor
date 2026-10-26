@@ -51,14 +51,14 @@
 					{:else}
 						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 					{/if}
-					<div class="flex-1">
-						<div class="flex items-center gap-2">
+					<div class="min-w-0 flex-1">
+						<div class="flex flex-wrap items-center gap-2">
 							<Badge variant="outline" class="text-xs">{describeMessage(issue.category)}</Badge>
 							{#if issue.fix}
 								<Badge variant="secondary" class="text-xs">{t('validation.autoFixable')}</Badge>
 							{/if}
 						</div>
-						<p class="text-muted-foreground mt-1">
+						<p class="text-muted-foreground mt-1 break-words">
 							<Message id={message.id} params={message.params ?? {}}>
 								{#snippet emphasis(children)}<span lang={gameTextLocale()}>{@render children()}</span>{/snippet}
 								{#snippet code(children)}{@render children()}{/snippet}

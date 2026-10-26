@@ -163,8 +163,9 @@ Editor language defaults to **System**, using the first supported system prefere
 
 Language detection reads your system language preferences and only the language values and source metadata from the selected game's options file and Steam app manifest. This happens locally; these values are never sent anywhere. Corrupt settings are moved into a timestamped folder in the settings folder before starting from defaults. Unreadable settings and read timeouts disable settings writes for that launch. A persistent notice explains what happened.
 
-**Translations:** editor translations are machine-drafted and reviewed, but not by native speakers. German, Russian and Japanese have partial drafts covering Settings, startup notices and menus; other messages use English. Report mistakes as [issues](https://github.com/zendevio/hamlet-editor/issues), with the language, the text and where it appears.
-<!-- Before the 1.1 release, replace this draft disclosure with actual per-language review coverage. Do not imply native review without evidence. -->
+Translations are machine-drafted and reviewed, but not by native speakers. [Report mistakes here.](https://github.com/zendevio/hamlet-editor/issues)
+
+All eleven non-English editor languages listed above have complete catalogs. Each string was reviewed by a separate model session from the one that drafted it, and warnings about saves, backups and deletions got a third separate check. Packaged-platform acceptance remains pending; see [translation platform coverage](docs/translation-platform-coverage.md).
 
 On Linux, Chinese, Japanese and Korean need system CJK fonts, for example the `fonts-noto-cjk` package on Debian/Ubuntu or `noto-fonts-cjk` on Arch. CJK fonts are not bundled; this prerequisite does not imply tested glyph coverage. App-owned macOS menu items and native dialog titles supplied by the editor follow the editor language. Items macOS adds or manages and native panel buttons follow the system language; installers follow the OS language or English.
 

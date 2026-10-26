@@ -5,6 +5,7 @@
 	},
 	"files": {
 		"src/routes/settings/+page.svelte": {
+			"repository": "Project link identifier for open_project_link; never a UI label.",
 			"dark": "mode-watcher state token.",
 			"v": "Version prefix.",
 			"string": "JavaScript typeof comparison.",
@@ -123,6 +124,7 @@
 			"inline-start": "Internal input-group alignment variant identifier."
 		},
 		"src/routes/+layout.svelte": {
+			"issues": "Project link identifier for open_project_link; never a UI label.",
 			"fix": "Validation-dialog result identifier.",
 			"save": "Unsaved-dialog result identifier.",
 			"cancel": "Unsaved-dialog result identifier.",
@@ -815,6 +817,9 @@
 			"open_backup_folder": "Stable backup IPC command name.",
 			"restore_backup": "Stable backup IPC command name.",
 			"restore_game_backup": "Stable backup IPC command name."
+		},
+		"src/lib/api/links.ts": {
+			"open_project_link": "Stable project link IPC command name."
 		},
 		"src/lib/api/detect.ts": {
 			"detect_game_installations": "Stable installation/save discovery IPC command name.",

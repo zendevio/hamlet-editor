@@ -1,0 +1,29 @@
+name: Translation fix
+description: Report incorrect or unclear editor text.
+title: "[Translation] "
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Editor language
+      description: Which editor language is selected?
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current text and location
+      description: Quote the text and name the page, dialog, or action where it appears. Screenshots are welcome; remove personal paths and save information.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction
+      description: Explain the meaning or wording problem. If it concerns a warning, describe what the current wording incorrectly implies.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Hamlet Editor version and operating system

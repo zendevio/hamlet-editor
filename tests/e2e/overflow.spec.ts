@@ -15,10 +15,10 @@ const describeNew = (findings: Finding[]) => `New overflow findings (fix them, o
 // Russian or Polish class, quirk, trinket and building names are longer.
 const url = (path: string, locale: string) => `${path}${path.includes('?') ? '&' : '?'}h1&overflow${locale.endsWith('pseudo') ? '&pseudoNames' : ''}`;
 const viewports = [{ width: 800, height: 600 }, { width: 1366, height: 768 }];
-// CJK typography is measured at the supported minimum window only: the 12 px
-// floor and wider glyphs matter most where space is tightest.
+// Every real locale covers both supported sizes; ja-pseudo additionally
+// stresses CJK typography at the minimum window.
 const runs = [
-	...(['pseudo', 'de'] as const).flatMap((locale) => viewports.map((viewport) => ({ locale, viewport }))),
+	...(['pseudo', 'en', 'fr', 'de', 'es', 'it', 'pt-BR', 'pl', 'cs', 'ru', 'zh-Hans', 'ja', 'ko'] as const).flatMap((locale) => viewports.map((viewport) => ({ locale, viewport }))),
 	{ locale: 'ja-pseudo' as const, viewport: viewports[0] }
 ];
 

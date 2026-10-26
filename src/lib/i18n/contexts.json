@@ -1763,7 +1763,7 @@
 		"safety": true
 	},
 	"discard.description": {
-		"context": "Discard confirmation explanation.",
+		"context": "Discard confirmation. Restores the last loaded or successfully saved in-memory snapshots and loses all unsaved edits. Does not read disk or load external disk changes. Discard itself has no undo.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
 		"slots": [],
@@ -2812,14 +2812,14 @@
 		"safety": true
 	},
 	"heroes.dismissDialogHelp": {
-		"context": "Dismissal confirmation dialog warning: final Dismiss removes the living hero from the roster in memory; Discard can undo before Save. Saving makes removal permanent.",
+		"context": "Dismissal dialog explanation. Confirming Dismiss removes the living hero from the loaded roster in memory. Discard restores the loaded/saved snapshots before Save; saving commits the roster removal to disk.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
 		"slots": [],
 		"safety": true
 	},
 	"heroes.dismissConfirm": {
-		"context": "Required acknowledgement checkbox in dismissal dialog. Must be checked to enable Dismiss. Warns that after Save roster removal cannot be undone; checking alone changes no hero data.",
+		"context": "Required acknowledgement checkbox in dismissal dialog. Checking changes no data. Dismiss removes the hero in memory; Discard can restore it before Save. After saving, Discard cannot undo the removal.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
 		"slots": [],
@@ -3848,6 +3848,14 @@
 			"name",
 			"amount",
 			"emphasis"
+		]
+	},
+	"shell.translationDisclosure": {
+		"context": "About dialog disclosure; link opens the project issues page. Do not claim native review.",
+		"lengthHint": "Short wrapping paragraph in a narrow dialog.",
+		"tone": "Factual and candid.",
+		"slots": [
+			"link"
 		]
 	}
 }

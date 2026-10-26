@@ -96,7 +96,11 @@ export const sourceHash = (message) => createHash('sha256').update(message).dige
  */
 export const identityFamilies = Object.freeze(['anthropic', 'openai', 'google', 'human']);
 
-/** Validates a structured identity and returns its independence key: the family, or the person for `human`. */
+/**
+ * Validates a structured identity and returns its independence keys: the agent session or thread
+ * instance (case-insensitive), plus the normalised person for `human`. Instances are self-declared.
+ * Two identities are independent only when they share no key, so one person cannot review their own work.
+ */
 export function checkIdentity(identity, role) {
 	assert.ok(identity && typeof identity === 'object' && !Array.isArray(identity), `${role} needs a structured identity`);
 	assert.ok(identityFamilies.includes(identity.family), `${role} identity family must be one of ${identityFamilies.join(', ')}`);
@@ -106,17 +110,22 @@ export function checkIdentity(identity, role) {
 	const human = identity.family === 'human';
 	assert.ok(filled(human ? 'person' : 'model'), `${role} identity missing ${human ? 'person' : 'model'}`);
 	for (const field of ['model', 'person']) if (identity[field] !== undefined) assert.ok(filled(field), `${role} identity missing ${field}`);
-	return human ? `human:${identity.person.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()}` : identity.family;
+	assert.ok(filled('instance'), `${role} identity missing instance`);
+	const keys = [`instance:${identity.instance.trim().toLowerCase()}`];
+	if (human) keys.push(`human:${identity.person.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase()}`);
+	return keys;
 }
+
+const shares = (a, b) => a.some((key) => b.includes(key));
 
 export function translationState(record, english, translated, safety = false) {
 	if (!record) return 'missing-review-record';
 	assert.ok(['draft', 'reviewed', 'final'].includes(record.status), `Invalid review status: ${record.status}`);
-	const drafterFamily = checkIdentity(record.drafter, 'Translation drafter');
+	const drafterKeys = checkIdentity(record.drafter, 'Translation drafter');
 	if (record.status !== 'draft') {
 		assert.ok(record.reviewer && record.semanticVerdict === 'pass' && record.glossaryVersion, 'Reviewed translation needs reviewer, semantic verdict and glossary version');
-		const reviewerFamily = checkIdentity(record.reviewer, 'Semantic reviewer');
-		assert.notEqual(reviewerFamily, drafterFamily, 'Semantic reviewer must differ in family from the drafter, or in person when both are human');
+		const reviewerKeys = checkIdentity(record.reviewer, 'Semantic reviewer');
+		assert.ok(!shares(reviewerKeys, drafterKeys), 'Semantic reviewer must differ in instance from the drafter, and in person when both are human');
 		assert.equal(record.reviewedSourceHash, record.sourceHash, 'Reviewed source hash is stale; review the source delta');
 		assert.equal(record.reviewedTranslationHash, record.translationHash, 'Reviewed translation hash is stale; review the translation delta');
 		if (safety) {
@@ -125,12 +134,12 @@ export function translationState(record, english, translated, safety = false) {
 			assert.equal(verdict.independent, true, 'Safety verdict must record an independent third check');
 			assert.equal(verdict.sourceHash, record.sourceHash, 'Safety verdict source hash is stale');
 			assert.equal(verdict.translationHash, record.translationHash, 'Safety verdict translation hash is stale');
-			const safetyFamily = checkIdentity(verdict.reviewer, 'Safety reviewer');
+			const safetyKeys = checkIdentity(verdict.reviewer, 'Safety reviewer');
 			for (const field of ['action', 'object', 'conditions', 'reversibility', 'scope', 'codePath', 'workflow']) {
 				assert.ok(typeof verdict[field] === 'string' && verdict[field].trim(), `Safety verdict missing ${field}`);
 			}
-			assert.ok(![drafterFamily, reviewerFamily].includes(safetyFamily),
-				'Safety verdict needs a third independent reviewer family, or another person when human');
+			assert.ok(!shares(safetyKeys, drafterKeys) && !shares(safetyKeys, reviewerKeys),
+				'Safety verdict needs a third independent reviewer instance, and another person when human');
 		}
 	}
 	assert.ok(typeof record.sourceText === 'string' && typeof record.translationText === 'string', 'Missing review snapshots; record the exact source and translation inputs');

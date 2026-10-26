@@ -264,7 +264,7 @@
 	"unsaved.saveClose": "Save and Close",
 	"unsaved.discardClose": "Discard and Close",
 	"discard.title": "Discard All Changes",
-	"discard.description": "This will revert all unsaved changes and reload data from disk. This action cannot be undone.",
+	"discard.description": "This will discard all unsaved changes and restore the last loaded or saved state. This action cannot be undone.",
 	"validation.title": "Pre-Save Validation",
 	"validation.counts": "{errors, plural, =0 {{warnings, plural, one {{warningsText} warning found.} other {{warningsText} warnings found.}}} one {{errorsText} error and {warnings, plural, one {{warningsText} warning} other {{warningsText} warnings}} found.} other {{errorsText} errors and {warnings, plural, one {{warningsText} warning} other {{warningsText} warnings}} found.}}",
 	"validation.fixCount": "{count, plural, one {Fix {countText} Issue Automatically} other {Fix {countText} Issues Automatically}}",
@@ -415,8 +415,8 @@
 	"heroes.reviveHero": "Revive Hero",
 	"heroes.reviveConsequences": "Revive in town when a roster slot is free. Skill upgrades lost at death are not restored.",
 	"heroes.dismissHero": "Dismiss Hero",
-	"heroes.dismissDialogHelp": "This will permanently remove the hero from your roster.",
-	"heroes.dismissConfirm": "I understand this cannot be undone.",
+	"heroes.dismissDialogHelp": "This removes the hero from your roster. Discard can undo it before saving.",
+	"heroes.dismissConfirm": "I understand this cannot be undone after saving.",
 	"heroes.cancel": "Cancel",
 	"heroes.dismiss": "Dismiss",
 	"heroes.searchHeroes": "Search heroes by name or class...",
@@ -572,5 +572,6 @@
 	"setup.openProfile": "Open Profile",
 	"setup.source": "{source, select, Steam {Steam} Gog {GOG} Epic {Epic} other {Manual}}",
 	"setup.dlcName": "{dlc, select, crimson_court {Crimson Court} shieldbreaker {Shieldbreaker} color_of_madness {Color of Madness} musketeer {Musketeer} other {Unknown}}",
-	"raid.lostItem": "<emphasis>{name}</emphasis>: {amount}"
+	"raid.lostItem": "<emphasis>{name}</emphasis>: {amount}",
+	"shell.translationDisclosure": "Translations are machine-drafted and reviewed, but not by native speakers. <link>Report mistakes here.</link>"
 }

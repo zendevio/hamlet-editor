@@ -151,6 +151,7 @@ export async function installHarness() {
 		if (['load_quirk_library', 'load_trinket_library', 'load_class_stats', 'scan_mod_directories', 'detect_game_installations'].includes(command)) return [];
 		if (command === 'create_backup') return '/h1/backup';
 		if (command === 'open_backup_folder') return '/h1/backups';
+		if (command === 'open_project_link') return null;
 		throw new Error(`H1 unexpected IPC: ${command}`);
 	}, { shouldMockEvents: true });
 
@@ -161,12 +162,12 @@ export async function installHarness() {
 	const save = await import('#lib/api/save.js');
 	window.__h1 = {
 		calls, plans,
-		async catalog(locale: 'en' | 'de' | 'pseudo' | 'ja-pseudo') {
+		async catalog(locale: 'en' | 'fr' | 'de' | 'es' | 'it' | 'pt-BR' | 'pl' | 'cs' | 'ru' | 'zh-Hans' | 'ja' | 'ko' | 'pseudo' | 'ja-pseudo') {
 			const { usePseudoLocale } = await import('./catalog-override.js');
 			const { setEditorLocale } = await import('#lib/i18n/index.svelte.js');
 			// ja-pseudo keeps expanded pseudo text but applies Japanese typography
 			// (lang ja and the cjk class: 12 px floor and the CJK font stack).
-			setEditorLocale(locale === 'de' ? 'de' : locale === 'ja-pseudo' ? 'ja' : 'en');
+			setEditorLocale(locale === 'ja-pseudo' ? 'ja' : locale === 'pseudo' ? 'en' : locale);
 			await usePseudoLocale(locale === 'pseudo' || locale === 'ja-pseudo');
 		},
 		blockRaidEstate() { Reflect.deleteProperty(store.getSaveData().estate!.base_root, 'trinkets'); },
@@ -272,7 +273,7 @@ declare global {
 	interface Window {
 		__h1?: {
 			calls: IpcCall[];
-			catalog(locale: 'en' | 'de' | 'pseudo' | 'ja-pseudo'): Promise<void>;
+			catalog(locale: 'en' | 'fr' | 'de' | 'es' | 'it' | 'pt-BR' | 'pl' | 'cs' | 'ru' | 'zh-Hans' | 'ja' | 'ko' | 'pseudo' | 'ja-pseudo'): Promise<void>;
 			blockRaidEstate(): void;
 			deadHero(ids?: string[]): void;
 			vampireHero(): void;

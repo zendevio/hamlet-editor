@@ -105,6 +105,7 @@ pub fn run() {
             commands::backup::restore_backup,
             commands::backup::restore_game_backup,
             commands::backup::open_backup_folder,
+            commands::links::open_project_link,
             commands::assets::load_game_asset,
             commands::names::generate_name_table,
             commands::names::load_localization,

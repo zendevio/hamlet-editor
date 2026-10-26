@@ -1,5 +1,7 @@
 import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { IntlMessageFormat } from 'intl-messageformat';
 import { GAME_TEXT_LANGUAGES, GAME_TEXT_LOCALES } from '../../src/lib/data/game-text-languages.js';
 import type {} from '../../src/lib/dev/harness.js';
 import { pseudoMessage } from '../../src/lib/dev/pseudo-locale.js';
@@ -32,6 +34,26 @@ const cycle = ['en', 'ru', 'ja', 'de'];
 const allLocales = ['en', 'fr', 'de', 'es', 'it', 'pt-BR', 'pl', 'cs', 'ru', 'zh-Hans', 'ja', 'ko'];
 const gameLanguages = ['english', 'french', 'german', 'spanish', 'italian', 'brazilian', 'polish', 'czech', 'russian', 'schinese', 'japanese', 'koreana'];
 const catalog = async (locale: string) => JSON.parse(await readFile(new URL(`../../src/lib/i18n/catalogs/${locale}.json`, import.meta.url), 'utf8'));
+// Stable locators keep resolving the same mounted control as its accessible
+// name changes. switchEditor separately checks the exact active-locale Save name.
+const messagesByLocale = Object.fromEntries(allLocales.map(locale => [locale,
+	JSON.parse(readFileSync(new URL(`../../src/lib/i18n/catalogs/${locale}.json`, import.meta.url), 'utf8'))]));
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const copyNames = (key: string) => {
+	const values = allLocales.map(locale => {
+		const value = messagesByLocale[locale][key];
+		if (typeof value !== 'string') throw new Error(`Missing locator message ${locale}:${key}`);
+		return value;
+	});
+	return new RegExp(`^(?:${[...new Set(values)].map(escapeRegex).join('|')})$`);
+};
+// Direct ICU reference rendering uses explicit test inputs, independent of the
+// application's translator, descriptor normalization and locale resolution.
+const copy = (locale: string, key: string, params: Record<string, string | number> = {}) => {
+	const plain = (chunks: unknown[]) => chunks.join('');
+	const result = new IntlMessageFormat(messagesByLocale[locale][key], locale).format({ ...params, emphasis: plain, code: plain, link: plain });
+	return Array.isArray(result) ? result.join('') : String(result);
+};
 const renderedCopy: Record<string, { files: string; summary: string; repository: string }> = {
 	en: { files: '22 files · profile_0', summary: 'This restore adds 2 files and removes 1 file.', repository: 'GitHub Repository' },
 	ru: { files: '22 файла · profile_0', summary: 'Восстановление добавит 2 файла и удалит 1 файл.', repository: 'Репозиторий на GitHub' },
@@ -57,6 +79,11 @@ async function switchEditor(page: Page, locale: string) {
 	await page.locator('#editor-language').selectOption(editorId(locale), { force: true });
 	await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().editorLanguage)).toBe(editorId(locale));
 	expect(await persistedSettings(page)).toEqual(persisted);
+	const header = page.locator('[data-slot="sidebar-inset"] > header');
+	if (await header.count()) {
+		const dirty = (await snapshot(page)).dirtyFiles.length > 0;
+		await expect(header.getByRole('button', { name: messagesByLocale[locale][dirty ? 'shell.dirtySave' : 'shell.save'], exact: true, includeHidden: true })).toHaveCount(1);
+	}
 }
 async function switchGame(page: Page, language: string) {
 	const persisted = await persistedSettings(page);
@@ -133,7 +160,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 		const messages = await catalog(locale);
 		await expectSettingsCopy(page, messages);
 		await expect(page.getByTestId('settings-page').getByText(renderedCopy[locale].files, { exact: true })).toHaveCount(1);
-		await expect(page.getByTestId('settings-page').locator('a[href="https://github.com/AlinGheorghe/hamlet-editor"]')).toHaveText(renderedCopy[locale].repository);
+		await expect(page.getByTestId('settings-page').locator('a[href="https://github.com/zendevio/hamlet-editor"]')).toHaveText(renderedCopy[locale].repository);
 		await expect(dialog.getByRole('heading')).toHaveText(messages['settings.restoreBackup']);
 		await expect(dialog.locator('[data-slot=dialog-description]')).toContainText(messages['settings.restoreDescription']);
 		await expect(dialog.locator('[data-slot=dialog-description]')).toContainText(renderedCopy[locale].summary);
@@ -157,7 +184,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 		expect(await rich.locator('em,code,a').evaluateAll((elements) => elements.map((element) => element.tagName))).toEqual(
 			locale === 'de' ? ['A', 'CODE', 'EM'] : locale === 'ja' ? ['CODE', 'EM', 'A'] : locale === 'ru' ? ['EM', 'A', 'CODE'] : ['EM', 'CODE', 'A']
 		);
-		await expect(rich.locator('a')).toHaveAttribute('href', 'https://github.com/AlinGheorghe/hamlet-editor');
+		await expect(rich.locator('a')).toHaveAttribute('href', 'https://github.com/zendevio/hamlet-editor');
 		await evidence(info, `settings-${locale}.png`, await page.screenshot());
 		await evidence(info, `settings-${locale}.aria.txt`, await page.getByTestId('settings-page').ariaSnapshot());
 	}
@@ -311,12 +338,12 @@ test('I1: dirty and blocked-save guards survive switches', async ({ page }) => {
 	await page.evaluate(() => { window.__h1!.edit(); window.__h1!.markStale(); });
 	for (const locale of cycle) await switchEditor(page, locale);
 	// Save is one focusable button that also owns its tooltip trigger handlers.
-	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true })).toBeDisabled();
-	await expect(page.getByText('Profile stale: Reload required', { exact: true })).toBeVisible();
+	await expect(page.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true })).toBeDisabled();
+	await expect(page.getByText((await catalog('de'))['shell.stale'], { exact: true })).toBeVisible();
 	await page.evaluate(() => window.__h1!.plans.push({ command: 'plugin:dialog|open', value: '/h1/another-profile' }));
 	await page.getByTestId('settings-page').getByTestId('browse-save').click();
 	await expect(page.getByRole('dialog')).toBeVisible();
-	await expect(page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('dialog').getByRole('button', { name: copyNames('shell.save'), exact: true })).toHaveCount(0);
 	expect((await snapshot(page)).dirtyFiles).toContain('persist.roster.json');
 });
 
@@ -345,7 +372,7 @@ for (const route of ['heroes', 'estate'] as const) {
 				await expect(page.getByTestId('hero-detail').getByRole('img', { name: 'Backups portrait', exact: true })).toBeVisible();
 				await page.getByTestId('hero-detail').getByRole('button', { name: 'Backups', exact: true }).click();
 			}
-			const input = route === 'heroes' ? page.getByRole('textbox', { name: 'Hero name', exact: true }) : page.getByPlaceholder('Enter estate name...');
+			const input = route === 'heroes' ? page.getByRole('textbox', { name: copyNames('heroes.heroName'), exact: true }) : page.getByPlaceholder(copyNames('estate.namePlaceholder'));
 			// A literal game display string remains user data even when that map changes.
 			await input.fill('english:crusader');
 			const inputNode = await input.elementHandle();
@@ -389,7 +416,7 @@ for (const route of ['heroes', 'estate'] as const) {
 			expect(edited.heroes[0].heroClass).toBe('unknown_mod_class');
 			// Exercise the actual header save and its validation choice. The synthetic
 			// roster may warn, so accept the explicit Save Anyway without auto-fixes.
-			const saveButton = page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true });
+			const saveButton = page.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true });
 			await expect(saveButton).toBeEnabled();
 			await saveButton.click();
 			await expect.poll(async () =>
@@ -397,7 +424,7 @@ for (const route of ['heroes', 'estate'] as const) {
 				await page.getByRole('dialog').filter({ hasText: 'Pre-Save Validation' }).isVisible()
 			).toBe(true);
 			const validation = page.getByRole('dialog').filter({ hasText: 'Pre-Save Validation' });
-			if (await validation.isVisible()) await validation.getByRole('button', { name: 'Save Anyway', exact: true }).click();
+			if (await validation.isVisible()) await validation.getByRole('button', { name: copyNames('validation.saveAnyway'), exact: true }).click();
 			await expect.poll(() => page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile').length)).toBe(1);
 			const call = await page.evaluate(() => window.__h1!.calls.find(({ command }) => command === 'save_profile')!);
 			expect(call.args.data).toEqual(edited.dirty);
@@ -641,7 +668,7 @@ test('M2/F8: System, Match game and Same as editor preserve dirty state and diag
 	await expect(diagnostic).toHaveCount(1);
 	expect(await snapshot(page)).toEqual(before);
 	await page.evaluate(() => window.__h1!.markStale());
-	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true })).toBeDisabled();
+	await expect(page.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true, includeHidden: true })).toBeDisabled();
 	await expect(dialog).toBeVisible();
 });
 
@@ -778,15 +805,15 @@ test('S1: a stale save code marks the loaded profile stale without clearing dirt
 		window.__h1!.plans.push({ command: 'save_profile', fail: { code: 'save_stale', params: {}, detail: 'fixture changed bytes' } });
 	});
 	const before = await snapshot(page);
-	await page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).click();
+	await page.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true }).click();
 	const validation = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Pre-Save Validation' }) });
 	await expect.poll(async () => await validation.isVisible() || await page.evaluate(() => window.__h1!.snapshot().stale)).toBe(true);
-	if (await validation.isVisible()) await validation.getByRole('button', { name: 'Save Anyway', exact: true }).click();
+	if (await validation.isVisible()) await validation.getByRole('button', { name: copyNames('validation.saveAnyway'), exact: true }).click();
 	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().stale)).toBe(true);
 	const after = await snapshot(page);
 	expect(after.dirty).toEqual(before.dirty);
 	expect(after.dirtyFiles).toEqual(before.dirtyFiles);
-	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true, includeHidden: true })).toBeDisabled();
+	await expect(page.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true, includeHidden: true })).toBeDisabled();
 	await expect(page.getByRole('alert').filter({ hasText: 'fixture changed bytes' })).toContainText('Save failed');
 	await expect(page.getByRole('alert').filter({ hasText: 'fixture changed bytes' })).not.toContainText('Error:');
 	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'))).toHaveLength(1);
@@ -960,13 +987,13 @@ async function activateBlockedHeaderButton(page: Page, button: Locator, shortcut
 	for (const key of ['Enter', 'Space', ...shortcuts]) await page.keyboard.press(key);
 }
 
-for (const [state, reason] of [
-	['no edits', 'No unsaved changes'],
-	['stale', 'Save files may have changed. Reload the profile before saving.'],
-	['running', 'DD Running. Close the game before saving.'],
-	['uncertain', 'Unable to detect game status. Save blocked as precaution.'],
-	['paths changed', 'Paths changed. Reload the profile before saving.'],
-	['no profile', 'No profile loaded']
+for (const [state, reason, englishReason] of [
+	['no edits', 'error.save_no_changes', 'No unsaved changes'],
+	['stale', 'error.profile_stale', 'Save files may have changed. Reload the profile before saving.'],
+	['running', 'error.save_game_running', 'DD Running. Close the game before saving.'],
+	['uncertain', 'error.game_detection_uncertain', 'Unable to detect game status. Save blocked as precaution.'],
+	['paths changed', 'error.profile_paths_changed', 'Paths changed. Reload the profile before saving.'],
+	['no profile', 'shell.noProfile', 'No profile loaded']
 ] as const) {
 	test(`S2: blocked Save exposes ${state} on hover and keyboard focus in en and after switching to ru`, async ({ page }) => {
 		await open(page);
@@ -979,7 +1006,7 @@ for (const [state, reason] of [
 		}
 		const header = page.locator('[data-slot="sidebar-inset"] > header');
 		const dirty = state !== 'no edits' && state !== 'no profile';
-		const save = header.getByRole('button', { name: dirty ? 'Unsaved changes. Save all changes.' : 'Save', exact: true });
+		const save = header.getByRole('button', { name: copyNames(dirty ? 'shell.dirtySave' : 'shell.save'), exact: true });
 		await expect(save).toBeDisabled({ timeout: 10_000 });
 		const node = await save.elementHandle();
 		const before = await snapshot(page);
@@ -987,19 +1014,20 @@ for (const [state, reason] of [
 		const marker = await page.evaluate(() => window.__h1!.calls.length);
 		for (const locale of ['en', 'ru']) {
 			await switchEditor(page, locale);
+			await expect(save).toHaveAccessibleName(copy(locale, dirty ? 'shell.dirtySave' : 'shell.save'));
 			await expect(save).toHaveCount(1);
 			await expect(header.locator('button button')).toHaveCount(0);
-			await expectHeaderTooltip(page, save, reason);
+			await expectHeaderTooltip(page, save, locale === 'en' ? englishReason : copy(locale, reason));
 			await activateBlockedHeaderButton(page, save, ['Control+s', 'Meta+s']);
 			await expect(page.getByRole('dialog')).toHaveCount(0);
-			const backup = header.getByRole('button', { name: 'Backup', exact: true });
+			const backup = header.getByRole('button', { name: copyNames('shell.backup'), exact: true });
 			if (state === 'no profile') {
-				await expectHeaderTooltip(page, backup, 'No profile loaded');
+				await expectHeaderTooltip(page, backup, copy(locale, 'shell.noProfile'));
 				await activateBlockedHeaderButton(page, backup, ['Control+b', 'Meta+b']);
 			} else await expect(backup).toBeEnabled();
-			await expect(header.getByRole('button', { name: 'Discard', exact: true })).toHaveCount(dirty ? 1 : 0);
-			if (dirty) await expect(header.getByRole('button', { name: 'Discard', exact: true })).toBeEnabled();
-			if (state === 'stale') await expect(header.getByRole('button', { name: 'Reload', exact: true })).toBeEnabled();
+			await expect(header.getByRole('button', { name: copyNames('shell.discard'), exact: true })).toHaveCount(dirty ? 1 : 0);
+			if (dirty) await expect(header.getByRole('button', { name: copyNames('shell.discard'), exact: true })).toBeEnabled();
+			if (state === 'stale') await expect(header.getByRole('button', { name: copyNames('shell.reload'), exact: true })).toBeEnabled();
 			expect(await node!.evaluate(element => element.isConnected)).toBe(true);
 			expect(await snapshot(page)).toEqual(before);
 		}
@@ -1016,23 +1044,23 @@ for (const phase of ['read', 'libraries']) {
 		await expect.poll(() => page.evaluate(() => window.__h1?.held())).toContain(held);
 		if (phase === 'libraries') await page.evaluate(() => window.__h1!.edit());
 		const header = page.locator('[data-slot="sidebar-inset"] > header');
-		const save = header.getByRole('button', { name: phase === 'read' ? 'Save' : 'Unsaved changes. Save all changes.', exact: true });
+		const save = header.getByRole('button', { name: copyNames(phase === 'read' ? 'shell.save' : 'shell.dirtySave'), exact: true });
 		const before = await snapshot(page);
 		for (const locale of ['en', 'ru']) {
 			await switchEditor(page, locale);
 			await expect(save).toBeDisabled();
-			await expectFocusedHeaderTooltip(page, save, 'Loading profile...');
+			await expectFocusedHeaderTooltip(page, save, locale === 'en' ? 'Loading profile...' : copy(locale, 'shell.loadingProfile'));
 			await save.focus();
 			for (const key of ['Enter', 'Space', 'Control+s', 'Meta+s']) await page.keyboard.press(key);
 			expect(await snapshot(page)).toEqual(before);
 		}
 		expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['save_profile', 'create_backup'].includes(command)))).toEqual([]);
 		await page.evaluate(id => window.__h1!.release(id), held);
-		await expect(page.getByRole('status', { name: 'Loading profile...' })).toHaveCount(0);
+		await expect(page.getByRole('status', { name: copy('ru', 'shell.loadingProfile') })).toHaveCount(0);
 		if (phase === 'read') {
 			// A clean profile remains blocked by its no-changes reason after loading.
 			await expect(save).toBeDisabled();
-			await expectHeaderTooltip(page, save, 'No unsaved changes');
+			await expectHeaderTooltip(page, save, copy('ru', 'error.save_no_changes'));
 		} else await expect(save).toBeEnabled();
 	});
 }
@@ -1045,37 +1073,37 @@ test('S2: saving blocks repeat Save and Discard activation while keeping their t
 		window.__h1!.plans.push({ command: 'save_profile', hold: 'header-save' });
 	});
 	const header = page.locator('[data-slot="sidebar-inset"] > header');
-	const save = header.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true });
+	const save = header.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true });
 	await expect(save).toBeEnabled();
 	await save.click();
 	await expect.poll(async () => (await page.evaluate(() => window.__h1!.held())).includes('header-save') || await page.getByRole('dialog').isVisible()).toBe(true);
 	const validation = page.getByRole('dialog');
-	if (await validation.isVisible()) await validation.getByRole('button', { name: 'Save Anyway', exact: true }).click();
+	if (await validation.isVisible()) await validation.getByRole('button', { name: copyNames('validation.saveAnyway'), exact: true }).click();
 	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('header-save');
 	const before = await snapshot(page);
 	const persisted = await persistedSettings(page);
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of ['en', 'ru']) {
 		await switchEditor(page, locale);
-		await expect(save).toHaveText('Saving...');
-		await expectHeaderTooltip(page, save, 'Saving...');
+		await expect(save).toHaveText(locale === 'en' ? 'Saving...' : copy(locale, 'shell.saving'));
+		await expectHeaderTooltip(page, save, locale === 'en' ? 'Saving...' : copy(locale, 'shell.saving'));
 		await activateBlockedHeaderButton(page, save, ['Control+s', 'Meta+s']);
-		const discard = header.getByRole('button', { name: 'Discard', exact: true });
-		await expectHeaderTooltip(page, discard, 'Discard all unsaved changes (Ctrl/Cmd+Shift+Z)');
+		const discard = header.getByRole('button', { name: copyNames('shell.discard'), exact: true });
+		await expectHeaderTooltip(page, discard, locale === 'en' ? 'Discard all unsaved changes (Ctrl/Cmd+Shift+Z)' : copy(locale, 'shell.discardHelp'));
 		await activateBlockedHeaderButton(page, discard, ['Control+Shift+z', 'Meta+Shift+z']);
 		for (const modifier of ['ctrlKey', 'metaKey']) {
 			await discard.dispatchEvent('keydown', { key: 'z', shiftKey: true, [modifier]: true });
 		}
 		await expect(page.getByRole('dialog')).toHaveCount(0);
-		await expect(header.getByRole('button', { name: 'Backup', exact: true })).toBeEnabled();
+		await expect(header.getByRole('button', { name: copyNames('shell.backup'), exact: true })).toBeEnabled();
 		expect(await snapshot(page)).toEqual(before);
 	}
 	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'))).toHaveLength(1);
 	await page.evaluate(() => window.__h1!.release('header-save'));
-	await expect(header.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
-	await expectHeaderTooltip(page, header.getByRole('button', { name: 'Save', exact: true }), 'No unsaved changes');
-	await expect(header.getByRole('button', { name: 'Discard', exact: true })).toHaveCount(0);
+	await expect(header.getByRole('button', { name: copyNames('shell.save'), exact: true })).toBeDisabled();
+	await expectHeaderTooltip(page, header.getByRole('button', { name: copyNames('shell.save'), exact: true }), copy('ru', 'error.save_no_changes'));
+	await expect(header.getByRole('button', { name: copyNames('shell.discard'), exact: true })).toHaveCount(0);
 });
 
 test('S2: keyboard activation closes an enabled tooltip trigger', async ({ page }) => {
@@ -1093,20 +1121,20 @@ test('S2: keyboard activation closes an enabled tooltip trigger', async ({ page 
 test('S2: one main landmark and one correctly named Save button survive dirty live locale switches', async ({ page }) => {
 	await open(page);
 	const header = page.locator('[data-slot="sidebar-inset"] > header');
-	const save = header.getByRole('button', { name: 'Save', exact: true });
+	const save = header.getByRole('button', { name: copyNames('shell.save'), exact: true });
 	await expect(page.getByRole('main')).toHaveCount(1);
 	await expect(page.locator('main main')).toHaveCount(0);
 	await expect(save).toHaveCount(1);
 	await expect(save).toBeDisabled();
 	await page.evaluate(() => window.__h1!.edit());
-	const dirtySave = header.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true });
+	const dirtySave = header.getByRole('button', { name: copyNames('shell.dirtySave'), exact: true });
 	await expect(dirtySave).toHaveCount(1);
 	await expect(dirtySave).toBeEnabled();
 	await expectHeaderTooltip(page, dirtySave, 'Save all changes');
-	await expect(header.getByRole('button', { name: 'Backup', exact: true })).toBeEnabled();
-	await expectHeaderTooltip(page, header.getByRole('button', { name: 'Backup', exact: true }), 'Create manual backup (Ctrl/Cmd+B)');
-	await expect(header.getByRole('button', { name: 'Discard', exact: true })).toBeEnabled();
-	await expectHeaderTooltip(page, header.getByRole('button', { name: 'Discard', exact: true }), 'Discard all unsaved changes (Ctrl/Cmd+Shift+Z)');
+	await expect(header.getByRole('button', { name: copyNames('shell.backup'), exact: true })).toBeEnabled();
+	await expectHeaderTooltip(page, header.getByRole('button', { name: copyNames('shell.backup'), exact: true }), 'Create manual backup (Ctrl/Cmd+B)');
+	await expect(header.getByRole('button', { name: copyNames('shell.discard'), exact: true })).toBeEnabled();
+	await expectHeaderTooltip(page, header.getByRole('button', { name: copyNames('shell.discard'), exact: true }), 'Discard all unsaved changes (Ctrl/Cmd+Shift+Z)');
 	expect(await dirtySave.evaluate(element => !element.querySelector('button') && !element.parentElement?.closest('button'))).toBe(true);
 	await expect(header.locator('button button')).toHaveCount(0);
 	const mainNode = await page.getByRole('main').elementHandle();
@@ -1121,12 +1149,12 @@ test('S2: one main landmark and one correctly named Save button survive dirty li
 		await expect(page.getByRole('button', { name: messages['settings.about'], exact: true })).toBeVisible();
 		expect(await aboutNode!.evaluate((element, name) => element.isConnected && element.textContent?.trim() === name, messages['settings.about'])).toBe(true);
 		if (locale === 'ru') expect(messages['settings.about']).toBe('О программе');
-		await expect(header.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+		await expect(header.getByRole('heading', { name: messages['shell.settings'], exact: true })).toBeVisible();
 		await expect(dirtySave).toHaveCount(1);
 		await expect(dirtySave).toBeEnabled();
 		expect(await snapshot(page)).toEqual(before);
 		expect(await mainNode!.evaluate(element => element.isConnected && element === document.querySelector('main'))).toBe(true);
-		expect(await saveNode!.evaluate(element => element.isConnected && element === document.querySelector('header button[aria-label="Unsaved changes. Save all changes."]'))).toBe(true);
+		expect(await saveNode!.evaluate((element, name) => element.isConnected && element === Array.from(document.querySelectorAll('header button')).find(button => button.getAttribute('aria-label') === name), messages['shell.dirtySave'])).toBe(true);
 	}
 	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
 	await page.evaluate(() => window.__h1!.markStale());
@@ -1147,15 +1175,24 @@ test('S2: About rich text and discard confirmation stay mounted with dirty data 
 	await expect(about.locator('em')).toHaveCount(2);
 	await expect(about.locator('em').first()).toHaveText('Darkest Dungeon');
 	await expect(about).toContainText('Always back up your save files before editing.');
+	const linkText = (locale: string) => catalog(locale).then(messages => /<link>(.*)<\/link>/.exec(messages['shell.translationDisclosure'])![1]);
+	const report = about.getByRole('link', { name: await linkText('en'), exact: true });
+	await expect(report).toHaveAttribute('href', 'https://github.com/zendevio/hamlet-editor/issues');
+	const linkMarker = await page.evaluate(() => window.__h1!.calls.length);
+	await report.click();
+	await expect(page).toHaveURL(/\/settings/);
+	expect(await page.evaluate((start) => window.__h1!.calls.slice(start).filter(call => call.command === 'open_project_link'), linkMarker))
+		.toEqual([{ command: 'open_project_link', args: { link: 'issues' } }]);
 	const aboutNode = await about.elementHandle();
 	await switchEditor(page, 'ru');
 	await expect(about.getByRole('button', { name: (await catalog('ru'))['common.close'], exact: true })).toBeVisible();
+	await expect(about.getByRole('link', { name: await linkText('ru'), exact: true })).toHaveAttribute('href', 'https://github.com/zendevio/hamlet-editor/issues');
 	expect(await aboutNode!.evaluate(element => element.isConnected)).toBe(true);
 	expect(await snapshot(page)).toEqual(before);
 	await about.getByRole('button', { name: (await catalog('ru'))['common.close'], exact: true }).click();
 
 	await switchEditor(page, 'en');
-	await page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: 'Discard', exact: true }).click();
+	await page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: copyNames('shell.discard'), exact: true }).click();
 	const discard = page.getByRole('dialog');
 	await expect(discard.getByRole('heading', { name: 'Discard All Changes', exact: true })).toBeVisible();
 	const discardNode = await discard.elementHandle();
@@ -1166,13 +1203,13 @@ test('S2: About rich text and discard confirmation stay mounted with dirty data 
 		const messages = await catalog(locale);
 		await expect(discard.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
 		await expect(discard.getByRole('button', { name: messages['common.close'], exact: true })).toBeVisible();
-		await expect(discard.getByRole('button', { name: 'Discard All Changes', exact: true })).toBeEnabled();
+		await expect(discard.getByRole('button', { name: messages['discard.title'], exact: true })).toBeEnabled();
 		expect(await cancelNode!.evaluate((element, name) => element.isConnected && element.textContent?.trim() === name, messages['settings.cancel'])).toBe(true);
 		if (locale === 'ru') expect(messages['settings.cancel']).toBe('Отмена');
 		expect(await discardNode!.evaluate(element => element.isConnected)).toBe(true);
 		expect(await snapshot(page)).toEqual(before);
 	}
-	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
+	expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start).filter(call => call.command !== 'open_project_link'), marker), persisted);
 	await discard.getByRole('button', { name: 'Cancel', exact: true }).click();
 	expect(await snapshot(page)).toEqual(before);
 });
@@ -1184,10 +1221,11 @@ test('S2: the real unsaved guard keeps descriptor action labels and dirty payloa
 	const restore = page.getByRole('dialog');
 	await restore.getByRole('checkbox').check();
 	await restore.getByRole('button', { name: 'Restore', exact: true }).click();
-	const unsaved = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Unsaved Changes', exact: true }) });
+	const unsaved = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: copyNames('unsaved.title'), exact: true }) });
+	await expect(unsaved.getByRole('heading')).toHaveText('Unsaved Changes');
 	await expect(unsaved).toBeVisible();
-	await expect(unsaved.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
-	await expect(unsaved.getByRole('button', { name: 'Discard', exact: true })).toBeVisible();
+	await expect(unsaved.getByRole('button', { name: copyNames('shell.save'), exact: true })).toBeVisible();
+	await expect(unsaved.getByRole('button', { name: copyNames('shell.discard'), exact: true })).toBeVisible();
 	const node = await unsaved.elementHandle();
 	const before = await snapshot(page);
 	const persisted = await persistedSettings(page);
@@ -1195,10 +1233,13 @@ test('S2: the real unsaved guard keeps descriptor action labels and dirty payloa
 	for (const locale of ['ru', 'en']) {
 		await switchEditor(page, locale);
 		const messages = await catalog(locale);
+		await expect(unsaved.getByRole('heading')).toHaveText(messages['unsaved.title']);
+		await expect(unsaved.getByRole('button', { name: messages['shell.save'], exact: true })).toBeVisible();
+		await expect(unsaved.getByRole('button', { name: messages['shell.discard'], exact: true })).toBeVisible();
 		await expect(unsaved.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
 		await expect(unsaved.getByRole('button', { name: messages['common.close'], exact: true })).toBeVisible();
-		await expect(unsaved.getByRole('button', { name: 'Save', exact: true })).toBeVisible();
-		await expect(unsaved.getByRole('button', { name: 'Discard', exact: true })).toBeVisible();
+		await expect(unsaved.getByRole('button', { name: copyNames('shell.save'), exact: true })).toBeVisible();
+		await expect(unsaved.getByRole('button', { name: copyNames('shell.discard'), exact: true })).toBeVisible();
 		expect(await node!.evaluate(element => element.isConnected)).toBe(true);
 		expect(await snapshot(page)).toEqual(before);
 	}
@@ -1213,7 +1254,7 @@ for (const [errors, warnings] of [[1, 1], [2, 2], [0, 1], [0, 2]]) {
 		await open(page);
 		await page.evaluate(([errorCount, warningCount]) => window.__h1!.validationCounts(errorCount, warningCount), [errors, warnings]);
 		const before = await snapshot(page);
-		await page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true }).click();
+		await page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: copyNames('shell.dirtySave'), exact: true }).click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog.getByRole('heading', { name: 'Pre-Save Validation', exact: true })).toBeVisible();
 		const node = await dialog.elementHandle();
@@ -1221,16 +1262,17 @@ for (const [errors, warnings] of [[1, 1], [2, 2], [0, 1], [0, 2]]) {
 		const marker = await page.evaluate(() => window.__h1!.calls.length);
 		const summary = errors ? `${errors} ${errors === 1 ? 'error' : 'errors'} and ${warnings} ${warnings === 1 ? 'warning' : 'warnings'} found.`
 			: `${warnings} ${warnings === 1 ? 'warning' : 'warnings'} found.`;
-		// P2 adds keys only to en.json. Selecting Russian exercises the actual per-key fallback.
+		// Both complete catalogs must render the same quantities with their own grammar.
 		for (const locale of ['en', 'ru']) {
 			await switchEditor(page, locale);
-			await expect(dialog.locator('[data-slot="dialog-description"]')).toHaveText(summary);
-			await expect(dialog.getByRole('button', { name: `Fix ${warnings} ${warnings === 1 ? 'Issue' : 'Issues'} Automatically`, exact: true })).toBeEnabled();
-			await expect(dialog.getByText('Auto-fixable', { exact: true })).toHaveCount(warnings);
-			await expect(dialog.getByText('Treatment', { exact: true })).toHaveCount(warnings);
-			await expect(dialog.getByText('Gear Rank', { exact: true })).toHaveCount(errors);
-			await expect(dialog.getByRole('button', { name: 'Save Anyway', exact: true })).toHaveCount(errors ? 0 : 1);
 			const messages = await catalog(locale);
+			const localizedSummary = locale === 'en' ? summary : errors ? `Обнаружено: ${errors} ${errors === 1 ? 'ошибка' : 'ошибки'} и ${warnings} ${warnings === 1 ? 'предупреждение' : 'предупреждения'}.` : `Обнаружено ${warnings} ${warnings === 1 ? 'предупреждение' : 'предупреждения'}.`;
+			await expect(dialog.locator('[data-slot="dialog-description"]')).toHaveText(localizedSummary);
+			await expect(dialog.getByRole('button', { name: locale === 'en' ? `Fix ${warnings} ${warnings === 1 ? 'Issue' : 'Issues'} Automatically` : copy(locale, 'validation.fixCount', { count: warnings, countText: String(warnings) }), exact: true })).toBeEnabled();
+			await expect(dialog.getByText(messages['validation.autoFixable'], { exact: true })).toHaveCount(warnings);
+			await expect(dialog.getByText(messages['validation.category.treatment'], { exact: true })).toHaveCount(warnings);
+			await expect(dialog.getByText(messages['validation.category.gear'], { exact: true })).toHaveCount(errors);
+			await expect(dialog.getByRole('button', { name: copyNames('validation.saveAnyway'), exact: true })).toHaveCount(errors ? 0 : 1);
 			await expect(dialog.getByRole('button', { name: messages['settings.cancel'], exact: true })).toBeVisible();
 			await expect(dialog.getByRole('button', { name: messages['common.close'], exact: true })).toBeVisible();
 			expect(await node!.evaluate(element => element.isConnected)).toBe(true);
@@ -1238,7 +1280,7 @@ for (const [errors, warnings] of [[1, 1], [2, 2], [0, 1], [0, 2]]) {
 		}
 		expectSwitchCalls(await page.evaluate(start => window.__h1!.calls.slice(start), marker), persisted);
 		await dialog.getByRole('button', { name: (await catalog('ru'))['settings.cancel'], exact: true }).click();
-		await expect(page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true })).toBeEnabled();
+		await expect(page.locator('[data-slot="sidebar-inset"] > header').getByRole('button', { name: copyNames('shell.dirtySave'), exact: true })).toBeEnabled();
 		expect(await snapshot(page)).toEqual(before);
 		expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['save_profile', 'create_backup'].includes(command)))).toEqual([]);
 	});
@@ -1256,7 +1298,7 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 	const detail = page.getByTestId('hero-detail');
 	await detail.getByRole('button', { name: 'Add Positive', exact: true }).click();
 	const quirkPicker = page.getByTestId('quirk-picker');
-	await quirkPicker.getByPlaceholder('Search quirks...').fill('warrior');
+	await quirkPicker.getByPlaceholder(copyNames('heroes.searchQuirks')).fill('warrior');
 	await expect(quirkPicker.getByText('english:warrior-of-light', { exact: true })).toBeVisible();
 	await detail.getByTestId('trinket-picker-trigger').first().click();
 	const trinketPicker = page.getByTestId('trinket-picker');
@@ -1267,7 +1309,7 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of allLocales) {
 		await switchEditor(page, locale);
-		const messages = await catalog(['en', 'de', 'ru', 'ja'].includes(locale) ? locale : 'en');
+		const messages = await catalog(locale);
 		await expect(page.locator('label[for=game-text-language]')).toHaveText(messages['settings.gameLanguage']);
 		await expect(detail.getByText('english:crusader', { exact: true })).toBeVisible();
 		await expect(quirkPicker.getByText('english:warrior-of-light', { exact: true })).toBeVisible();
@@ -1283,15 +1325,15 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 		// Both pickers survive the game-text switch with their current query and live results.
 		await expect(quirkPicker.getByText(`${language}:warrior-of-light`, { exact: true })).toBeVisible();
 		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
-		const trinketSearch = trinketPicker.getByPlaceholder('Search trinkets...');
+		const trinketSearch = trinketPicker.getByPlaceholder(copyNames('heroes.searchTrinkets'));
 		await trinketSearch.fill(`${language}:trinket-a`);
 		await expect(trinketPicker.getByText(`${language}:trinket-a`, { exact: true })).toBeVisible();
 		await expect(trinketPicker.getByText(`${language}:trinket-a`, { exact: true })).toHaveAttribute('lang', locale);
 		await trinketSearch.fill('no-such-trinket');
-		await expect(trinketPicker.getByText('No trinket found.', { exact: true })).toBeVisible();
+		await expect(trinketPicker.getByText(copy('ko', 'heroes.noTrinketFound'), { exact: true })).toBeVisible();
 		// Groups without matches are hidden, not left as empty headings.
-		await expect(trinketPicker.getByText('In your inventory', { exact: true })).toHaveCount(0);
-		await expect(trinketPicker.getByText('Add new from catalogue', { exact: true })).toHaveCount(0);
+		await expect(trinketPicker.getByText(copy('ko', 'heroes.inventoryHeading'), { exact: true })).toHaveCount(0);
+		await expect(trinketPicker.getByText(copy('ko', 'heroes.catalogueHeading'), { exact: true })).toHaveCount(0);
 		await trinketSearch.fill('trinket');
 		await expect(trinketSearch).toHaveValue('trinket');
 		// The open popover traps focus, so the quirk search is only reachable once it is dismissed.
@@ -1299,7 +1341,7 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 		await expect(trinketPicker).toHaveCount(0);
 		// The spaced English alias occurs in neither the hyphenated display fixture nor the raw id.
 		const quirkQuery = language === 'english' ? 'warrior' : 'Warrior of Light';
-		const quirkSearch = quirkPicker.getByPlaceholder('Search quirks...');
+		const quirkSearch = quirkPicker.getByPlaceholder(copyNames('heroes.searchQuirks'));
 		await quirkSearch.fill(quirkQuery);
 		await expect(quirkSearch).toHaveValue(quirkQuery);
 		await expect(quirkSearch).toBeFocused();
@@ -1308,7 +1350,7 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 		// Reopen the trinket picker so the next switch again happens with both pickers open.
 		await detail.getByTestId('trinket-picker-trigger').first().click();
 		await expect(trinketPicker).toBeVisible();
-		await expect(trinketPicker.getByPlaceholder('Search trinkets...')).toHaveValue('');
+		await expect(trinketPicker.getByPlaceholder(copyNames('heroes.searchTrinkets'))).toHaveValue('');
 		nodes[4] = await trinketPicker.elementHandle();
 		await expect(row).toHaveClass(/bg-accent/);
 		expect(await snapshot(page)).toEqual(before);
@@ -1375,7 +1417,7 @@ test('S3: IME Enter and keyCode 229 retain the hero name draft without committin
 	await page.getByTestId('hero-row-96').getByRole('button').click();
 	const detail = page.getByTestId('hero-detail');
 	await detail.getByRole('button', { name: 'Reynauld', exact: true }).click();
-	const input = detail.getByRole('textbox', { name: 'Hero name', exact: true });
+	const input = detail.getByRole('textbox', { name: copyNames('heroes.heroName'), exact: true });
 	await input.fill('名前の途中');
 	const before = await snapshot(page);
 	const node = await input.elementHandle();
@@ -1411,9 +1453,9 @@ test('S4: dirty estate names, wallet errors, invitations and trinkets stay mount
 	await amount.fill('-1');
 	await amount.press('Enter');
 	await expect(estate.getByRole('alert')).toBeVisible();
-	const search = estate.getByRole('textbox', { name: 'Search trinkets...', exact: true });
+	const search = estate.getByRole('textbox', { name: copyNames('estate.searchStorage'), exact: true });
 	await search.fill('ＴＲＩＮＫＥＴ');
-	const name = estate.getByRole('textbox', { name: 'Estate Name', exact: true });
+	const name = estate.getByRole('textbox', { name: copyNames('estate.name'), exact: true });
 	await name.fill('名前の途中');
 	const trinket = estate.getByTestId('estate-trinket-h1_trinket_a');
 	const nodes = await Promise.all([estate, name, amount, trinket].map((locator) => locator.elementHandle()));
@@ -1422,9 +1464,9 @@ test('S4: dirty estate names, wallet errors, invitations and trinkets stay mount
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of allLocales) {
 		await switchEditor(page, locale);
-		const messages = await catalog(['en', 'de', 'ru', 'ja'].includes(locale) ? locale : 'en');
+		const messages = await catalog(locale);
 		await expect(page.locator('label[for=editor-language]')).toHaveText(messages['settings.editorLanguage']);
-		await expect(estate.getByRole('heading', { name: 'Wallet', exact: true })).toBeVisible();
+		await expect(estate.getByRole('heading', { name: messages['estate.wallet'], exact: true })).toBeVisible();
 		await expect(estate.getByRole('alert')).toContainText(new Intl.NumberFormat(locale).format(999999999));
 		await expect(estate.getByText('english:baron-invitation', { exact: true })).toBeVisible();
 		await expect(name).toHaveValue('名前の途中');
@@ -1450,7 +1492,7 @@ test('S4: dirty estate names, wallet errors, invitations and trinkets stay mount
 			const caption = estate.getByText(`${language}:${suffix}`, { exact: true });
 			await expect(caption.locator('..')).toHaveAttribute('lang', locale);
 		}
-		await expect(estate.getByText('Busts', { exact: true })).toBeVisible();
+		await expect(estate.getByText(copy('ko', 'estate.heirloomCaption', { kind: 'bust' }), { exact: true })).toBeVisible();
 		await expect(name).toHaveValue('名前の途中');
 		await expect(amount).toHaveValue('-1');
 		await expect(search).toHaveValue('ＴＲＩＮＫＥＴ');
@@ -1465,7 +1507,7 @@ test('S4: dirty estate names, wallet errors, invitations and trinkets stay mount
 	await expect(estate.getByTestId('estate-trinket-h1_trinket_a')).toBeVisible();
 	await expect(estate.getByTestId('estate-trinket-h1_trinket_b')).toBeVisible();
 	await search.fill('missing-jewel');
-	await expect(estate.getByText('No trinkets match your search.', { exact: true })).toBeVisible();
+	await expect(estate.getByText(copy('ko', 'estate.noMatches'), { exact: true })).toBeVisible();
 });
 
 test('S4: dirty town treatment, upgrade and district names follow game text while expanded cards survive editor switches', async ({ page }, info) => {
@@ -1479,17 +1521,18 @@ test('S4: dirty town treatment, upgrade and district names follow game text whil
 	await abbey.getByRole('button').first().click();
 	await forge.getByRole('button').first().click();
 	const district = town.getByTestId('district-bank');
-	const nodes = await Promise.all([town, abbey, forge, district, abbey.getByRole('button', { name: 'Release', exact: true })].map((locator) => locator.elementHandle()));
+	const nodes = await Promise.all([town, abbey, forge, district, abbey.getByRole('button', { name: copyNames('town.release'), exact: true })].map((locator) => locator.elementHandle()));
 	const before = await snapshot(page);
 	const persisted = await persistedSettings(page);
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of allLocales) {
 		await switchEditor(page, locale);
-		const messages = await catalog(['en', 'de', 'ru', 'ja'].includes(locale) ? locale : 'en');
+		const messages = await catalog(locale);
 		await expect(page.locator('label[for=editor-language]')).toHaveText(messages['settings.editorLanguage']);
-		await expect(town.getByRole('heading', { name: 'Treatment Buildings', exact: true })).toBeVisible();
-		await expect(abbey.getByRole('button', { name: 'Release', exact: true })).toBeVisible();
-		await expect(town.getByText('-123456789 · Hero / instance 1234 · Tier opaque · Purchased', { exact: true })).toBeVisible();
+		await expect(town.getByRole('heading', { name: messages['town.treatmentBuildings'], exact: true })).toBeVisible();
+		await expect(abbey.getByRole('button', { name: messages['town.release'], exact: true })).toBeVisible();
+		await expect(abbey.getByRole('button', { name: copyNames('town.release'), exact: true })).toBeVisible();
+		await expect(town.getByText(copy(locale, 'town.unknownUpgrade', { tree: '-123456789', instance: '1234', tier: 'opaque', purchased: 'yes' }), { exact: true })).toBeVisible();
 		await expect(abbey.getByText('english:prayer', { exact: true })).toBeVisible();
 		expect(await snapshot(page)).toEqual(before);
 		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
@@ -1502,16 +1545,16 @@ test('S4: dirty town treatment, upgrade and district names follow game text whil
 			await expect(label).toBeVisible();
 			await expect(label).toHaveAttribute('lang', locale);
 		}
-		await expect(abbey.getByRole('button', { name: 'Release', exact: true })).toBeVisible();
+		await expect(abbey.getByRole('button', { name: copyNames('town.release'), exact: true })).toBeVisible();
 		expect(await snapshot(page)).toEqual(before);
 		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
 	await evidence(info, 's4-town-dirty.aria.txt', await town.ariaSnapshot());
-	// The existing store cascade still changes only this raw tree, with a list in the English fallback message locale.
-	await forge.getByRole('switch', { name: 'Toggle koreana:furnace, tier a', exact: true }).click();
-	await expect(page.getByText(`Also turned off tiers ${new Intl.ListFormat('en').format(['b', 'c'])}, which need tier a.`, { exact: true })).toBeVisible();
+	// The store cascade changes only this raw tree, with its list in the active Korean message locale.
+	await forge.getByRole('switch', { name: copy('ko', 'town.toggleTier', { name: 'koreana:furnace', tier: 'a' }), exact: true }).click();
+	await expect(page.getByText(copy('ko', 'town.cascade', { count: 2, tiers: new Intl.ListFormat('ko').format(['b', 'c']), requiredTier: 'a' }), { exact: true })).toBeVisible();
 	const after = await snapshot(page);
 	const expected = structuredClone(before.data);
 	const purchases = (expected.upgrades as { base_root: { purchases: Record<string, { is_purchased: boolean }> } }).base_root.purchases;
@@ -1523,7 +1566,7 @@ test('S4: estate name ignores composing Enter, Escape and keyCode 229, then comm
 	await page.goto('/estate?h1');
 	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
 	await page.evaluate(() => window.__h1!.edit());
-	const input = page.getByRole('textbox', { name: 'Estate Name', exact: true });
+	const input = page.getByRole('textbox', { name: copyNames('estate.name'), exact: true });
 	await input.fill('名前の途中');
 	const before = await snapshot(page);
 	const node = await input.elementHandle();
@@ -1573,7 +1616,7 @@ for (const route of ['estate', 'town'] as const) {
 		await switchGame(page, 'japanese');
 		await expect.poll(order).toEqual([prefix + b, prefix + a]);
 		if (route === 'town') {
-			await expect(identity.getByRole('button', { name: 'Release', exact: true })).toBeVisible();
+			await expect(identity.getByRole('button', { name: copyNames('town.release'), exact: true })).toBeVisible();
 			const buildings = await screen.locator('[data-testid^="building-"]').evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
 			expect(buildings.indexOf('building-tavern')).toBeLessThan(buildings.indexOf('building-abbey'));
 		}
@@ -1595,7 +1638,7 @@ test('S5: dirty raid, invalid buffer, same party slots and checked abandon dialo
 	await expect(raid.locator('p[role=alert]')).toBeVisible();
 	await page.getByLabel('Harness uncommitted name').fill('未確定 raid draft');
 	await page.getByLabel('Harness selected hero').selectOption('7');
-	await raid.getByRole('button', { name: 'Abandon Raid', exact: true }).click();
+	await raid.getByRole('button', { name: copyNames('raid.abandon'), exact: true }).click();
 	const dialog = page.getByRole('dialog');
 	await dialog.getByRole('checkbox').check();
 	const nodes = await Promise.all([raid, buffer, raid.getByRole('group', { includeHidden: true }).first(), dialog, dialog.getByRole('checkbox')].map((locator) => locator.elementHandle()));
@@ -1604,10 +1647,10 @@ test('S5: dirty raid, invalid buffer, same party slots and checked abandon dialo
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of allLocales) {
 		await switchEditor(page, locale);
-		await expect(dialog.getByRole('heading', { name: 'Abandon Raid', exact: true })).toBeVisible();
+		await expect(dialog.getByRole('heading', { name: copy(locale, 'raid.abandon'), exact: true })).toBeVisible();
 		await expect(dialog.getByRole('checkbox')).toBeChecked();
-		await expect(dialog.getByRole('button', { name: 'Abandon Raid', exact: true })).toBeEnabled();
-		await expect(dialog).toContainText('2 party inventory trinket(s) will return to estate storage.');
+		await expect(dialog.getByRole('button', { name: copy(locale, 'raid.abandon'), exact: true })).toBeEnabled();
+		await expect(dialog).toContainText(copy(locale, 'raid.returnedTrinkets', { count: 2, countText: new Intl.NumberFormat(locale).format(2) }));
 		await expect(raid.locator('p[role=alert]')).toContainText(new Intl.NumberFormat(locale).format(2147483647));
 		await expect(raid.getByText(new Intl.ListFormat(locale).format(['goal_a', 'goal_b', 'mod_goal']), { exact: true })).toHaveCount(1);
 		await expect(buffer).toHaveValue('-1');
@@ -1649,7 +1692,7 @@ test('S5: inconsistent raid warning keeps its code slot mounted through editor c
 	for (const locale of ['en', 'de', 'ru']) {
 		await switchEditor(page, locale);
 		await expect(code).toHaveText('inraid: true');
-		await expect(page.getByText('Raid State Inconsistent', { exact: true }).last()).toBeVisible();
+		await expect(page.getByText(copy(locale, 'raid.inconsistentTitle'), { exact: true }).last()).toBeVisible();
 		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
 		expect(await snapshot(page)).toEqual(before);
 	}
@@ -1669,7 +1712,7 @@ test('S6/D12: the same mounted raid safety refusal follows the H1 pseudo catalog
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of ['pseudo', 'en', 'pseudo', 'de', 'en'] as const) {
 		await page.evaluate((next) => window.__h1!.catalog(next), locale);
-		await expect(refusal).toHaveText(locale === 'pseudo' ? pseudoMessage(english) : english);
+		await expect(refusal).toHaveText(locale === 'pseudo' ? pseudoMessage(english) : copy(locale, 'raid.block.estate'));
 		expect(await node!.evaluate((element) => element.isConnected && element === document.querySelector('[data-testid=raid-safety-refusal]'))).toBe(true);
 		expect(await snapshot(page)).toEqual(before);
 	}
@@ -1696,23 +1739,24 @@ test('S5: all wizard steps render with no game path in en and de; selections and
 	const before = await snapshot(page);
 	const persisted = await persistedSettings(page);
 	const wizardNode = await wizard.elementHandle();
-	for (const [step, heading] of [[1, 'Game Installation Path'], [2, 'Save File Location'], [3, 'Confirmation']] as const) {
+	for (const [step, heading] of [[1, 'setup.gameTitle'], [2, 'setup.saveTitle'], [3, 'setup.confirmation']] as const) {
 		if (step === 2) {
-			await wizard.getByRole('button', { name: 'Next', exact: true }).click();
-			await wizard.getByRole('button', { name: 'Auto-detect Save Files', exact: true }).click();
+			await wizard.getByRole('button', { name: copyNames('setup.next'), exact: true }).click();
+			await wizard.getByRole('button', { name: copyNames('setup.detectSave'), exact: true }).click();
 		}
-		if (step === 3) await wizard.getByRole('button', { name: 'Next', exact: true }).click();
-		const stepNode = await wizard.getByRole('heading', { name: heading, exact: true }).elementHandle();
+		if (step === 3) await wizard.getByRole('button', { name: copyNames('setup.next'), exact: true }).click();
+		const stepNode = await wizard.getByRole('heading', { name: copyNames(heading), exact: true }).elementHandle();
 		const marker = await page.evaluate(() => window.__h1!.calls.length);
 		for (const locale of ['en', 'de']) {
 			await switchEditor(page, locale);
-			await expect(wizard.getByRole('heading', { name: heading, exact: true })).toBeVisible();
-			if (step !== 2) for (const dlc of ['Crimson Court', 'Shieldbreaker', 'Color of Madness', 'Musketeer']) {
+			await expect(wizard.getByRole('heading', { name: copy(locale, heading), exact: true })).toBeVisible();
+			if (step !== 2) for (const id of ['crimson_court', 'shieldbreaker', 'color_of_madness', 'musketeer']) {
+				const dlc = copy(locale, 'setup.dlcName', { dlc: id });
 				await expect(wizard.getByText(dlc, { exact: true })).toBeVisible();
 				await expect(wizard.getByText(dlc, { exact: true })).toHaveAttribute('lang', locale);
 			}
-			if (step !== 1) await expect(wizard.getByText('In Raid', { exact: true })).toBeVisible();
-			if (step === 3) await expect(wizard.getByRole('button', { name: 'Open Profile', exact: true })).toBeEnabled();
+			if (step !== 1) await expect(wizard.getByText(copy(locale, 'setup.inRaid'), { exact: true })).toBeVisible();
+			if (step === 3) await expect(wizard.getByRole('button', { name: copy(locale, 'setup.openProfile'), exact: true })).toBeEnabled();
 			expect(await wizardNode!.evaluate((element) => element.isConnected)).toBe(true);
 			expect(await stepNode!.evaluate((element) => element.isConnected)).toBe(true);
 			expect(await snapshot(page)).toEqual(before);
@@ -1740,7 +1784,7 @@ test('S5: wizard DLC names follow both real picker cycles with an available tabl
 	const marker = await page.evaluate(() => window.__h1!.calls.length);
 	for (const locale of allLocales) {
 		await switchEditor(page, locale);
-		await expect(wizard.getByRole('heading', { name: 'Game Installation Path', exact: true })).toBeVisible();
+		await expect(wizard.getByRole('heading', { name: copy(locale, 'setup.gameTitle'), exact: true })).toBeVisible();
 		expect(await snapshot(page)).toEqual(before);
 		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
 	}
@@ -1754,7 +1798,7 @@ test('S5: wizard DLC names follow both real picker cycles with an available tabl
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
-	await expect(wizard.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
+	await expect(wizard.getByRole('button', { name: copyNames('setup.next'), exact: true })).toBeEnabled();
 });
 
 test('S6: Settings tooltip actions have one element and busy detection keeps accessible help', async ({ page }) => {

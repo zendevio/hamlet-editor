@@ -1,14 +1,14 @@
 {
 	"en": "complete",
-	"fr": "in-progress",
-	"de": "in-progress",
-	"es": "in-progress",
-	"it": "in-progress",
-	"pt-BR": "in-progress",
-	"pl": "in-progress",
-	"cs": "in-progress",
-	"ru": "in-progress",
-	"zh-Hans": "in-progress",
-	"ja": "in-progress",
-	"ko": "in-progress"
+	"de": "complete",
+	"ru": "complete",
+	"ja": "complete",
+	"it": "complete",
+	"pl": "complete",
+	"pt-BR": "complete",
+	"cs": "complete",
+	"es": "complete",
+	"fr": "complete",
+	"ko": "complete",
+	"zh-Hans": "complete"
 }

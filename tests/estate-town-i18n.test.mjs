@@ -5,9 +5,23 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
+// Explicitly incomplete target catalogs preserve the English wording/fallback
+// oracles independently of how many production translations P3 ships. Editor
+// locale still controls numbers, collation and lists; mounted E2E tests use the
+// complete production catalogs.
+const fallbackCatalogFixture = {
+	name: 'partial-catalog-fallback-fixture', enforce: 'pre',
+	load(id) {
+		if (id === fileURLToPath(new URL('../src/lib/i18n/catalogs.ts', import.meta.url))) {
+			return `import en from ${JSON.stringify(fileURLToPath(new URL('../src/lib/i18n/catalogs/en.json', import.meta.url)))};
+				export const runtimeCatalogs = { en, de: {}, ru: {}, ja: {} };`;
+		}
+	}
+};
+
 const server = await createServer({
 	configFile: false, cacheDir: 'node_modules/.vite/estate-town-i18n-tests',
-	plugins: [svelte({ configFile: false })],
+	plugins: [fallbackCatalogFixture, svelte({ configFile: false })],
 	resolve: { alias: { '#lib': fileURLToPath(new URL('../src/lib', import.meta.url)) } },
 	server: { middlewareMode: true, watch: null, ws: false }, appType: 'custom', logLevel: 'error'
 });
@@ -120,8 +134,8 @@ test('estate and town count messages and cascade singular/plural stay whole in e
 	}
 });
 
-test('Russian one/few/many cascade contracts work without adding P2 translations to shipped catalogs', () => {
-	// Translation is test data only. P2 shipped ru intentionally falls back per key.
+test('Russian one/few/many cascade contracts work in an independent fixture', () => {
+	// Independent plural-rule fixture, separate from the complete shipped catalog.
 	const translator = createTranslator({ en, ru: {
 		'town.cascade': 'Отключены {count, plural, one {уровень} few {уровня} many {уровней} other {уровня}} {tiers}, нужен уровень {requiredTier}.'
 	} });

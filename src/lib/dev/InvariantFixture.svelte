@@ -31,7 +31,7 @@
 		<RichParts parts={richParts}>
 			{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
 			{#snippet code(children)}<code>{@render children()}</code>{/snippet}
-			{#snippet link(children)}<a href="https://github.com/AlinGheorghe/hamlet-editor">{@render children()}</a>{/snippet}
+			{#snippet link(children)}<a href="https://github.com/zendevio/hamlet-editor">{@render children()}</a>{/snippet}
 		</RichParts>
 	</p>
 	<p data-testid="game-name-pair" lang={gameText.effectiveLocale}>{localize('hero_class_name_crusader')} | {localize('hero_class_name_vestal')}</p>

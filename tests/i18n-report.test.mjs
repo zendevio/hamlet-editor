@@ -15,7 +15,7 @@ async function fixture() {
 	await cp(new URL('scripts/i18n.mjs', repo), join(root, 'scripts/i18n.mjs'));
 	await cp(new URL('src/lib/i18n/', repo), join(root, 'src/lib/i18n'), { recursive: true });
 	await cp(new URL('src-tauri/src/commands/native_menu.rs', repo), join(root, 'src-tauri/src/commands/native_menu.rs'));
-	for (const path of ['node_modules', 'scripts/i18n-contract.mjs', 'scripts/i18n-ratchet.mjs', 'scripts/i18n-fresh-keys.mjs', 'src/lib/dev/pseudo-locale.ts', 'src/lib/data/game-text-languages.ts']) {
+	for (const path of ['node_modules', 'scripts/i18n-contract.mjs', 'scripts/i18n-records-lib.mjs', 'scripts/i18n-ratchet.mjs', 'scripts/i18n-fresh-keys.mjs', 'src/lib/dev/pseudo-locale.ts', 'src/lib/data/game-text-languages.ts']) {
 		await symlink(fileURLToPath(new URL(path, repo)), join(root, path));
 	}
 	const allowlist = JSON.parse(await readFile(new URL('scripts/i18n-copy-allowlist.json', repo), 'utf8'));
@@ -46,14 +46,15 @@ test('checker writes actionable readiness diagnostics even when early gates fail
 		await editJSON(root, 'src/lib/i18n/pilot-status.json', (records) => {
 			const record = records.de['settings.restoreWarning'];
 			record.status = 'final';
-			record.reviewer = { family: 'anthropic', model: 'fixture', date: '2026-10-26' };
+			record.reviewer = { family: 'anthropic', model: 'fixture', date: '2026-10-26', instance: 'report-review' };
 			record.semanticVerdict = 'pass'; record.glossaryVersion = 'v1';
+			record.safetyVerdict = null;
 			record.reviewedSourceHash = record.sourceHash; record.reviewedTranslationHash = record.translationHash;
 		});
 		const source = await readFile(join(root, 'scripts/i18n.mjs'), 'utf8');
 		await writeFile(join(root, 'scripts/i18n.mjs'), source.replace('checkCardinalCategories(locale)', "checkCardinalCategories(locale, ['zero'])"));
 		const mapFile = join(root, 'src/lib/i18n/catalogs.ts');
-		await writeFile(mapFile, (await readFile(mapFile, 'utf8')).replace('{ en, de, ru, ja }', '{ en, de, ru }'));
+		await writeFile(mapFile, (await readFile(mapFile, 'utf8')).replace('en, de, ru, ja,', 'en, de, ru,'));
 		const nativeFile = join(root, 'src-tauri/src/commands/native_menu.rs');
 		await writeFile(nativeFile, (await readFile(nativeFile, 'utf8')).replaceAll('/catalogs/ja.json', '/catalogs/en.json'));
 		const result = run(root);
@@ -89,4 +90,27 @@ test('checker detects stale generated freshness and reports fatal reads and runt
 		report = JSON.parse(await readFile(join(root, 'test-results/readiness.json'), 'utf8'));
 		assert.ok(report.errors.some((error) => error.gate === 'catalog-validation' && error.message.includes('JSON')));
 	} finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('records CLI scopes authorship and archives to one locale', async () => {
+ const root = await fixture();
+ try {
+  await cp(new URL('scripts/i18n-records.mjs', repo), join(root, 'scripts/i18n-records.mjs'));
+  const recordFile = join(root, 'src/lib/i18n/pilot-status.json');
+  const before = JSON.parse(await readFile(recordFile, 'utf8'));
+  for (const locale of ['de', 'ru']) await editJSON(root, `src/lib/i18n/catalogs/${locale}.json`, (catalog) => { catalog['settings.gameLanguage'] += ' scope probe'; });
+  const drafter = { family: 'openai', model: 'fixture', date: '2026-10-26', instance: 'scoped-writer' };
+  const result = spawnSync(process.execPath, [join(root, 'scripts/i18n-records.mjs'), '--locale=de', `--drafter=${JSON.stringify(drafter)}`], { cwd: root, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const after = JSON.parse(await readFile(recordFile, 'utf8'));
+  assert.deepEqual(after.de['settings.gameLanguage'].drafter, drafter);
+  assert.deepEqual(after.de['settings.gameLanguage'].previous, before.de['settings.gameLanguage']);
+  assert.deepEqual(after.ru, before.ru);
+  assert.deepEqual(after.ja, before.ja);
+  assert.deepEqual(after.removed, before.removed);
+  const invalid = spawnSync(process.execPath, [join(root, 'scripts/i18n-records.mjs'), '--locale=missing'], { cwd: root, encoding: 'utf8' });
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stderr, /Unknown translated locale: missing/);
+ } finally { await rm(root, { recursive: true, force: true }); }
 });

@@ -61,6 +61,7 @@
 		restoreGameBackup,
 		type BackupEntry
 	} from '#lib/api/backup.js';
+	import { openProjectLink } from '#lib/api/links.js';
 	import { toggleMode, mode } from 'mode-watcher';
 	import { toast } from 'svelte-sonner';
 	import { onMount, getContext } from 'svelte';
@@ -280,6 +281,15 @@
 			showError(err, { id: 'settings.backupFailed' });
 		} finally {
 			creatingBackup = false;
+		}
+	}
+
+	async function openRepository(event: MouseEvent) {
+		event.preventDefault();
+		try {
+			await openProjectLink('repository');
+		} catch (err) {
+			showError(err, { id: 'error.unexpected' });
 		}
 	}
 
@@ -836,7 +846,7 @@
 						{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
 						{#snippet code(children)}<code>{@render children()}</code>{/snippet}
 						{#snippet link(children)}
-							<Button variant="ghost" size="sm" class="h-7 gap-1.5 text-xs" href="https://github.com/AlinGheorghe/hamlet-editor">
+							<Button variant="ghost" size="sm" class="h-7 gap-1.5 text-xs" href="https://github.com/zendevio/hamlet-editor" onclick={openRepository} onauxclick={(event) => event.button === 1 && openRepository(event)}>
 								<GithubLogoIcon size={14} />{@render children()}
 							</Button>
 						{/snippet}

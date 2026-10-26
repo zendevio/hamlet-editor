@@ -4,9 +4,23 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
+// Explicitly incomplete target catalogs preserve the English wording/fallback
+// oracles independently of how many production translations P3 ships. Editor
+// locale still controls numbers, collation and lists; mounted E2E tests use the
+// complete production catalogs.
+const fallbackCatalogFixture = {
+	name: 'partial-catalog-fallback-fixture', enforce: 'pre',
+	load(id) {
+		if (id === fileURLToPath(new URL('../src/lib/i18n/catalogs.ts', import.meta.url))) {
+			return `import en from ${JSON.stringify(fileURLToPath(new URL('../src/lib/i18n/catalogs/en.json', import.meta.url)))};
+				export const runtimeCatalogs = { en, de: {}, ru: {}, ja: {} };`;
+		}
+	}
+};
+
 const server = await createServer({
 	configFile: false, cacheDir: 'node_modules/.vite/shell-i18n-tests',
-	plugins: [svelte({ configFile: false })],
+	plugins: [fallbackCatalogFixture, svelte({ configFile: false })],
 	resolve: { alias: { '#lib': fileURLToPath(new URL('../src/lib', import.meta.url)) } },
 	server: { middlewareMode: true, watch: null, ws: false }, appType: 'custom', logLevel: 'error'
 });
@@ -55,7 +69,7 @@ test('summaries retain ids and status codes; the same objects render new game la
 	assert.equal(labels.heroClassName('unknown_mod'), 'unknown_mod');
 });
 
-test('status and category labels render through the catalog, including P2 per-key fallback', () => {
+test('status and category labels render through the catalog, including an explicit per-key fallback fixture', () => {
 	for (const locale of ['en', 'ru']) {
 		setEditorLocale(locale);
 		for (const [status, expected] of [[0, 'Available'], [1, 'In party'], [2, 'In Treatment'], [3, 'Dead'], [4, 'Missing']]) {
@@ -71,7 +85,7 @@ test('status and category labels render through the catalog, including P2 per-ke
 test('validation keeps both quantities in one sentence and pluralizes the fix action', () => {
 	for (const locale of ['en', 'ru']) {
 		setEditorLocale(locale);
-		// S2 keys are English-only until P3; Russian must use the per-key English contract.
+		// The deliberately incomplete Russian fixture must use the per-key English contract.
 		for (const [errors, warnings, expected] of [
 			[0, 0, '0 warnings found.'], [0, 1, '1 warning found.'], [0, 2, '2 warnings found.'],
 			[1, 0, '1 error and 0 warnings found.'], [1, 1, '1 error and 1 warning found.'],

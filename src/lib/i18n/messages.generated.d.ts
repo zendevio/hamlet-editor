@@ -515,6 +515,7 @@ export interface MessageParams {
 	"shell.toggleTheme": { };
 	"shell.toggleThemeHelp": { };
 	"shell.town": { };
+	"shell.translationDisclosure": { };
 	"shell.unsaved": { };
 	"startup.gameTextFallback": { };
 	"startup.languageFallback": { };

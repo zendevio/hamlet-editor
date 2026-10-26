@@ -87,8 +87,10 @@ test('every English message generates deterministically with the same contract a
 	}
 });
 
-const identity = (family, model = `${family} fixture model`, date = '2026-10-25') => ({ family, model, date });
-const person = (name, date = '2026-10-25') => ({ family: 'human', person: name, date });
+const identity = (family, model = `${family} fixture model`, date = '2026-10-25') => ({ family, model, date, instance: `fixture-${family}` });
+let personInstances = 0;
+// Every call is a fresh instance, so same-person checks prove the contract compares people, not fixture instances.
+const person = (name, date = '2026-10-25') => ({ family: 'human', person: name, date, instance: `fixture-human-${++personInstances}` });
 const draft = (sourceText = 'Source', translationText = 'Ziel') => ({ status: 'draft', sourceHash: sourceHash(sourceText), translationHash: sourceHash(translationText), sourceText, translationText, drafter: identity('openai') });
 const approved = () => ({ ...draft(), status: 'final', reviewer: identity('anthropic'), semanticVerdict: 'pass', glossaryVersion: 'v1', reviewedSourceHash: sourceHash('Source'), reviewedTranslationHash: sourceHash('Ziel') });
 
@@ -260,10 +262,10 @@ test('restoreWarning source deltas stay stale through both records-writer probes
 	assert.deepEqual(freshKeys(input, { de: { [id]: reviewed } }).de, [id]);
 });
 
-test('structured identities enforce semantic and safety reviewer families independently of model and date', () => {
+test('structured identities enforce semantic and safety reviewer instances independently of model and date', () => {
 	const record = approved();
 	for (const reviewer of [record.drafter, { ...record.drafter, model: 'Another model', date: '2026-10-26' }]) {
-		assert.throws(() => translationState({ ...record, reviewer }, 'Source', 'Ziel'), /Semantic reviewer must differ in family/);
+		assert.throws(() => translationState({ ...record, reviewer }, 'Source', 'Ziel'), /Semantic reviewer must differ in instance/);
 	}
 	for (const drafter of ['Codex, 2026-10-25', {}, { family: 'x', model: 'y' }, { family: 'x', model: 'y', date: 'yesterday' }]) {
 		assert.throws(() => translationState({ ...draft(), drafter }, 'Source', 'Ziel'), /identity/);
@@ -272,7 +274,7 @@ test('structured identities enforce semantic and safety reviewer families indepe
 		reviewer: identity('google'), action: 'Reset', object: 'Hero', conditions: 'Unsaved edits only', reversibility: 'Discard edits', scope: 'Memory', codePath: 'heroes', workflow: 'Reset hero' };
 	for (const family of ['openai', 'anthropic']) {
 		const reviewer = identity(family, 'Other model', '2026-10-26');
-		assert.throws(() => translationState({ ...record, safetyVerdict: { ...safetyVerdict, reviewer } }, 'Source', 'Ziel', true), /third independent reviewer family/);
+		assert.throws(() => translationState({ ...record, safetyVerdict: { ...safetyVerdict, reviewer } }, 'Source', 'Ziel', true), /third independent reviewer instance/);
 	}
 	assert.throws(() => translationState({ ...record, safetyVerdict: { ...safetyVerdict, reviewer: 'Third family' } }, 'Source', 'Ziel', true), /structured identity/);
 });
@@ -312,8 +314,9 @@ test('a changed translation requires a drafter and never inherits the previous a
 	for (const english of ['Source', 'Changed']) {
 		assert.throws(() => draftRecords({ title: english }, { de: { title: 'Neu' } }, original), /de:title: translation changed; supply --drafter/);
 		assert.throws(() => draftRecords({ title: english }, { de: { title: 'Neu' } }, original, identity('OpenAI Codex')), /family must be one of/);
-		const result = draftRecords({ title: english }, { de: { title: 'Neu' } }, original, person('Ana', '2026-10-26'));
-		assert.deepEqual(result.de.title.drafter, person('Ana', '2026-10-26'));
+		const ana = person('Ana', '2026-10-26');
+		const result = draftRecords({ title: english }, { de: { title: 'Neu' } }, original, ana);
+		assert.deepEqual(result.de.title.drafter, ana);
 		assert.deepEqual(result.de.title.previous, original.de.title);
 		assert.equal(translationState(result.de.title, english, 'Neu'), 'draft');
 	}
@@ -344,23 +347,23 @@ test('removing a key again keeps every earlier archived record in its previous c
 	assert.deepEqual(merged.previous.previous, first);
 });
 
-test('identity families are a closed list and human reviewers are compared by person', () => {
+test('identity families are a closed list and independence compares instances', () => {
 	assert.deepEqual(identityFamilies, ['anthropic', 'openai', 'google', 'human']);
 	for (const family of ['OpenAI Codex', 'open ai', ' openai ', 'OpenAI', 'claude', 'draft-family', '']) {
 		assert.throws(() => checkIdentity(identity(family), 'Translation drafter'), /family must be one of anthropic, openai, google, human/, family);
 	}
 	for (const family of ['anthropic', 'openai', 'google']) {
-		assert.equal(checkIdentity(identity(family), 'Translation drafter'), family);
+		assert.deepEqual(checkIdentity(identity(family), 'Translation drafter'), [`instance:fixture-${family}`]);
 		assert.throws(() => checkIdentity({ family, date: '2026-10-25' }, 'Translation drafter'), /missing model/);
 	}
-	assert.equal(checkIdentity(person('  Ana   Pop '), 'Translation drafter'), 'human:ana pop');
+	assert.deepEqual(checkIdentity({ ...person('  Ana   Pop '), instance: ' Sess-1 ' }, 'Translation drafter'), ['instance:sess-1', 'human:ana pop']);
 	for (const name of [undefined, '', '  ']) {
 		assert.throws(() => checkIdentity({ family: 'human', person: name, model: 'n/a', date: '2026-10-25' }, 'Translation drafter'), /missing person/);
 	}
-	// Two people are independent of each other; the same person is not, whatever the spelling or date.
+	// Each fixture call is a new instance, so these rejections come from the person comparison.
 	const humanDraft = { ...approved(), drafter: person('Ana') };
 	for (const reviewer of [person('Ana'), person(' ana ', '2026-10-27')]) {
-		assert.throws(() => translationState({ ...humanDraft, reviewer }, 'Source', 'Ziel'), /Semantic reviewer must differ .* in person when both are human/);
+		assert.throws(() => translationState({ ...humanDraft, reviewer }, 'Source', 'Ziel'), /Semantic reviewer must differ in instance from the drafter, and in person/);
 	}
 	for (const reviewer of [person('Ben'), identity('openai')]) assert.equal(translationState({ ...humanDraft, reviewer }, 'Source', 'Ziel'), 'final');
 	const safetyVerdict = { verdict: 'pass', independent: true, sourceHash: sourceHash('Source'), translationHash: sourceHash('Ziel'),
@@ -372,4 +375,19 @@ test('identity families are a closed list and human reviewers are compared by pe
 	for (const reviewer of [person('Cara'), identity('google')]) {
 		assert.equal(translationState({ ...twoPeople, safetyVerdict: { ...safetyVerdict, reviewer } }, 'Source', 'Ziel', true), 'final');
 	}
+});
+
+
+test('same-family fresh instances are independent and missing instance is rejected', () => {
+ const record = { ...approved(), reviewer: { ...identity('openai'), instance: 'fresh-review' } };
+ assert.equal(translationState(record, 'Source', 'Ziel'), 'final');
+ assert.throws(() => translationState({ ...record, reviewer: { ...identity('google'), instance: record.drafter.instance } }, 'Source', 'Ziel'), /Semantic reviewer must differ in instance/);
+ assert.throws(() => translationState({ ...record, reviewer: { ...identity('google'), instance: ` ${record.drafter.instance.toUpperCase()} ` } }, 'Source', 'Ziel'), /Semantic reviewer must differ in instance/);
+ const { instance, ...missing } = identity('openai');
+ assert.throws(() => checkIdentity(missing, 'Drafter'), /missing instance/);
+ assert.throws(() => checkIdentity({ ...missing, instance: '  ' }, 'Drafter'), /missing instance/);
+ const verdict = { verdict: 'pass', independent: true, sourceHash: record.sourceHash, translationHash: record.translationHash,
+ reviewer: { ...identity('openai'), instance: 'fresh-safety' }, action: 'Reset', object: 'Hero', conditions: 'Unsaved only', reversibility: 'Discard', scope: 'Memory', codePath: 'heroes', workflow: 'Reset' };
+ assert.equal(translationState({ ...record, safetyVerdict: verdict }, 'Source', 'Ziel', true), 'final');
+ assert.throws(() => translationState({ ...record, safetyVerdict: { ...verdict, reviewer: { ...identity('anthropic'), instance: record.reviewer.instance } } }, 'Source', 'Ziel', true), /third independent reviewer instance/);
 });

@@ -82,6 +82,7 @@
 	import { isGameRunning, detectSaveLocations, type SaveLocation } from '#lib/api/detect.js';
 	import { saveProfile } from '#lib/api/save.js';
 	import { createBackup } from '#lib/api/backup.js';
+	import { openProjectLink, type ProjectLink } from '#lib/api/links.js';
 	import { getGameTextState, requestGameText } from '#lib/stores/game-text.svelte.js';
 	import { GAME_TEXT_LANGUAGES } from '#lib/data/game-text-languages.js';
 	import { showPersistentError, showError, dismissError } from '#lib/i18n/notifications.js';
@@ -136,6 +137,15 @@
 	let sidebarSaveLocations = $state<SaveLocation[]>([]);
 
 	/** Switch to a different profile from the sidebar selector. */
+	async function openLink(event: MouseEvent, link: ProjectLink) {
+		event.preventDefault();
+		try {
+			await openProjectLink(link);
+		} catch (err) {
+			showError(err, { id: 'error.unexpected' });
+		}
+	}
+
 	async function handleSidebarProfileChange(newProfilePath: string) {
 		if (newProfilePath === settings.savePath || isProfileLoading) return;
 		const loc = sidebarSaveLocations.find((l) => l.path === newProfilePath);
@@ -631,6 +641,13 @@
 					{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
 					{#snippet code(children)}<code>{@render children()}</code>{/snippet}
 					{#snippet link(children)}<span>{@render children()}</span>{/snippet}
+				</Message>
+			</p>
+			<p>
+				<Message id="shell.translationDisclosure" params={{}}>
+					{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
+					{#snippet code(children)}<code>{@render children()}</code>{/snippet}
+					{#snippet link(children)}<a href="https://github.com/zendevio/hamlet-editor/issues" class="underline" onclick={(event) => openLink(event, 'issues')} onauxclick={(event) => event.button === 1 && openLink(event, 'issues')}>{@render children()}</a>{/snippet}
 				</Message>
 			</p>
 			<p class="text-xs leading-relaxed border border-border bg-muted/30 p-3">

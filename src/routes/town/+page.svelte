@@ -172,8 +172,8 @@
 				<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
 					{#each districts as district (district.id)}
 						<Card data-testid="district-{district.id}" class="p-0">
-							<CardContent class="flex items-center justify-between px-4 py-3">
-								<span lang={gameTextLocale()} class="text-sm font-medium">
+							<CardContent class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-4 py-3">
+								<span lang={gameTextLocale()} class="min-w-0 break-words text-sm font-medium">
 									{districtName(district.id)}
 								</span>
 								<div class="flex items-center gap-2">

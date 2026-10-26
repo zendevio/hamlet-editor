@@ -6,6 +6,14 @@ fn catalog_source(locale: &str) -> Option<&'static str> {
         "de" => include_str!("../../../src/lib/i18n/catalogs/de.json"),
         "ru" => include_str!("../../../src/lib/i18n/catalogs/ru.json"),
         "ja" => include_str!("../../../src/lib/i18n/catalogs/ja.json"),
+        "fr" => include_str!("../../../src/lib/i18n/catalogs/fr.json"),
+        "es" => include_str!("../../../src/lib/i18n/catalogs/es.json"),
+        "it" => include_str!("../../../src/lib/i18n/catalogs/it.json"),
+        "pt-BR" => include_str!("../../../src/lib/i18n/catalogs/pt-BR.json"),
+        "pl" => include_str!("../../../src/lib/i18n/catalogs/pl.json"),
+        "cs" => include_str!("../../../src/lib/i18n/catalogs/cs.json"),
+        "zh-Hans" => include_str!("../../../src/lib/i18n/catalogs/zh-Hans.json"),
+        "ko" => include_str!("../../../src/lib/i18n/catalogs/ko.json"),
         _ => return None,
     })
 }
@@ -216,6 +224,11 @@ mod tests {
                 assert_ne!(label(locale, role), role);
             }
             assert_eq!(label("__missing__", role), label("en", role));
+        }
+        for locale in [
+            "fr", "de", "es", "it", "pt-BR", "pl", "cs", "ru", "zh-Hans", "ja", "ko",
+        ] {
+            assert_ne!(label(locale, "edit"), label("en", "edit"), "{locale}");
         }
         assert_eq!(label("de", "edit"), "Bearbeiten");
         assert_eq!(label("ru", "copy"), "Копировать");
