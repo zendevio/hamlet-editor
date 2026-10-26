@@ -103,7 +103,7 @@
 				{name.charAt(0).toUpperCase()}
 			</div>
 		{/if}
-		<span class="text-xs font-medium text-muted-foreground">{name}</span>
+		<span class="min-w-0 break-words text-xs font-medium text-muted-foreground">{name}</span>
 	</div>
 	<div class="px-0">
 		{#if editing}

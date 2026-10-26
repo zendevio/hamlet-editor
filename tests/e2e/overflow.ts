@@ -476,11 +476,33 @@ export function measureOverflow(options: { markScrollers?: boolean; anchorExempt
 export async function overflowEvidence(page: Page, info: TestInfo, context: Context, baseline: readonly BaselineEntry[]) {
 	// Fonts loaded, finite animations finished and two frames rendered, so
 	// components that react to a scroll (select scroll buttons) have settled.
-	const settle = () => page.evaluate(async () => {
-		await document.fonts.ready;
-		await Promise.allSettled(document.getAnimations().filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity).map((animation) => animation.finished));
-		await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-	});
+	// Floating content (popovers, menus) repositions over several frames after a
+	// scroll: its position, then its available height, then its position again.
+	// Wait until it holds still for two frames (at most 30 frames), then measure
+	// it where it rests, so a transient frame on a slow runner is not a finding.
+	const settle = async () => {
+		const stable = await page.evaluate(async () => {
+			await document.fonts.ready;
+			await Promise.allSettled(document.getAnimations().filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity).map((animation) => animation.finished));
+			const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			const floating = () => Array.from(document.querySelectorAll('[data-bits-floating-content-wrapper]'), (element) => {
+				const rect = element.getBoundingClientRect();
+				return `${rect.x},${rect.y},${rect.width},${rect.height}`;
+			}).join('|');
+			await frame();
+			await frame();
+			let previous = floating(), still = 0;
+			for (let count = 0; count < 30 && still < 2; count++) {
+				await frame();
+				const current = floating();
+				still = current === previous ? still + 1 : 0;
+				previous = current;
+			}
+			return still >= 2;
+		});
+		// Content that never comes to rest cannot be measured fairly; fail rather than sample it.
+		if (!stable) throw new Error('Floating content did not settle within 30 frames');
+	};
 	await settle();
 	const allShots = process.env.H1_OVERFLOW_SCREENSHOTS === 'all';
 	const screenshots: string[] = [];

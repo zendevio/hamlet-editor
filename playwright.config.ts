@@ -6,6 +6,8 @@ export default defineConfig({
 	forbidOnly: Boolean(process.env.CI),
 	retries: 0,
 	workers: process.env.CI ? 2 : undefined,
+	// Hosted CI runners are two to three times slower than a developer machine.
+	timeout: process.env.CI ? 60_000 : 30_000,
 	outputDir: process.env.H1_OUTPUT_DIR ?? 'test-results/h1',
 	// Runs after the webServer answers and before any worker: waits until every
 	// route the suite mounts is compiled and ready, so a cold Vite cache cannot
