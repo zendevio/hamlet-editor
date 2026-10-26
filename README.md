@@ -61,7 +61,7 @@ Get the latest version from the [Releases page](https://github.com/zendevio/haml
 | System | File |
 | --- | --- |
 | Windows 10/11 | `...windows_x64-setup.exe` (or `.msi`) |
-| macOS 11 or later | `...darwin_universal.dmg` (Intel and Apple Silicon) |
+| macOS 11 or later with Safari 16.4 or newer (install updates via Software Update) | `...darwin_universal.dmg` (Intel and Apple Silicon) |
 | Linux | `.AppImage`, `.deb` or `.rpm` |
 
 The builds are free and not signed with a paid certificate, so your system will warn you the first time. Open the section for your system:
@@ -157,9 +157,16 @@ The save format work builds on robojumper's open-source editor (see Credits).
 
 ## Languages and privacy
 
-Language detection reads your system language preferences and only the language values from the game's options file and the Steam app manifest. This happens locally; these values are never sent anywhere. The editor and game text languages can be chosen separately in Settings, including before game setup. Automatic choices are resolved again at launch. If detection is unavailable at startup, automatic editor language uses English for that launch; a stored manual choice is retained. Corrupt settings are moved into a timestamped folder in the settings folder before starting from defaults. Unreadable settings and read timeouts disable settings writes for that launch. A persistent notice explains what happened.
+Version 1.1 has separate **Editor language** and **Game text language** settings, usable before game setup. The 12 supported choices are English, French, German, Spanish, Italian, Brazilian Portuguese, Polish, Czech, Russian, Simplified Chinese, Japanese and Korean. Editor language controls buttons, instructions, warnings and number/date formatting. Game text language controls names such as hero classes, quirks, trinkets and buildings, using the installed game's tables. Mod translations are not supported in 1.1; unknown content keeps readable ids. Changing either language preserves your edits and saved ids.
 
-On Linux, Chinese, Japanese and Korean need system CJK fonts, for example the `fonts-noto-cjk` package on Debian/Ubuntu or `noto-fonts-cjk` on Arch. CJK fonts are not bundled. App-owned macOS menu items follow the editor language. Items macOS adds or manages and native panel buttons follow the system language; installers follow the OS language or English. Languages without a drafted catalog fall back to English per message during the translation beta.
+Editor language defaults to **System**, using the first supported system preference, then the game's language when it is one of the 12, then English. Game text language defaults to **Match game**, checking the game's options, then its Steam manifest, then the editor language. **Same as editor** and explicit choices are also available. Settings shows the resolved language and its source. Automatic choices are resolved again at launch. If detection is unavailable at startup, automatic editor language uses English for that launch; a stored manual choice is retained. Missing editor translations fall back per message to English. If game text cannot load, the previous working table stays visible and Settings explains the fallback.
+
+Language detection reads your system language preferences and only the language values and source metadata from the selected game's options file and Steam app manifest. This happens locally; these values are never sent anywhere. Corrupt settings are moved into a timestamped folder in the settings folder before starting from defaults. Unreadable settings and read timeouts disable settings writes for that launch. A persistent notice explains what happened.
+
+**Translations:** editor translations are machine-drafted and reviewed, but not by native speakers. German, Russian and Japanese have partial drafts covering Settings, startup notices and menus; other messages use English. Report mistakes as [issues](https://github.com/zendevio/hamlet-editor/issues), with the language, the text and where it appears.
+<!-- Before the 1.1 release, replace this draft disclosure with actual per-language review coverage. Do not imply native review without evidence. -->
+
+On Linux, Chinese, Japanese and Korean need system CJK fonts, for example the `fonts-noto-cjk` package on Debian/Ubuntu or `noto-fonts-cjk` on Arch. CJK fonts are not bundled; this prerequisite does not imply tested glyph coverage. App-owned macOS menu items and native dialog titles supplied by the editor follow the editor language. Items macOS adds or manages and native panel buttons follow the system language; installers follow the OS language or English.
 
 ## Credits
 

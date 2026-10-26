@@ -110,8 +110,10 @@
 									<div
 										class="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded border px-3 py-2"
 									>
-										<div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-											<Badge variant="outline" class="h-auto min-h-5 max-w-full whitespace-normal break-words text-xs">
+										<!-- An 8rem minimum moves a long Release label to its own line instead of squeezing
+										     the slot label; overflow-wrap:anywhere breaks one long game word inside the badge. -->
+										<div class="flex min-w-32 flex-1 flex-wrap items-center gap-3">
+											<Badge variant="outline" class="h-auto min-h-5 max-w-full whitespace-normal text-xs [overflow-wrap:anywhere]">
 												<Message id="town.activitySlot" params={{ name: activityDisplayName(activity), slotText: formatNumber(Number(slot.slotIndex) + 1) }}>
 													{#snippet code(children)}{@render children()}{/snippet}
 													{#snippet link(children)}{@render children()}{/snippet}

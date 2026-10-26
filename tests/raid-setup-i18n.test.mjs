@@ -26,6 +26,30 @@ const en = JSON.parse(await readFile(new URL('../src/lib/i18n/catalogs/en.json',
 const fixture = JSON.parse(await readFile(new URL('./fixtures/run7-snap-3.json', import.meta.url), 'utf8'));
 beforeEach(() => { store.resetSaveData(); game.resetGameData(); setEditorLocale('en'); });
 
+test('raid difficulty language follows the table, English fallback or editor unknown message', () => {
+	setEditorLocale('de');
+	game.setNameTable({}, 'japanese');
+	assert.equal(labels.raidDifficultyLang(2), 'de');
+	assert.equal(labels.raidDifficultyLang(1), 'en');
+	game.setNameTable({ town_quest_difficulty_2: '日本語' }, 'japanese');
+	assert.equal(labels.raidDifficultyLang(2), 'ja');
+	game.setNameTable({ town_quest_difficulty_2: ' ' }, 'japanese');
+	assert.equal(labels.raidDifficultyLang(2), 'de');
+});
+
+test('dungeon and length language tags follow table, aliases, blank and English fallbacks', () => {
+	setEditorLocale('de');
+	game.setNameTable({}, 'japanese');
+	for (const id of ['crypts', 'ruins', 'farmstead', 'unknown_mod_dungeon']) assert.equal(labels.dungeonNameLang(id), 'en');
+	for (const length of [1, 2, 9]) assert.equal(labels.raidLengthLang(length), 'en');
+	game.setNameTable({ dungeon_name_crypts: '遺跡', dungeon_name_farm: '農場', town_quest_length_2: '中' }, 'japanese');
+	for (const id of ['crypts', 'ruins', 'farmstead']) assert.equal(labels.dungeonNameLang(id), 'ja');
+	assert.equal(labels.raidLengthLang(2), 'ja');
+	game.setNameTable({ dungeon_name_crypts: ' ', town_quest_length_2: ' ' }, 'japanese');
+	assert.equal(labels.dungeonNameLang('ruins'), 'en');
+	assert.equal(labels.raidLengthLang(2), 'en');
+});
+
 const block = (d) => raid.abandonRaidBlockReason(d.game, d.raid, d.roster, d.estate);
 test('all raid refusals are retained complete-message descriptors and never mutate payloads', () => {
 	const ids = new Set();

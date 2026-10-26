@@ -2,6 +2,7 @@
      For typical DD1 rosters (< 30 heroes), this performs well.
      Virtual scrolling can be added later if needed for heavily modded games. -->
 <script lang="ts">
+	import { mergeProps } from 'bits-ui';
 	import { t } from '#lib/i18n/index.svelte.js';
 	import { formatNumber, compareNames } from '#lib/i18n/intl.js';
 	import { heroClassEnglishName, heroStatusLabel, heroClassName, gameTextLocale } from '#lib/save-labels.js';
@@ -142,10 +143,12 @@
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
-	<!-- Search & Controls -->
-	<div class="flex flex-col gap-2 border-b p-3">
-		<div class="flex items-center gap-2">
-			<div class="relative min-w-0 flex-2">
+	<!-- Search & Controls: in a short pane the open filters scroll instead of
+	     squeezing the hero list below out of view. -->
+	<div class="flex min-h-0 flex-col gap-2 overflow-y-auto border-b p-3">
+		<!-- Wraps in a narrow pane; the minimum widths keep search and sort readable. -->
+		<div class="flex flex-wrap items-center gap-2">
+			<div class="relative min-w-32 flex-2">
 				<MagnifyingGlassIcon
 					class="text-muted-foreground absolute left-2 top-1/2 -translate-y-1/2"
 					size={14}
@@ -159,21 +162,22 @@
 			</div>
 			<Tooltip>
 				<TooltipTrigger>
-					<Button
-						variant={showFilters ? 'secondary' : 'ghost'}
-						size="sm"
-						class="h-8 w-8 p-0"
-						onclick={() => (showFilters = !showFilters)}
-						aria-label={t('heroes.toggleFilters')}
-						aria-expanded={showFilters}
-					>
-						<FunnelSimpleIcon size={14} />
-					</Button>
+					{#snippet child({ props })}
+						<Button {...mergeProps(props, { onclick: () => (showFilters = !showFilters) })}
+							variant={showFilters ? 'secondary' : 'ghost'}
+							size="sm"
+							class="h-8 w-8 p-0"
+							aria-label={t('heroes.toggleFilters')}
+							aria-expanded={showFilters}
+						>
+							<FunnelSimpleIcon size={14} />
+						</Button>
+					{/snippet}
 				</TooltipTrigger>
 				<TooltipContent>{t('heroes.toggleFilters')}</TooltipContent>
 			</Tooltip>
 			<Select type="single" bind:value={sortBy}>
-				<SelectTrigger class="h-8 flex-1 min-w-0 text-xs">
+				<SelectTrigger class="h-8 min-w-fit flex-1 text-xs">
 					<span class="text-xs truncate">{t('heroes.sort', { sort: sortBy })}</span>
 				</SelectTrigger>
 				<SelectContent>
@@ -252,7 +256,7 @@
 	</div>
 
 	<!-- Hero List -->
-	<ScrollArea class="flex-1 min-h-0">
+	<ScrollArea class="min-h-32 flex-1">
 		{#if sortedHeroes.length === 0}
 			<div class="flex flex-col items-center justify-center gap-2 py-12">
 				<p class="text-muted-foreground text-sm">{t('heroes.noHeroesMatchYourFilters')}</p>
@@ -266,58 +270,57 @@
 					{@const isActive = activeGuid === hero.guid}
 					{@const isSelected = selectedGuids.has(hero.guid)}
 					{@const isDead = hero.status === 3}
-					<button
-						class="group flex w-full cursor-pointer items-center gap-3 border-b px-3 py-2.5 text-left transition-colors
+					<div
+						class="group flex w-full items-center gap-3 border-b px-3 py-2.5 text-left transition-colors
 							{isActive ? 'bg-accent' : 'hover:bg-muted/50'}
 							{isDead ? 'opacity-60' : ''}"
 						data-testid={`hero-row-${hero.guid}`}
-						onclick={() => selectHero(hero.guid)}
 					>
-						<!-- Checkbox -->
-						<div
-							onclick={(e) => e.stopPropagation()}
-							onkeydown={(e) => { if (e.key === ' ') e.stopPropagation(); }}
-							role="presentation"
+						<Checkbox
+							checked={isSelected}
+							onCheckedChange={() => toggleSelect(hero.guid)}
+							aria-label={hero.name}
+							class="h-3.5 w-3.5"
+						/>
+						<button
+							type="button"
+							class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+							onclick={() => selectHero(hero.guid)}
 						>
-							<Checkbox
-								checked={isSelected}
-								onCheckedChange={() => toggleSelect(hero.guid)}
-								class="h-3.5 w-3.5"
-							/>
-						</div>
-
-						<!-- Portrait -->
-						<div class="relative size-12 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
-							{#if isDead}
-								<div class="bg-muted flex size-12 items-center justify-center">
-									<SkullIcon size={18} class="text-muted-foreground" />
-								</div>
-							{:else}
-								<GameAssetImage
-									gamePath={settings.gamePath}
-									relativePath={getPortraitPath(hero.heroClass)}
-									alt={hero.name}
-									class="size-12 object-cover"
-								/>
-							{/if}
-						</div>
-
-						<!-- Name + Level -->
-						<div class="min-w-0 flex-1">
-							<div class="flex items-center gap-1.5">
-								<span class="truncate text-sm font-medium {isDead ? 'line-through' : ''}">
-									{hero.name}
-								</span>
-								<Badge variant="outline" class="h-4 shrink-0 px-1 text-[10px]">
-									{t('heroes.levelShort', { levelText: formatNumber(hero.resolveLevel) })}
-								</Badge>
+							<!-- Portrait -->
+							<div class="relative size-12 shrink-0 overflow-hidden {isDead ? 'opacity-50' : ''}">
+								{#if isDead}
+									<div class="bg-muted flex size-12 items-center justify-center">
+										<SkullIcon size={18} class="text-muted-foreground" />
+									</div>
+								{:else}
+									<GameAssetImage
+										gamePath={settings.gamePath}
+										relativePath={getPortraitPath(hero.heroClass)}
+										alt=""
+										class="size-12 object-cover"
+									/>
+								{/if}
 							</div>
-							<span lang={gameTextLocale()} class="text-muted-foreground truncate text-xs">{heroClassName(hero.heroClass)}</span>
-						</div>
 
-						<!-- Status dot -->
-						<span class="h-2 w-2 shrink-0 rounded-full {hero.statusDotClass}"></span>
-					</button>
+							<!-- Name + Level. The block truncates the inline class line, which keeps
+							     its line box: truncate on an inline span has no effect. -->
+							<div class="min-w-0 flex-1 truncate">
+								<div class="flex items-center gap-1.5">
+									<span class="truncate text-sm font-medium {isDead ? 'line-through' : ''}" title={hero.name}>
+										{hero.name}
+									</span>
+									<Badge variant="outline" class="h-4 shrink-0 px-1 text-[10px]">
+										{t('heroes.levelShort', { levelText: formatNumber(hero.resolveLevel) })}
+									</Badge>
+								</div>
+								<span lang={gameTextLocale()} class="text-muted-foreground text-xs" title={heroClassName(hero.heroClass)}>{heroClassName(hero.heroClass)}</span>
+							</div>
+
+							<!-- Status dot -->
+							<span class="h-2 w-2 shrink-0 rounded-full {hero.statusDotClass}"></span>
+						</button>
+					</div>
 				{/each}
 			</div>
 		{/if}

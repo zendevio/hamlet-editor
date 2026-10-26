@@ -571,5 +571,6 @@
 	"setup.saveProfile": "Save Profile",
 	"setup.openProfile": "Open Profile",
 	"setup.source": "{source, select, Steam {Steam} Gog {GOG} Epic {Epic} other {Manual}}",
-	"setup.dlcName": "{dlc, select, crimson_court {Crimson Court} shieldbreaker {Shieldbreaker} color_of_madness {Color of Madness} musketeer {Musketeer} other {Unknown}}"
+	"setup.dlcName": "{dlc, select, crimson_court {Crimson Court} shieldbreaker {Shieldbreaker} color_of_madness {Color of Madness} musketeer {Musketeer} other {Unknown}}",
+	"raid.lostItem": "<emphasis>{name}</emphasis>: {amount}"
 }

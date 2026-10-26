@@ -410,7 +410,7 @@
 				{/if}
 			</div>
 
-			<DialogFooter class="flex-row justify-between sm:justify-between">
+			<DialogFooter class="flex-row flex-wrap justify-between sm:justify-between">
 				<Button variant="outline" onclick={prevStep}>
 					<ArrowLeftIcon size={16} class="mr-1" />
 					{t('setup.back')}

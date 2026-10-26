@@ -195,7 +195,8 @@
 		"context": "Button and dialog title for restoring the game-owned backup/ folder.",
 		"lengthHint": "Button and compact modal heading.",
 		"tone": "Explicitly distinguish the game backup from editor backups.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.recentBackups": {
 		"context": "Subheading above timestamped editor backup rows.",
@@ -222,7 +223,8 @@
 		"context": "Backup-row button opens confirmation; destructive dialog button executes the selected restore after confirmation.",
 		"lengthHint": "Very short action label on both buttons.",
 		"tone": "Direct action; surrounding confirmation explains overwrite.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.display": {
 		"context": "Settings appearance card title.",
@@ -278,13 +280,15 @@
 		"context": "Modal title when confirming a selected editor backup.",
 		"lengthHint": "Compact modal heading.",
 		"tone": "Explicit action heading.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.restoreDescription": {
 		"context": "Selected-backup modal description before the file-change summary.",
 		"lengthHint": "One or two wrapping lines.",
 		"tone": "Safety text; current files on disk will be replaced.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.checkAgain": {
 		"context": "Button rerunning restore preflight after a blocked result.",
@@ -296,13 +300,15 @@
 		"context": "Amber warning inside selected-backup restore modal.",
 		"lengthHint": "Full wrapping safety paragraph.",
 		"tone": "Preserve safety-backup guarantee and loss of unsaved in-memory edits.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.restoreConfirm": {
 		"context": "Checkbox text required before either restore can run.",
 		"lengthHint": "Wrapping checkbox label.",
 		"tone": "Explicit acknowledgement that current save files are overwritten.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.cancel": {
 		"context": "Cancel buttons in Settings restore dialogs, Discard All Changes, Unsaved Changes, and Pre-Save Validation dialogs.",
@@ -314,13 +320,15 @@
 		"context": "Game-backup restore modal description, before preflight summary.",
 		"lengthHint": "Two wrapping lines.",
 		"tone": "Factual; backup/ is a literal folder name.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.gameRestoreWarning": {
 		"context": "Amber warning inside game-owned backup restore modal.",
 		"lengthHint": "Full wrapping safety paragraph.",
 		"tone": "Preserve backup source, safety backup and loss of unsaved edits.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.restoreOutcome": {
 		"context": "Preflight file-change summary appended to either restore modal description.",
@@ -330,7 +338,8 @@
 			"adds",
 			"addsText",
 			"removes"
-		]
+		],
+		"safety": true
 	},
 	"settings.gameDetected": {
 		"context": "Success toast title after a detected installation path is applied.",
@@ -426,31 +435,36 @@
 		"context": "Persistent error toast when restore preflight throws; raw diagnostic stays copyable.",
 		"lengthHint": "Short persistent title.",
 		"tone": "Safety failure; restoring has not started.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.backupRestored": {
 		"context": "Success toast after selected editor backup restore and reload.",
 		"lengthHint": "Short toast title.",
 		"tone": "Completed disk restore.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.restoreFailed": {
 		"context": "Persistent error toast if either restore workflow fails; raw diagnostic follows.",
 		"lengthHint": "Short persistent title.",
 		"tone": "Safety failure; preserve recovery detail separately.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.gameBackupRestored": {
 		"context": "Success toast after game-owned backup restore and profile reload.",
 		"lengthHint": "Short toast title.",
 		"tone": "Completed game-backup restore.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.gameBackupRestoredHelp": {
 		"context": "Description below game-backup success toast.",
 		"lengthHint": "One wrapping sentence.",
 		"tone": "Confirm successful restoration.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"settings.profilesFound": {
 		"context": "Pluralized description below save-detection success toast.",
@@ -474,7 +488,8 @@
 		"tone": "Completed restore; timestamp is already formatted.",
 		"slots": [
 			"timestamp"
-		]
+		],
+		"safety": true
 	},
 	"settings.sourceManual": {
 		"context": "Small badge in profile selector for manually configured locations.",
@@ -972,7 +987,8 @@
 		"context": "Concurrent filesystem changes detected before saving. Also marks the frontend profile stale.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.profile_data_invalid": {
 		"context": "Save payload must be a JSON object.",
@@ -1002,7 +1018,8 @@
 			"name"
 		],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.relative_path_invalid": {
 		"context": "Save path traversal guard.",
@@ -1042,7 +1059,8 @@
 			"path"
 		],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.transaction_stage": {
 		"context": "Preparing a transaction staging directory failed.",
@@ -1064,7 +1082,8 @@
 			"recoveryPath"
 		],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.safety_backup": {
 		"context": "Retained backup location shown with an unsuccessful restore.",
@@ -1072,7 +1091,8 @@
 			"backupPath"
 		],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.profile_id_invalid": {
 		"context": "Profile folder has no valid UTF-8 identifier.",
@@ -1122,7 +1142,8 @@
 		"context": "Steam guard for restores that change the file set.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.game_backup_empty": {
 		"context": "Game backup contains no restorable files.",
@@ -1134,25 +1155,29 @@
 		"context": "Manifest provenance guard.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.legacy_backup_wrong_profile": {
 		"context": "Legacy backup provenance guard.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.backup_manifest_mismatch": {
 		"context": "Backup completeness guard.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.restore_backup_empty": {
 		"context": "Selected backup contains no save files.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.backups_open": {
 		"context": "File manager failed to open the backup directory.",
@@ -1186,7 +1211,8 @@
 		"context": "Backend guard before any save or restore.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.game_data_missing": {
 		"context": "Identifier generation requires a valid game data root.",
@@ -1353,25 +1379,29 @@
 		"context": "Save paths differ from the loaded profile.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.profile_stale": {
 		"context": "Previously detected stale profile.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.save_game_running": {
 		"context": "Frontend game-running save guard.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.game_detection_uncertain": {
 		"context": "Uncertain process detection blocks saving.",
 		"slots": [],
 		"lengthHint": "Complete error message; may wrap across lines. Paths and identifiers must remain verbatim.",
-		"tone": "Clear, factual safety diagnostic."
+		"tone": "Clear, factual safety diagnostic.",
+		"safety": true
 	},
 	"error.save_no_changes": {
 		"context": "Save guard when no files are dirty.",
@@ -1441,7 +1471,8 @@
 			"recoveryPath"
 		],
 		"lengthHint": "May wrap; preserve paths verbatim.",
-		"tone": "Clear, factual recovery diagnostic."
+		"tone": "Clear, factual recovery diagnostic.",
+		"safety": true
 	},
 	"error.backup_incomplete": {
 		"context": "Restore refused an unpublished backup directory, which may contain an incomplete snapshot or transaction recovery files.",
@@ -1449,7 +1480,8 @@
 			"path"
 		],
 		"lengthHint": "May wrap; preserve paths verbatim.",
-		"tone": "Clear, factual recovery diagnostic."
+		"tone": "Clear, factual recovery diagnostic.",
+		"safety": true
 	},
 	"error.recovery_files": {
 		"context": "Copyable recovery directory retained with any error, including an unknown or malformed error code.",
@@ -1457,7 +1489,8 @@
 			"recoveryPath"
 		],
 		"lengthHint": "May wrap; preserve paths verbatim.",
-		"tone": "Clear, factual recovery diagnostic."
+		"tone": "Clear, factual recovery diagnostic.",
+		"safety": true
 	},
 	"shell.heroes": {
 		"context": "Sidebar navigation and header title for the hero roster.",
@@ -1517,13 +1550,15 @@
 		"context": "Header discard action and unsaved dialog action.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.saveAll": {
 		"context": "Header Save tooltip when saving is available.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.saved": {
 		"context": "Informational toast after a successful save.",
@@ -1535,7 +1570,8 @@
 		"context": "Informational toast after reverting in-memory edits.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.backup": {
 		"context": "Header manual backup button.",
@@ -1596,19 +1632,22 @@
 		"context": "Header safety badge while the game runs.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.gameUnknown": {
 		"context": "Header safety badge when process detection is uncertain.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.stale": {
 		"context": "Header safety badge when the disk snapshot is stale.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.reload": {
 		"context": "Header action for loading a fresh disk snapshot.",
@@ -1656,13 +1695,15 @@
 		"context": "Header discard tooltip; preserve shortcut.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.dirtySave": {
 		"context": "Accessible name of the dirty header Save button.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"shell.unsaved": {
 		"context": "Accessible label for the dirty marker on the header Save button.",
@@ -1690,37 +1731,43 @@
 		"context": "Unsaved changes dialog title.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"unsaved.description": {
 		"context": "Unsaved changes dialog explanation.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"unsaved.saveClose": {
 		"context": "Unsaved changes dialog action that saves and closes the window.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"unsaved.discardClose": {
 		"context": "Unsaved changes dialog action that discards and closes the window.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"discard.title": {
 		"context": "Title of the Discard All Changes confirmation dialog.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral heading naming the pending destructive action.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"discard.description": {
 		"context": "Discard confirmation explanation.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"validation.title": {
 		"context": "Shared pre-save validation dialog title.",
@@ -1758,7 +1805,8 @@
 		"context": "Validation dialog action available only when there are no errors.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"validation.category.gear": {
 		"context": "Validation issue category badge for weapon or armour rank.",
@@ -1785,7 +1833,7 @@
 		"slots": []
 	},
 	"common.imageUnavailable": {
-		"context": "Accessible fallback for an image whose asset cannot be loaded.",
+		"context": "Tooltip and accessible description on the placeholder shown when a labelled game image cannot be loaded.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
 		"slots": []
@@ -1874,25 +1922,29 @@
 		"context": "Revival refusal when no heroes are selected.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"store.reviveDeadOnly": {
 		"context": "Revival refusal when selection contains a living or missing hero.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"store.reviveIncomplete": {
 		"context": "Revival refusal for incomplete hero data.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"store.reviveHpUnknown": {
 		"context": "Revival refusal when no maximum HP definition exists.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"store.noGame": {
 		"context": "Estate name edit refusal without loaded game data.",
@@ -1916,85 +1968,99 @@
 		"context": "Hero revert refusal to protect cross-file trinket inventory consistency.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"discard.confirm": {
 		"context": "Destructive confirmation button in the Discard All Changes dialog. Applies the discard after confirmation.",
 		"lengthHint": "Short action button; keep close to the English length.",
 		"tone": "Direct imperative naming the destructive action.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissDead": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal for a dead hero: retain its roster record to preserve the grave. No removal happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissLastHero": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when this is the only living hero. Recruit another first so the estate can venture; no removal happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissTreatment": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal for a hero in treatment or still assigned to a town slot. Release treatment first; no removal happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissParty": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal for a hero in the active raid party. Return to town before dismissal; no removal happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissRaid": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal while a raid is active, even if this hero is outside the raid party. No removal happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissReferences": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when related profile files are missing, preventing safe reference cleanup. Reload the complete profile; no removal happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissTrinkets": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when equipped trinkets cannot safely be returned to estate storage. Unequip first; no removal or transfer happens.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.dismissPartyShape": {
 		"context": "Hero detail/revival dialog or action error toast. Dismissal refusal when the saved last-party list has an unsupported structure. No hero or party reference is removed.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.reviveRaid": {
 		"context": "Hero detail/revival dialog or action error toast. Revival refusal during a raid: restoring combat and party state is unverified. Return to town first; no hero is revived.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.reviveData": {
 		"context": "Hero detail/revival dialog or action error toast. Revival refusal when game or roster data is not loaded. Both are needed for safety checks; no hero is revived.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.reviveMods": {
 		"context": "Hero detail/revival dialog or action error toast. Revival refusal when enabled mods may change the roster capacity. The editor cannot verify the limit; no hero is revived.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.reviveCapacity": {
 		"context": "Hero detail/revival dialog or action error toast. Revival refusal when the capacity cannot be determined from installed Stage Coach rules and profile upgrades. No hero is revived.",
 		"lengthHint": "Allow wrapping in the hero pane or safety message.",
 		"tone": "Neutral, factual editor guidance.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"hero.safety.capacity": {
 		"context": "Hero detail/revival dialog or action error toast. Revival refusal when selected dead heroes exceed free living-roster slots. count selects slot grammar; countText, livingText and capacityText are Intl-formatted quantities. No hero is revived.",
@@ -2005,7 +2071,8 @@
 			"count",
 			"countText",
 			"livingText"
-		]
+		],
+		"safety": true
 	},
 	"hero.trinket.definition": {
 		"context": "Trinket picker disabled-item explanation or action error toast. Equipping is refused because the item definition is absent and its class restriction cannot be checked. No item moves.",
@@ -2204,7 +2271,8 @@
 			"count",
 			"countText",
 			"name"
-		]
+		],
+		"safety": true
 	},
 	"heroes.sort": {
 		"context": "Hero sort trigger. sort values are internal identifiers. HP is the short form of hit points, never the raw id Hp.",
@@ -2297,7 +2365,8 @@
 		"tone": "Neutral editor UI.",
 		"slots": [
 			"name"
-		]
+		],
+		"safety": true
 	},
 	"heroes.dismissName": {
 		"context": "Destructive hero-detail button opening confirmation, not performing removal yet. name is verbatim user data. Confirmation removes the hero in memory and Save makes it permanent.",
@@ -2305,7 +2374,8 @@
 		"tone": "Neutral editor UI.",
 		"slots": [
 			"name"
-		]
+		],
+		"safety": true
 	},
 	"heroes.dismissQuestion": {
 		"context": "Dismissal confirmation dialog title for one hero. name is verbatim user data. Final Dismiss removes this hero; Cancel keeps them.",
@@ -2313,7 +2383,8 @@
 		"tone": "Neutral editor UI.",
 		"slots": [
 			"name"
-		]
+		],
+		"safety": true
 	},
 	"heroes.portrait": {
 		"context": "Portrait alternative text; name is verbatim user input.",
@@ -2393,13 +2464,15 @@
 		"context": "Informational toast after town revival.",
 		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
 		"tone": "Neutral editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.revivalAppliedHelp": {
 		"context": "Informational toast description after town revival.",
 		"lengthHint": "Keep short labels compact; allow explanations to wrap.",
 		"tone": "Neutral editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.selectTrinket": {
 		"context": "Empty trinket picker trigger, inviting selection from inventory or catalogue. Opening the picker does not equip an item.",
@@ -2453,13 +2526,15 @@
 		"context": "Batch toolbar button opens the revival review dialog; in that dialog the same label confirms restoring the selected dead heroes after safety checks. Changes remain in memory until Save; Discard undoes.",
 		"lengthHint": "Compact control or section label.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.reviveHelp": {
 		"context": "Batch Revive tooltip: opens the town revival review and checks free roster capacity before any mutation.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.heroName": {
 		"context": "Accessible name of the editable hero-name textbox. User-entered names remain verbatim and are never translated.",
@@ -2471,13 +2546,15 @@
 		"context": "Hero detail Reset button: reverts this hero's unsaved edits from the loaded snapshot; not a reset of the entire profile or game.",
 		"lengthHint": "Compact control or section label.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.resetHelp": {
 		"context": "Hero Reset tooltip: all unsaved changes for this hero are reverted. Does not save or reload the whole profile.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.vitals": {
 		"context": "Hero detail section heading for HP, stress, resolve level and condition controls. A noun heading, not an action.",
@@ -2717,31 +2794,36 @@
 		"context": "Hero detail button opening the revival confirmation dialog for this dead hero. No data changes until that dialog's Revive action.",
 		"lengthHint": "Compact control or section label.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.reviveConsequences": {
 		"context": "Help below the Revive Hero button. Revival requires being in town and a free roster slot; skill upgrades lost at death remain lost.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.dismissHero": {
 		"context": "Hero detail destructive-action section heading. Dismissal removes a living hero from the roster after explicit confirmation.",
 		"lengthHint": "Compact control or section label.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.dismissDialogHelp": {
 		"context": "Dismissal confirmation dialog warning: final Dismiss removes the living hero from the roster in memory; Discard can undo before Save. Saving makes removal permanent.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.dismissConfirm": {
 		"context": "Required acknowledgement checkbox in dismissal dialog. Must be checked to enable Dismiss. Warns that after Save roster removal cannot be undone; checking alone changes no hero data.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.cancel": {
 		"context": "Dismissal and revival dialog Cancel button. Closes the dialog without dismissing or reviving any hero and preserves existing unsaved edits.",
@@ -2753,7 +2835,8 @@
 		"context": "Final destructive button in dismissal dialog after acknowledgement and safety checks. Removes the selected living hero and its references in memory; Discard can undo before Save, but saving makes removal permanent.",
 		"lengthHint": "Compact control or section label.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.searchHeroes": {
 		"context": "Hero list search placeholder. Matches hero user names, displayed/English class names and raw class ids, not hero guids. Typing filters without changing data.",
@@ -2807,7 +2890,8 @@
 		"context": "Revival confirmation dialog consequences for all selected dead heroes. Restores living status, full class HP and clears combat effects, retaining stress, quirks, selected skills and history. Skill upgrades lost at death are not restored. Final Revive edits memory only; Save writes to disk and Discard undoes.",
 		"lengthHint": "Allow wrapping in the hero pane or dialog.",
 		"tone": "Neutral, factual editor UI.",
-		"slots": []
+		"slots": [],
+		"safety": true
 	},
 	"heroes.searchTrinkets": {
 		"context": "Trinket picker search placeholder. Matches displayed game names, English aliases and raw ids by normalized substring in collation order. Typing does not equip anything.",
@@ -3289,13 +3373,15 @@
 		"context": "Persistent active-expedition warning heading.",
 		"slots": [],
 		"lengthHint": "Short label",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.risk": {
 		"context": "Complete raid editing safety warning; filenames remain literal.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.info": {
 		"context": "Raid metadata section heading.",
@@ -3307,7 +3393,8 @@
 		"context": "Destructive action and confirmation heading for returning the party to town.",
 		"slots": [],
 		"lengthHint": "Short label",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.dungeon": {
 		"context": "Raid metadata caption above the game dungeon name.",
@@ -3451,13 +3538,15 @@
 		"context": "Complete abandon confirmation explanation.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.abandonWarning": {
 		"context": "Abandon warning; quoted game action should follow the game glossary.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.noLoot": {
 		"context": "Empty abandon-loss list entry.",
@@ -3469,7 +3558,8 @@
 		"context": "Abandon confirmation checkbox label.",
 		"slots": [],
 		"lengthHint": "Short label",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.cancel": {
 		"context": "Cancel the abandon confirmation dialog.",
@@ -3481,13 +3571,15 @@
 		"context": "Short informational success toast.",
 		"slots": [],
 		"lengthHint": "Short label",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.abandonedDescription": {
 		"context": "Short-lived abandon success toast detail.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.empty": {
 		"context": "Empty party portrait and fallback hero name.",
@@ -3525,7 +3617,8 @@
 			"countText"
 		],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.partySlot": {
 		"context": "Accessible party slot group name. name is a user-entered hero name or localized empty placeholder; position is editor-formatted.",
@@ -3548,37 +3641,43 @@
 		"context": "Retained abandon-raid safety refusal for loaded data; render on every locale change.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.block.inactive": {
 		"context": "Retained abandon-raid safety refusal for inactive data; render on every locale change.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.block.party": {
 		"context": "Retained abandon-raid safety refusal for party data; render on every locale change.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.block.hero": {
 		"context": "Retained abandon-raid safety refusal for hero data; render on every locale change.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.block.inventory": {
 		"context": "Retained abandon-raid safety refusal for inventory data; render on every locale change.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"raid.block.estate": {
 		"context": "Retained abandon-raid safety refusal for estate data; render on every locale change.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"setup.gameTitle": {
 		"context": "Setup step 1 heading, before a game path exists.",
@@ -3662,7 +3761,8 @@
 		"context": "Setup warning about Steam Cloud and edited saves; Steam is a platform brand.",
 		"slots": [],
 		"lengthHint": "Sentence",
-		"tone": "Direct, consistent with existing editor copy."
+		"tone": "Direct, consistent with existing editor copy.",
+		"safety": true
 	},
 	"setup.detectSave": {
 		"context": "Setup save-folder detection action.",
@@ -3739,5 +3839,15 @@
 		],
 		"lengthHint": "Short label",
 		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.lostItem": {
+		"context": "Abandon raid dialog: one lost supply or loot row. The emphasis slot holds a nominative game item name in the game text language; amount is an editor-formatted integer. Translators own punctuation and order.",
+		"lengthHint": "One wrapping list row in a narrow confirmation dialog.",
+		"tone": "Factual safety summary.",
+		"slots": [
+			"name",
+			"amount",
+			"emphasis"
+		]
 	}
 }

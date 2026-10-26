@@ -106,7 +106,7 @@
 				else showPersistentError(notice, notice.detail, `settings-startup-${index}`);
 			}
 		});
-		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1')) {
+		if (import.meta.env.DEV && new URL(window.location.href).searchParams.has('h1') && !new URL(window.location.href).searchParams.has('overflow')) {
 			void import('#lib/dev/InvariantFixture.svelte').then((module) => { HarnessFixture = module.default; });
 		}
 	});
@@ -771,12 +771,14 @@
 	</Sidebar>
 
 	<SidebarInset>
-		<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+		<header class="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-1.5">
 			<SidebarTrigger class="-ml-1" />
-			<Separator orientation="vertical" class="mr-2 h-4" />
+			<!-- Stretch, not h-full: a percentage height inside this wrapping header
+			     inflates the first row and pushes wrapped actions below the border. -->
+			<Separator orientation="vertical" class="-my-1.5 mr-2 self-stretch data-[orientation=vertical]:h-auto" />
 			<h1 class="text-sm font-semibold">{viewTitle}</h1>
 
-			<div class="ml-auto flex items-center gap-2">
+			<div class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
 				<!-- Game Running Badge -->
 				{#if gameRunning}
 					<Badge variant="destructive" class="gap-1">

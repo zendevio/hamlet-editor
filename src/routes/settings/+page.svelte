@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mergeProps } from 'bits-ui';
 	import ErrorMessage from '#lib/i18n/ErrorMessage.svelte';
 	import Message from '#lib/i18n/Message.svelte';
 	import LanguageSettings from '#lib/components/LanguageSettings.svelte';
@@ -146,6 +147,7 @@
 	// ── Actions: Path Detection ──
 
 	async function autoDetectGame() {
+		if (detectingGame) return;
 		detectingGame = true;
 		gamePathValid = null;
 		try {
@@ -171,6 +173,7 @@
 	}
 
 	async function autoDetectSaves() {
+		if (detectingSaves) return;
 		detectingSaves = true;
 		savePathValid = null;
 		try {
@@ -454,7 +457,9 @@
 	}
 </script>
 
-<ScrollArea class="h-[calc(100vh-4rem)]">
+<!-- Sized from main, not the viewport, so a wrapped header cannot clip the end.
+     The extra 1rem keeps the original reach into main's bottom padding. -->
+<ScrollArea class="h-[calc(100%+1rem)]">
 	<div data-testid="settings-page" class="mx-auto max-w-2xl space-y-6 p-2">
 
 		<LanguageSettings />
@@ -497,34 +502,36 @@
 						</div>
 						<Tooltip>
 							<TooltipTrigger>
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-8 gap-1 text-xs"
-									onclick={handleBrowseGame}
-								>
-									<FolderOpenIcon size={14} />
-									{t('settings.browse')}
-								</Button>
+								{#snippet child({ props })}
+									<Button {...mergeProps(props, { onclick: handleBrowseGame })} data-testid="browse-game"
+										variant="outline"
+										size="sm"
+										class="h-8 gap-1 text-xs"
+									>
+										<FolderOpenIcon size={14} />
+										{t('settings.browse')}
+									</Button>
+								{/snippet}
 							</TooltipTrigger>
 							<TooltipContent>{t('settings.browseGameHelp')}</TooltipContent>
 						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger>
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-8 gap-1 text-xs"
-									disabled={detectingGame}
-									onclick={autoDetectGame}
-								>
-									{#if detectingGame}
-										<SpinnerIcon size={14} class="animate-spin" />
-									{:else}
-										<MagnifyingGlassIcon size={14} />
-									{/if}
-									{t('settings.detect')}
-								</Button>
+								{#snippet child({ props })}
+									<Button {...mergeProps(props, { onclick: autoDetectGame })} data-testid="detect-game"
+										variant="outline"
+										size="sm"
+										class="h-8 gap-1 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+										aria-disabled={detectingGame}
+									>
+										{#if detectingGame}
+											<SpinnerIcon size={14} class="animate-spin" />
+										{:else}
+											<MagnifyingGlassIcon size={14} />
+										{/if}
+										{t('settings.detect')}
+									</Button>
+								{/snippet}
 							</TooltipTrigger>
 							<TooltipContent>{t('settings.detectGameHelp')}</TooltipContent>
 						</Tooltip>
@@ -569,34 +576,36 @@
 						</div>
 						<Tooltip>
 							<TooltipTrigger>
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-8 gap-1 text-xs"
-									onclick={handleBrowseSave}
-								>
-									<FolderOpenIcon size={14} />
-									{t('settings.browse')}
-								</Button>
+								{#snippet child({ props })}
+									<Button {...mergeProps(props, { onclick: handleBrowseSave })} data-testid="browse-save"
+										variant="outline"
+										size="sm"
+										class="h-8 gap-1 text-xs"
+									>
+										<FolderOpenIcon size={14} />
+										{t('settings.browse')}
+									</Button>
+								{/snippet}
 							</TooltipTrigger>
 							<TooltipContent>{t('settings.browseSaveHelp')}</TooltipContent>
 						</Tooltip>
 						<Tooltip>
 							<TooltipTrigger>
-								<Button
-									variant="outline"
-									size="sm"
-									class="h-8 gap-1 text-xs"
-									disabled={detectingSaves}
-									onclick={autoDetectSaves}
-								>
-									{#if detectingSaves}
-										<SpinnerIcon size={14} class="animate-spin" />
-									{:else}
-										<MagnifyingGlassIcon size={14} />
-									{/if}
-									{t('settings.detect')}
-								</Button>
+								{#snippet child({ props })}
+									<Button {...mergeProps(props, { onclick: autoDetectSaves })} data-testid="detect-save"
+										variant="outline"
+										size="sm"
+										class="h-8 gap-1 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+										aria-disabled={detectingSaves}
+									>
+										{#if detectingSaves}
+											<SpinnerIcon size={14} class="animate-spin" />
+										{:else}
+											<MagnifyingGlassIcon size={14} />
+										{/if}
+										{t('settings.detect')}
+									</Button>
+								{/snippet}
 							</TooltipTrigger>
 							<TooltipContent>{t('settings.detectSaveHelp')}</TooltipContent>
 						</Tooltip>

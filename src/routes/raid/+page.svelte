@@ -2,7 +2,7 @@
 	import { t, describeMessage } from '#lib/i18n/index.svelte.js';
 	import Message from '#lib/i18n/Message.svelte';
 	import { formatList, formatNumber } from '#lib/i18n/intl.js';
-	import { heroClassName, dungeonName, raidDifficultyName, raidLengthName, gameTextLocale } from '#lib/save-labels.js';
+	import { heroClassName, dungeonName, dungeonNameLang, raidDifficultyName, raidDifficultyLang, raidLengthName, raidLengthLang, gameTextLocale } from '#lib/save-labels.js';
 	import { sliderControl, sliderValueLabel } from '#lib/control-events.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import PartySlot from '#lib/components/raid/PartySlot.svelte';
@@ -140,7 +140,9 @@
 <!-- Inconsistent state; raid file exists but inraid disagrees (or vice versa) -->
 {:else if isInconsistent}
 	<div class="mx-auto max-w-2xl space-y-4 p-6">
-		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
+		<!-- Narrow alerts put the action below the text: the corner slot reserves only 72px. -->
+		<div class="@container">
+		<Alert.Root class="border-amber-500/50 bg-amber-500/5 @max-lg:pr-2.5">
 			<WarningIcon size={16} class="text-amber-500" />
 			<Alert.Title class="text-amber-700 dark:text-amber-400">{t('raid.inconsistentTitle')}</Alert.Title>
 			<Alert.Description class="text-amber-600 dark:text-amber-400/80">
@@ -150,25 +152,29 @@
 					{#snippet link(children)}<span>{@render children()}</span>{/snippet}
 				</Message>
 			</Alert.Description>
-			<Alert.Action>
+			<Alert.Action class="@max-lg:static @max-lg:col-start-2 @max-lg:mt-1.5">
 				<Button variant="outline" size="sm" onclick={handleCreateBackup}>{t('raid.backup')}</Button>
 			</Alert.Action>
 		</Alert.Root>
+		</div>
 	</div>
 
 <!-- Active raid; full view -->
 {:else}
 	<ScrollArea class="h-full" data-testid="raid-page">
 	<div class="space-y-6 p-6">
-		<!-- Warning Banner (always visible, not dismissable) -->
-		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
+		<!-- Warning Banner (always visible, not dismissable). Narrow banners put the
+		     action below the text: the corner slot reserves only 72px. -->
+		<div class="@container">
+		<Alert.Root class="border-amber-500/50 bg-amber-500/5 @max-lg:pr-2.5">
 			<WarningIcon size={16} class="text-amber-500" />
 			<Alert.Title class="text-amber-700 dark:text-amber-400">{t('raid.riskTitle')}</Alert.Title>
 			<Alert.Description class="text-amber-600 dark:text-amber-400/80">{t('raid.risk')}</Alert.Description>
-			<Alert.Action>
+			<Alert.Action class="@max-lg:static @max-lg:col-start-2 @max-lg:mt-1.5">
 				<Button variant="outline" size="sm" onclick={handleCreateBackup}>{t('raid.backup')}</Button>
 			</Alert.Action>
 		</Alert.Root>
+		</div>
 
 		<!-- Raid Info Section -->
 		<section>
@@ -179,11 +185,11 @@
 					{t('raid.abandon')}
 				</Button>
 			</div>
-			{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{describeMessage(abandonBlockedReason)}</p>{/if}
+			{#if abandonBlockedReason}<p data-testid="raid-safety-refusal" class="mb-3 text-xs text-muted-foreground">{describeMessage(abandonBlockedReason)}</p>{/if}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-				<RaidInfoCard label={t('raid.dungeon')} valueLang={gameTextLocale()} value={dungeonLabel || t('raid.unknown')} />
-				<RaidInfoCard label={t('raid.difficulty')} valueLang={gameTextLocale()} value={difficultyLabel || t('raid.unknown')} />
-				<RaidInfoCard label={t('raid.length')} valueLang={gameTextLocale()} value={lengthLabel || t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.dungeon')} valueLang={dungeonLabel && raidInstance ? dungeonNameLang(raidInstance.dungeon) : undefined} value={dungeonLabel || t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.difficulty')} valueLang={difficultyLabel && raidInstance ? raidDifficultyLang(raidInstance.difficulty) : undefined} value={difficultyLabel || t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.length')} valueLang={lengthLabel && raidInstance ? raidLengthLang(raidInstance.length) : undefined} value={lengthLabel || t('raid.unknown')} />
 				<RaidInfoCard label={t('raid.questType')} value={raidInstance?.type ?? t('raid.unknown')} />
 				<RaidInfoCard label={t('raid.location')} value={String(locationDisplay || t('raid.unknown'))} />
 				<RaidInfoCard label={t('raid.inBattle')} value={inBattle ? t('raid.yes') : t('raid.no')} />
@@ -304,16 +310,16 @@
 				{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{describeMessage(abandonBlockedReason)}</p>{/if}
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 					{#each inventoryItems as item (item.key)}
-						<Card.Root class="gap-2 p-3">
+						<Card.Root class="min-w-0 gap-2 p-3">
 							<div class="flex items-center gap-2">
 								<BackpackIcon size={14} class="shrink-0 text-muted-foreground" />
-								<span class="truncate text-xs font-medium" lang={gameTextLocale()}>{raidItemLabel(item)}</span>
+								<span class="truncate text-xs font-medium" title={raidItemLabel(item)} lang={gameTextLocale()}>{raidItemLabel(item)}</span>
 							</div>
-							<div class="flex items-center gap-2">
+							<div class="flex flex-wrap items-center gap-2">
 								<Badge variant="outline" class="text-[10px] font-normal">
 									{item.type}
 								</Badge>
-								<IntegerInput label={t('estate.amountFor', { name: raidItemLabel(item) })} lang={gameTextLocale()} value={item.amount}
+								<IntegerInput label={t('estate.amountFor', { name: raidItemLabel(item) })} value={item.amount}
 									onchange={(value) => setRaidItemAmount(item.key, value)} class="h-6 w-24 text-xs tabular-nums" />
 							</div>
 						</Card.Root>
@@ -345,7 +351,11 @@
 			<p class="text-xs">{t('raid.returnedTrinkets', { count: abandonInventory.returnedTrinkets, countText: formatNumber(abandonInventory.returnedTrinkets) })}</p>
 			<ul class="list-disc pl-5 text-xs">
 				{#each abandonInventory.lost as item}
-					<li><span lang={gameTextLocale()}>{raidItemLabel(item)}</span>: {formatNumber(item.amount)}</li>
+					<li><Message id="raid.lostItem" params={{ name: raidItemLabel(item), amount: formatNumber(item.amount) }}>
+						{#snippet emphasis(children)}<span lang={gameTextLocale()}>{@render children()}</span>{/snippet}
+						{#snippet code(children)}<code>{@render children()}</code>{/snippet}
+						{#snippet link(children)}<span>{@render children()}</span>{/snippet}
+					</Message></li>
 				{:else}
 					<li>{t('raid.noLoot')}</li>
 				{/each}

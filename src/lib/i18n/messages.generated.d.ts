@@ -334,6 +334,7 @@ export interface MessageParams {
 	"raid.length": { };
 	"raid.lightHint": { };
 	"raid.location": { };
+	"raid.lostItem": { "amount": string | number; "name": string | number; };
 	"raid.moveLeft": { };
 	"raid.moveRight": { };
 	"raid.no": { };

@@ -2,16 +2,17 @@ import { test, expect, type Locator, type Page, type TestInfo } from '@playwrigh
 import { readFile, writeFile } from 'node:fs/promises';
 import { GAME_TEXT_LANGUAGES, GAME_TEXT_LOCALES } from '../../src/lib/data/game-text-languages.js';
 import type {} from '../../src/lib/dev/harness.js';
+import { pseudoMessage } from '../../src/lib/dev/pseudo-locale.js';
 // svelte-sonner keeps stacking state (data-front, data-expanded, data-visible)
 // on the toast list item that wraps our alert content. A replaced toast stays
 // in the DOM with data-removed while it animates out, so it is skipped.
 function toastOf(page: Page, content: Locator) {
 	return page.locator('[data-sonner-toast][data-removed="false"]').filter({ has: content });
 }
-async function evidence(info: TestInfo, name: string, body: string | Uint8Array, contentType: string) {
-	const path = info.outputPath(name);
-	await writeFile(path, body);
-	await info.attach(name, { path, contentType });
+// Evidence is written once into the test's output folder. Attaching it as well
+// would copy every file again into the shared attachments folder.
+async function evidence(info: TestInfo, name: string, body: string | Uint8Array) {
+	await writeFile(info.outputPath(name), body);
 }
 
 // Locale switches may only request display text, native menu labels and persist
@@ -157,8 +158,8 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 			locale === 'de' ? ['A', 'CODE', 'EM'] : locale === 'ja' ? ['CODE', 'EM', 'A'] : locale === 'ru' ? ['EM', 'A', 'CODE'] : ['EM', 'CODE', 'A']
 		);
 		await expect(rich.locator('a')).toHaveAttribute('href', 'https://github.com/AlinGheorghe/hamlet-editor');
-		await evidence(info, `settings-${locale}.png`, await page.screenshot(), 'image/png');
-		await evidence(info, `settings-${locale}.aria.txt`, await page.getByTestId('settings-page').ariaSnapshot(), 'text/plain');
+		await evidence(info, `settings-${locale}.png`, await page.screenshot());
+		await evidence(info, `settings-${locale}.aria.txt`, await page.getByTestId('settings-page').ariaSnapshot());
 	}
 	for (const locale of allLocales) {
 		await switchEditor(page, locale);
@@ -191,7 +192,7 @@ test('I1-I3: Settings switches live with dirty edits, selected id, partial name 
 			categories: new Intl.PluralRules(locale).resolvedOptions().pluralCategories,
 			samples: [0, 1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 101, 1.5, 1000000].map((n) => [n, new Intl.PluralRules(locale).select(n)])
 		}]))
-	}), allLocales), null, 2), 'application/json');
+	}), allLocales), null, 2));
 });
 
 test('P1: Russian plural branches render in Settings through the mounted UI', async ({ page }, info) => {
@@ -204,7 +205,7 @@ test('P1: Russian plural branches render in Settings through the mounted UI', as
 	for (const [count, noun] of [[1, 'файл'], [2, 'файла'], [5, 'файлов'], [11, 'файлов'], [21, 'файл'], [22, 'файла'], [25, 'файлов']]) {
 		await expect(page.getByTestId('settings-page').getByText(`${count} ${noun} · profile_0`, { exact: true })).toHaveCount(1);
 	}
-	await evidence(info, 'russian-settings-plurals.aria.txt', await page.getByTestId('settings-page').ariaSnapshot(), 'text/plain');
+	await evidence(info, 'russian-settings-plurals.aria.txt', await page.getByTestId('settings-page').ariaSnapshot());
 });
 
 test('I1: reversed, failed and empty responses retain the effective table, including a real path race', async ({ page }) => {
@@ -237,7 +238,7 @@ test('I1: reversed, failed and empty responses retain the effective table, inclu
 		window.__h1!.plans.push({ command: 'plugin:dialog|open', value: '/h1/new-game' });
 		return window.__h1!.calls.length;
 	});
-	await page.getByTestId('settings-page').getByRole('button', { name: 'Browse', exact: true }).first().click();
+	await page.getByTestId('settings-page').getByTestId('browse-game').click();
 	await expect.poll(() => page.evaluate(() => window.__h1!.getSettings().gamePath)).toBe('/h1/new-game');
 	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().gamePath)).toBe('/h1/new-game');
 	await switchGame(page, 'german');
@@ -281,7 +282,7 @@ test('I2: identical edit scripts capture identical save payloads with and withou
 		const calls = await page.evaluate(() => window.__h1!.calls.filter(({ command }) => command === 'save_profile'));
 		expect(calls).toHaveLength(1);
 		payloads.push(calls[0].args);
-		await evidence(info, `save-payload-${switches ? 'switched' : 'baseline'}.json`, JSON.stringify(calls[0].args, null, 2), 'application/json');
+		await evidence(info, `save-payload-${switches ? 'switched' : 'baseline'}.json`, JSON.stringify(calls[0].args, null, 2));
 	}
 	expect(payloads[1]).toEqual(payloads[0]);
 	const fixture = JSON.parse(await readFile(new URL('../fixtures/i18n-save-payload.json', import.meta.url), 'utf8'));
@@ -313,8 +314,7 @@ test('I1: dirty and blocked-save guards survive switches', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Unsaved changes. Save all changes.', exact: true })).toBeDisabled();
 	await expect(page.getByText('Profile stale: Reload required', { exact: true })).toBeVisible();
 	await page.evaluate(() => window.__h1!.plans.push({ command: 'plugin:dialog|open', value: '/h1/another-profile' }));
-	const messages = await catalog('de');
-	await page.getByTestId('settings-page').getByRole('button', { name: messages['settings.browse'], exact: true }).nth(1).click();
+	await page.getByTestId('settings-page').getByTestId('browse-save').click();
 	await expect(page.getByRole('dialog')).toBeVisible();
 	await expect(page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true })).toHaveCount(0);
 	expect((await snapshot(page)).dirtyFiles).toContain('persist.roster.json');
@@ -331,11 +331,19 @@ for (const route of ['heroes', 'estate'] as const) {
 			const before = await snapshot(page);
 			let selectedRow;
 			if (route === 'heroes') {
-				const row = page.getByRole('button').filter({ hasText: 'Backups' }).filter({ hasText: 'unknown_mod_class' });
-				await row.click();
+				// The row holds a selection checkbox and one detail button. The button is named by its content (hero name,
+				// level badge, class line), so its name starts with the hero name. The portrait is decorative: when its
+				// asset fails to load, as in the harness, the placeholder must not add text to that name.
+				const row = page.getByTestId(/^hero-row-/).filter({ hasText: 'Backups' }).filter({ hasText: 'unknown_mod_class' });
+				const rowButton = row.getByRole('button');
+				await expect(rowButton).toHaveAccessibleName(/^Backups\b/);
+				await expect(rowButton).not.toHaveAccessibleName(/Image unavailable/);
+				await rowButton.click();
 				selectedRow = await row.elementHandle();
 				await expect(row).toHaveClass(/bg-accent/);
-				await page.getByRole('button', { name: 'Backups', exact: true }).click();
+				// The detail portrait is not decorative: loaded or not, it keeps its own label.
+				await expect(page.getByTestId('hero-detail').getByRole('img', { name: 'Backups portrait', exact: true })).toBeVisible();
+				await page.getByTestId('hero-detail').getByRole('button', { name: 'Backups', exact: true }).click();
 			}
 			const input = route === 'heroes' ? page.getByRole('textbox', { name: 'Hero name', exact: true }) : page.getByPlaceholder('Enter estate name...');
 			// A literal game display string remains user data even when that map changes.
@@ -355,7 +363,7 @@ for (const route of ['heroes', 'estate'] as const) {
 					await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
 					await expect.poll(() => page.evaluate(() => window.__h1!.persistedSettings().gameTextLanguage)).toBe(language);
 					if (route === 'heroes') await expect(page.getByText(`${language}:crusader`, { exact: true })).toBeVisible();
-					else await expect(page.locator('p[title="h1_trinket_a"]')).toHaveText(`${language}:trinket-a`);
+					else await expect(page.getByTestId('estate-trinket-h1_trinket_a').locator('p[lang]')).toHaveText(`${language}:trinket-a`);
 					await expect(input).toHaveValue('english:crusader');
 					expect(await snapshot(page)).toEqual(before);
 					expect(await persistedSettings(page)).toEqual(persisted);
@@ -394,8 +402,8 @@ for (const route of ['heroes', 'estate'] as const) {
 			const call = await page.evaluate(() => window.__h1!.calls.find(({ command }) => command === 'save_profile')!);
 			expect(call.args.data).toEqual(edited.dirty);
 			payloads.push(call.args);
-			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}-save.json`, JSON.stringify(call.args, null, 2), 'application/json');
-			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}.aria.txt`, await page.getByRole('main').ariaSnapshot(), 'text/plain');
+			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}-save.json`, JSON.stringify(call.args, null, 2));
+			await evidence(info, `${route}-${switches ? 'switched' : 'baseline'}.aria.txt`, await page.getByRole('main').ariaSnapshot());
 		}
 		expect(payloads[1]).toEqual(payloads[0]);
 	});
@@ -476,7 +484,7 @@ for (const scenario of ['hanging-read', 'unreadable', 'late-detection']) {
 			expect(await page.evaluate(() => window.__h1!.persistedSettings())).toEqual(stored);
 			expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => /plugin:store\|(set|delete|save)/.test(command)))).toEqual([]);
 		}
-		await evidence(info, `bootstrap-${scenario}.json`, JSON.stringify({ elapsedMs: elapsed, persistedUnchanged: true }), 'application/json');
+		await evidence(info, `bootstrap-${scenario}.json`, JSON.stringify({ elapsedMs: elapsed, persistedUnchanged: true }));
 	});
 }
 
@@ -490,7 +498,7 @@ test('D2: late path detection cannot override a manual choice in either picker',
 		} },
 		{ command: 'plugin:dialog|open', value: '/h1/new-game' }
 	));
-	await page.getByTestId('settings-page').getByRole('button', { name: 'Browse', exact: true }).first().click();
+	await page.getByTestId('settings-page').getByTestId('browse-game').click();
 	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('detect-path');
 	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().gamePath)).toBe('/h1/new-game');
 	await switchEditor(page, 'ru');
@@ -667,7 +675,7 @@ test('M2: changing installation keeps OD2 languages until fresh path evidence ar
 		);
 		return window.__h1!.calls.length;
 	});
-	await page.getByTestId('settings-page').getByRole('button', { name: (await catalog('ru'))['settings.browse'], exact: true }).first().click();
+	await page.getByTestId('settings-page').getByTestId('browse-game').click();
 	await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('new-installation');
 	await expect.poll(() => page.evaluate(() => window.__h1!.snapshot().gamePath)).toBe('/h1/new-game');
 	await expect(page.locator('html')).toHaveAttribute('lang', 'ru');
@@ -707,7 +715,7 @@ for (const locale of ['en', 'de', 'ja']) {
 					};
 				});
 				expect(geometry).toEqual({ unclipped: true, fullTextVisible: true, wrapped: true });
-				await evidence(info, `p1c-${locale}-${viewport.width}-${kind}-path.png`, await page.screenshot(), 'image/png');
+				await evidence(info, `p1c-${locale}-${viewport.width}-${kind}-path.png`, await page.screenshot());
 			}
 		});
 	}
@@ -883,21 +891,45 @@ test('S1: an unknown typed restore blocker stays disabled after confirmation and
 	expect(calls.filter(({ command }) => ['restore_backup', 'restore_game_backup', 'save_profile'].includes(command))).toEqual([]);
 });
 
+/**
+ * Retries a tooltip interaction with toPass and records how many attempts it
+ * took as a `tooltip-attempts` annotation (also logged when above one), so a
+ * rise from synthetic-input timing to a real intermittent defect shows up.
+ */
+async function countAttempts(pass: 'hover' | 'keyboard', reason: string, attempt: () => Promise<void>) {
+	let attempts = 0;
+	try {
+		await expect(async () => {
+			attempts++;
+			await attempt();
+		}).toPass({ timeout: 10_000 });
+	} finally {
+		const description = `${pass} ${JSON.stringify(reason)}: ${attempts} attempt${attempts === 1 ? '' : 's'}`;
+		test.info().annotations.push({ type: 'tooltip-attempts', description });
+		if (attempts > 1) console.log(`tooltip-attempts ${description}`);
+	}
+}
+
 async function expectFocusedHeaderTooltip(page: Page, button: Locator, reason: string, close = true) {
 	await page.mouse.move(0, 0);
 	await page.keyboard.press('Escape');
 	// A blocked button stays in the tab order: aria-disabled, never disabled.
 	await expect(button).not.toHaveAttribute('disabled', /.*/);
 	await expect(button).toHaveAttribute('tabindex', '0');
-	// Focus left on this button by an earlier pass would make focus() fire no
-	// event, so clear it first.
-	await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-	await button.focus();
-	// Return through the actual tab order.
-	await page.keyboard.press('Shift+Tab');
-	await page.keyboard.press('Tab');
-	await expect(button).toBeFocused();
-	await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveText(reason);
+	// Back-to-back synthetic Shift+Tab and Tab can land inside bits-ui's close
+	// transition of the tooltip opened by focus(); a person cannot tab that fast,
+	// so the whole keyboard pass is retried.
+	await countAttempts('keyboard', reason, async () => {
+		// Focus left on this button by an earlier pass would make focus() fire no
+		// event, so clear it first.
+		await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+		await button.focus();
+		// Return through the actual tab order.
+		await page.keyboard.press('Shift+Tab');
+		await page.keyboard.press('Tab');
+		await expect(button).toBeFocused();
+		await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveText(reason, { timeout: 1000 });
+	});
 	await expect(button).toHaveAttribute('aria-describedby', /.+/);
 	if (close) {
 		await page.keyboard.press('Escape');
@@ -906,9 +938,14 @@ async function expectFocusedHeaderTooltip(page: Page, button: Locator, reason: s
 }
 
 async function expectHeaderTooltip(page: Page, button: Locator, reason: string) {
-	await page.mouse.move(0, 0);
-	await button.hover();
-	await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveText(reason);
+	await button.scrollIntoViewIfNeeded();
+	// bits-ui can ignore the first synthetic pointer jump right after another
+	// tooltip was dismissed with Escape; a real pointer keeps moving, so retry.
+	await countAttempts('hover', reason, async () => {
+		await page.mouse.move(0, 0);
+		await button.hover();
+		await expect(page.locator('[data-slot="tooltip-content"]:not([data-state="closed"]):visible')).toHaveText(reason, { timeout: 1000 });
+	});
 	await page.keyboard.press('Escape');
 	await expectFocusedHeaderTooltip(page, button, reason);
 }
@@ -1214,7 +1251,7 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 	await page.evaluate(() => window.__h1!.edit());
 	const heroes = page.getByTestId('heroes-page');
 	const row = heroes.getByTestId('hero-row-96');
-	await row.click();
+	await row.getByRole('button').click();
 	await expect(row).toHaveClass(/bg-accent/);
 	const detail = page.getByTestId('hero-detail');
 	await detail.getByRole('button', { name: 'Add Positive', exact: true }).click();
@@ -1279,7 +1316,7 @@ test('S3: hero, quirk picker and trinket picker stay mounted through real editor
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
-	await evidence(info, 's3-heroes-open-pickers.aria.txt', await heroes.ariaSnapshot(), 'text/plain');
+	await evidence(info, 's3-heroes-open-pickers.aria.txt', await heroes.ariaSnapshot());
 });
 
 test('S3: class sorting flips after a game-text switch while the same hero row stays selected', async ({ page }) => {
@@ -1289,7 +1326,7 @@ test('S3: class sorting flips after a game-text switch while the same hero row s
 	await page.evaluate(() => window.__h1!.edit());
 	const heroes = page.getByTestId('heroes-page');
 	const row = heroes.getByTestId('hero-row-96');
-	await row.click();
+	await row.getByRole('button').click();
 	const search = heroes.getByRole('textbox', { name: 'Search heroes by name or class', exact: true });
 	await search.fill('96');
 	await expect(heroes.locator('[data-testid^="hero-row-"]')).toHaveCount(0);
@@ -1335,7 +1372,7 @@ test('S3: IME Enter and keyCode 229 retain the hero name draft without committin
 	await page.goto('/heroes?h1');
 	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
 	await page.evaluate(() => window.__h1!.edit());
-	await page.getByTestId('hero-row-96').click();
+	await page.getByTestId('hero-row-96').getByRole('button').click();
 	const detail = page.getByTestId('hero-detail');
 	await detail.getByRole('button', { name: 'Reynauld', exact: true }).click();
 	const input = detail.getByRole('textbox', { name: 'Hero name', exact: true });
@@ -1422,7 +1459,7 @@ test('S4: dirty estate names, wallet errors, invitations and trinkets stay mount
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
-	await evidence(info, 's4-estate-dirty.aria.txt', await estate.ariaSnapshot(), 'text/plain');
+	await evidence(info, 's4-estate-dirty.aria.txt', await estate.ariaSnapshot());
 	// The spaced English alias occurs in neither the current display label nor the raw id.
 	await search.fill('English Jewel');
 	await expect(estate.getByTestId('estate-trinket-h1_trinket_a')).toBeVisible();
@@ -1471,7 +1508,7 @@ test('S4: dirty town treatment, upgrade and district names follow game text whil
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
-	await evidence(info, 's4-town-dirty.aria.txt', await town.ariaSnapshot(), 'text/plain');
+	await evidence(info, 's4-town-dirty.aria.txt', await town.ariaSnapshot());
 	// The existing store cascade still changes only this raw tree, with a list in the English fallback message locale.
 	await forge.getByRole('switch', { name: 'Toggle koreana:furnace, tier a', exact: true }).click();
 	await expect(page.getByText(`Also turned off tiers ${new Intl.ListFormat('en').format(['b', 'c'])}, which need tier a.`, { exact: true })).toBeVisible();
@@ -1595,7 +1632,7 @@ test('S5: dirty raid, invalid buffer, same party slots and checked abandon dialo
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
-	await evidence(info, 's5-raid-dirty.aria.txt', await dialog.ariaSnapshot(), 'text/plain');
+	await evidence(info, 's5-raid-dirty.aria.txt', await dialog.ariaSnapshot());
 });
 
 test('S5: inconsistent raid warning keeps its code slot mounted through editor changes without data IPC', async ({ page }) => {
@@ -1617,6 +1654,26 @@ test('S5: inconsistent raid warning keeps its code slot mounted through editor c
 		expect(await snapshot(page)).toEqual(before);
 	}
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+});
+
+test('S6/D12: the same mounted raid safety refusal follows the H1 pseudo catalog without mutation', async ({ page }) => {
+	await page.goto('/raid?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => { window.__h1!.raidData(); window.__h1!.blockRaidEstate(); });
+	const refusal = page.getByTestId('raid-safety-refusal');
+	const english = (await catalog('en'))['raid.block.estate'];
+	await expect(refusal).toHaveText(english);
+	const node = await refusal.elementHandle();
+	const before = await snapshot(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of ['pseudo', 'en', 'pseudo', 'de', 'en'] as const) {
+		await page.evaluate((next) => window.__h1!.catalog(next), locale);
+		await expect(refusal).toHaveText(locale === 'pseudo' ? pseudoMessage(english) : english);
+		expect(await node!.evaluate((element) => element.isConnected && element === document.querySelector('[data-testid=raid-safety-refusal]'))).toBe(true);
+		expect(await snapshot(page)).toEqual(before);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), await persistedSettings(page));
 });
 
 const setupInstall = { path: '/h1/detected-game', source: 'Gog', has_crimson_court: true, has_shieldbreaker: true,
@@ -1665,7 +1722,7 @@ test('S5: all wizard steps render with no game path in en and de; selections and
 		const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
 		expectSwitchCalls(calls, persisted);
 		expect(calls.filter(({ command }) => command === 'load_localization')).toEqual([]);
-		await evidence(info, `s5-wizard-no-path-step-${step}.aria.txt`, await wizard.ariaSnapshot(), 'text/plain');
+		await evidence(info, `s5-wizard-no-path-step-${step}.aria.txt`, await wizard.ariaSnapshot());
 	}
 	expect(await persistedSettings(page)).toEqual(persisted);
 	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['load_profile', 'set_name_table', 'save_profile'].includes(command)))).toEqual([]);
@@ -1698,4 +1755,67 @@ test('S5: wizard DLC names follow both real picker cycles with an available tabl
 	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	expect(await persistedSettings(page)).toEqual(persisted);
 	await expect(wizard.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
+});
+
+test('S6: Settings tooltip actions have one element and busy detection keeps accessible help', async ({ page }) => {
+	await open(page);
+	const settings = page.getByTestId('settings-page');
+	await expect(settings.locator('button button')).toHaveCount(0);
+	const messages = await catalog('en');
+	for (const [id, help] of [['browse-game', 'browseGameHelp'], ['browse-save', 'browseSaveHelp'], ['detect-game', 'detectGameHelp'], ['detect-save', 'detectSaveHelp']]) {
+		const button = settings.getByTestId(id);
+		await expect(button).toHaveAccessibleName(messages[id.startsWith('browse') ? 'settings.browse' : 'settings.detect']);
+		await expectHeaderTooltip(page, button, messages[`settings.${help}`]);
+	}
+	for (const [id, command, help] of [['detect-game', 'detect_game_installations', 'detectGameHelp'], ['detect-save', 'detect_save_locations', 'detectSaveHelp']]) {
+		await page.evaluate((command) => window.__h1!.plans.push({ command, hold: 's6-detect', value: [] }), command);
+		const button = settings.getByTestId(id);
+		await button.click();
+		await expect.poll(() => page.evaluate(() => window.__h1!.held())).toContain('s6-detect');
+		await expect(button).toBeDisabled();
+		const count = await page.evaluate((command) => window.__h1!.calls.filter((call) => call.command === command).length, command);
+		await expectHeaderTooltip(page, button, messages[`settings.${help}`]);
+		await button.press('Enter');
+		await button.press('Space');
+		expect(await page.evaluate((command) => window.__h1!.calls.filter((call) => call.command === command).length, command)).toBe(count);
+		await page.evaluate(() => window.__h1!.release('s6-detect'));
+		await expect(button).toBeEnabled();
+	}
+});
+
+test('S6: hero tooltips share their action element, including blocked skill toggles', async ({ page }) => {
+	await page.goto('/heroes?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	const heroes = page.getByTestId('heroes-page');
+	const filters = heroes.getByRole('button', { name: 'Toggle filters', exact: true });
+	await expect(filters).toHaveCount(1);
+	await expectHeaderTooltip(page, filters, 'Toggle filters');
+	await filters.click();
+	await expect(filters).toHaveAttribute('aria-expanded', 'true');
+	await filters.click();
+	await page.getByTestId('hero-row-96').getByRole('checkbox').check();
+	for (const [name, help] of [['Heal All', 'healAllHelp'], ['Clear Stress', 'clearStressHelp']]) {
+		const button = heroes.getByRole('button', { name, exact: true });
+		await expect(button).toHaveCount(1);
+		await expectHeaderTooltip(page, button, (await catalog('en'))[`heroes.${help}`]);
+	}
+	await page.getByTestId('hero-row-96').getByRole('button').click();
+	const detail = page.getByTestId('hero-detail');
+	await expectHeaderTooltip(page, detail.getByRole('button', { name: 'Reset', exact: true }), (await catalog('en'))['heroes.resetHelp']);
+	await detail.getByRole('button', { name: 'Select english:smite', exact: true }).click();
+	const combat = detail.getByRole('button', { name: 'Deselect english:smite', exact: true });
+	await expect(combat).toHaveCount(1);
+	await expect(combat).toBeDisabled();
+	await expectHeaderTooltip(page, combat, (await catalog('en'))['heroes.combatMinimum']);
+	const before = await snapshot(page);
+	await combat.press('Enter');
+	await combat.press('Space');
+	expect(await snapshot(page)).toEqual(before);
+	await expect(detail.getByRole('button', { name: /^(Select|Deselect) english:encourage$/, exact: true })).toHaveCount(1);
+	await expect(heroes.locator('button button')).toHaveCount(0);
+	await page.evaluate(() => window.__h1!.deadHero());
+	const revive = heroes.getByRole('button', { name: 'Revive', exact: true });
+	await expect(revive).toHaveCount(1);
+	await expectHeaderTooltip(page, revive, (await catalog('en'))['heroes.reviveHelp']);
 });

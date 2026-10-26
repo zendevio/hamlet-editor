@@ -5,6 +5,35 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkSettingsCopy } from '../scripts/i18n-ratchet.mjs';
+import { checkAllowlist, countCopy } from '../scripts/i18n-ratchet.mjs';
+
+test('per-file exemptions expire when a literal disappears and cannot hide visible markup', () => {
+	const allowlist = { files: { 'src/View.svelte': { Manual: 'Protocol source value.' } } };
+	checkAllowlist({ 'src/View.svelte': new Set(['Manual']) }, allowlist);
+	assert.throws(() => checkAllowlist({ 'src/View.svelte': new Set() }, allowlist), /Stale copy allowlist entries/);
+	assert.throws(() => checkAllowlist({}, allowlist), /Stale copy allowlist entries/);
+	assert.equal(countCopy('<script>const source = "Manual";</script>', 'src/View.svelte', [], allowlist).length, 0);
+	assert.deepEqual(countCopy('<script>const source = "Manual";</script><span>Manual</span><input aria-label="Manual" />', 'src/View.svelte', [], allowlist), ['Manual', 'Manual']);
+	for (const source of ["<span>{'Manual'}</span>", "<input aria-label={'Manual'} />", '<span>{`Manual`}</span>', '<input aria-label={`Manual`} />', '<script lang="ts"></script><span>{"Manual" as string}</span>', '<span>{`Manual ${value}`}</span>']) {
+		assert.deepEqual(countCopy(source, 'src/View.svelte', [], allowlist), ['Manual']);
+	}
+});
+
+
+test('markup exemptions cannot hide conditional branches, logical operands, template quasis or string wrappers', () => {
+	const allowlist = { files: { 'src/View.svelte': { Manual: 'Protocol source value.' } } };
+	for (const expression of [
+		"busy ? 'Manual' : label", "busy ? label : 'Manual'", "label ?? 'Manual'", "label || 'Manual'",
+		"label && 'Manual'", "'Manual' || label", "'Manual' && label", "'Manual' ?? label",
+		"busy ? `Manual` : label", "busy ? label : `Manual ${value}`", "`Manual ${label}`",
+		"`${busy ? 'Manual' : label}`", "String('Manual')"
+	]) {
+		for (const source of [`<span>{${expression}}</span>`, `<input aria-label={${expression}} />`, `<div title={${expression}}></div>`]) {
+			assert.deepEqual(countCopy(source, 'src/View.svelte', [], allowlist), ['Manual'], source);
+		}
+	}
+	assert.deepEqual(countCopy("<span>{value === 'Manual' ? label : other}</span>", 'src/View.svelte', [], allowlist), []);
+});
 
 const check = (source) => checkSettingsCopy(source, ['settings.selectProfile', 'common.close']);
 test('Settings copy ratchet covers expressions, templates, component props and script toasts', () => {
@@ -109,6 +138,8 @@ test('CSS APIs and native names are structural, while component name labels coun
 	const { countCopy } = await import('../scripts/i18n-ratchet.mjs');
 	assert.equal(countCopy('<input name="hero-name" /><WalletCard name="Gold" />', 'src/Wallet.svelte').length, 1);
 	assert.equal(countCopy('<input type="text" value="persisted value" /><div style="color: red"></div>', 'src/View.svelte').length, 0);
+	assert.equal(countCopy("<span aria-current={active ? 'step' : undefined}></span>", 'src/View.svelte').length, 0);
+	assert.equal(countCopy('<div aria-hidden="true"><span aria-hidden="false"></span></div>', 'src/View.svelte').length, 0);
 	assert.equal(countCopy('const style = cn("flex items-center", active && "text-red-500");', 'src/styles.ts').length, 0);
 	assert.equal(countCopy('<script>const style = cn("flex items-center");</script><p class={style}>Gold</p>', 'src/Wallet.svelte').length, 1);
 });

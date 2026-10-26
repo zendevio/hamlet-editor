@@ -6,11 +6,12 @@
 	interface Props {
 		gamePath: string;
 		relativePath: string;
-		alt?: string;
+		/** Required: an empty string marks the image as decorative, so neither the image nor its placeholder is announced. */
+		alt: string;
 		class?: string;
 	}
 
-	let { gamePath, relativePath, alt = '', class: className = '' }: Props = $props();
+	let { gamePath, relativePath, alt, class: className = '' }: Props = $props();
 
 	// Module-level URL cache shared across all instances.
 	const urlCache = new Map<string, string>();
@@ -47,12 +48,20 @@
 {:else if loadState === 'loaded'}
 	<img {src} {alt} class={className} />
 {:else}
-	<!-- Placeholder shown when the asset is missing or load failed -->
-	<div
-		class="bg-muted flex items-center justify-center {className}"
-		role="img"
-		aria-label={alt || t('common.imageUnavailable')}
-	>
-		<span class="text-muted-foreground text-xs select-none">?</span>
-	</div>
+	<!-- Placeholder shown when the asset is missing or load failed. A decorative image (alt="") stays out of the
+	     accessibility tree, so it never adds text to the name of a control that contains it. -->
+	{#if alt === ''}
+		<div class="bg-muted flex items-center justify-center {className}" aria-hidden="true">
+			<span class="text-muted-foreground text-xs select-none">?</span>
+		</div>
+	{:else}
+		<div
+			class="bg-muted flex items-center justify-center {className}"
+			role="img"
+			aria-label={alt}
+			title={t('common.imageUnavailable')}
+		>
+			<span class="text-muted-foreground text-xs select-none">?</span>
+		</div>
+	{/if}
 {/if}

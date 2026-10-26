@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mergeProps } from 'bits-ui';
 	import { showMessageError } from '#lib/i18n/notifications.js';
 	import { describeMessage, t, getEditorLocale, type MessageDescriptor } from '#lib/i18n/index.svelte.js';
 	import Message from '#lib/i18n/Message.svelte';
@@ -319,7 +320,9 @@
 {/snippet}
 
 <ScrollArea class="h-full">
-	<div data-testid="hero-detail" class="space-y-4 p-4">
+	<!-- A size container: two-column rows stack when the detail pane is narrow
+	     (the 800x600 minimum window or a dragged splitter), whatever the window width. -->
+	<div data-testid="hero-detail" class="@container space-y-4 p-4">
 		<!-- Header -->
 		<div class="flex gap-3">
 			<!-- Portrait -->
@@ -339,7 +342,7 @@
 			</div>
 			<!-- Info -->
 			<div class="flex min-w-0 flex-1 flex-col justify-center gap-1">
-				<div class="flex items-center justify-between">
+				<div class="flex flex-wrap items-center justify-between gap-x-2">
 					{#if editingName}
 						<Input
 							bind:value={nameValue}
@@ -357,7 +360,7 @@
 							class="group flex min-w-0 cursor-pointer items-center gap-1 rounded-none border border-transparent px-1 py-0.5 text-sm font-medium transition-colors hover:border-border hover:bg-muted/50"
 							onclick={startEditName}
 						>
-							<span class="truncate">{hero.name}</span>
+							<span class="truncate" title={hero.name}>{hero.name}</span>
 							<PencilIcon
 								size={12}
 								class="text-muted-foreground shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
@@ -366,16 +369,18 @@
 					{/if}
 					<Tooltip>
 						<TooltipTrigger>
-							<Button variant="ghost" size="sm" class="h-7 shrink-0 gap-1 text-xs" onclick={handleRevert}>
-								<ArrowCounterClockwiseIcon size={12} />
-								{t('heroes.reset')}
-							</Button>
+							{#snippet child({ props })}
+								<Button {...mergeProps(props, { onclick: handleRevert })} variant="ghost" size="sm" class="h-7 shrink-0 gap-1 text-xs">
+									<ArrowCounterClockwiseIcon size={12} />
+									{t('heroes.reset')}
+								</Button>
+							{/snippet}
 						</TooltipTrigger>
 						<TooltipContent>{t('heroes.resetHelp')}</TooltipContent>
 					</Tooltip>
 				</div>
-				<div class="flex items-center justify-between px-1 text-xs text-muted-foreground">
-					<div class="flex items-center gap-2">
+				<div class="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-1 text-xs text-muted-foreground">
+					<div class="flex min-w-0 flex-wrap items-center gap-x-2">
 						<span lang={gameTextLocale()}>{heroClassName(hero.heroClass)}</span>
 						<span class="h-2 w-2 shrink-0 rounded-full {hero.statusDotClass}"></span>
 						<span class="{isDead ? 'text-red-500' : ''}">{heroStatusLabel(hero.status)}</span>
@@ -403,7 +408,7 @@
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-4">
-					<div class="flex gap-4">
+					<div class="flex flex-col gap-4 @md:flex-row">
 						<!-- HP -->
 						<div class="flex-1">
 							<div class="mb-1 flex items-center justify-between">
@@ -495,7 +500,7 @@
 					     They persist across raids and are NOT in persist.raid.json.
 					     Changes here are written to persist.roster.json. -->
 
-					<div class="flex gap-4">
+					<div class="flex flex-col gap-4 @md:flex-row">
 						<!-- Affliction -->
 						<div class="flex-1">
 							<div class="mb-1 flex items-center justify-between">
@@ -536,7 +541,7 @@
 
 						<!-- Deaths Door -->
 						<div class="flex-1">
-							<div class="mb-1 flex items-center justify-between">
+							<div class="mb-1 flex flex-wrap items-center justify-between gap-x-2">
 								<span class="text-[11px] font-medium">{t('heroes.deathsDoor')}</span>
 								<Tooltip>
 									<TooltipTrigger>
@@ -565,7 +570,7 @@
 				<span class="shrink-0 text-xs font-semibold uppercase tracking-wider">{t('heroes.quirks')}</span>
 				<Separator class="flex-1" />
 			</div>
-			<div class="mt-2 grid grid-cols-2 gap-4">
+			<div class="mt-2 grid grid-cols-1 gap-4 @md:grid-cols-2">
 					<!-- Positive Column -->
 					<div>
 						<div class="mb-2 flex items-center justify-between">
@@ -705,7 +710,7 @@
 									{#each availableCombat as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px] opacity-60">
 											<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
-											<span lang={gameTextLocale()} class="truncate font-mono">{combatSkillName(hero.heroClass, skillId)}</span>
+											<span lang={gameTextLocale()} class="truncate font-mono" title={combatSkillName(hero.heroClass, skillId)}>{combatSkillName(hero.heroClass, skillId)}</span>
 										</div>
 									{/each}
 								</div>
@@ -717,24 +722,25 @@
 										{@const disableOn = !isSelected && combatSkillIds.length >= MAX_COMBAT_SKILLS}
 										{@const disableOff = isSelected && combatSkillIds.length <= 1}
 										<Tooltip>
-											<TooltipTrigger class="w-full">
-												<button
-													type="button"
-													class="flex w-full items-center gap-2 rounded-none px-2 py-1 text-left text-[11px] transition-colors
-														{isSelected ? 'bg-orange-500/10 hover:bg-orange-500/20' : 'hover:bg-muted'}
-														{(disableOn || disableOff) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}"
-													disabled={disableOn || disableOff}
-													onclick={() => handleToggleCombat(skillId)}
-													aria-pressed={isSelected}
-													aria-label={t('heroes.skillAction', { selected: isSelected ? 'yes' : 'no', name: combatSkillName(hero.heroClass, skillId) })}
-												>
-													{#if isSelected}
-														<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
-													{:else}
-														<span class="h-2 w-2 rounded-full border border-orange-400 shrink-0"></span>
-													{/if}
-													<span lang={gameTextLocale()} class="truncate font-mono">{combatSkillName(hero.heroClass, skillId)}</span>
-												</button>
+											<TooltipTrigger>
+												{#snippet child({ props })}
+													<button {...mergeProps(props, { onclick: () => handleToggleCombat(skillId) })}
+														type="button"
+														class="flex w-full items-center gap-2 rounded-none px-2 py-1 text-left text-[11px] transition-colors
+															{isSelected ? 'bg-orange-500/10 hover:bg-orange-500/20' : 'hover:bg-muted'}
+															{(disableOn || disableOff) ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}"
+														aria-disabled={disableOn || disableOff}
+														aria-pressed={isSelected}
+														aria-label={t('heroes.skillAction', { selected: isSelected ? 'yes' : 'no', name: combatSkillName(hero.heroClass, skillId) })}
+													>
+														{#if isSelected}
+															<span class="h-2 w-2 rounded-full bg-orange-400 shrink-0 ring-1 ring-orange-400"></span>
+														{:else}
+															<span class="h-2 w-2 rounded-full border border-orange-400 shrink-0"></span>
+														{/if}
+														<span lang={gameTextLocale()} class="truncate font-mono" title={combatSkillName(hero.heroClass, skillId)}>{combatSkillName(hero.heroClass, skillId)}</span>
+													</button>
+												{/snippet}
 											</TooltipTrigger>
 											<TooltipContent>
 												{#if disableOn}
@@ -758,7 +764,7 @@
 									{#each combatSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0"></span>
-											<span lang={gameTextLocale()} class="truncate font-mono">{combatSkillName(hero.heroClass, skillId)}</span>
+											<span lang={gameTextLocale()} class="truncate font-mono" title={combatSkillName(hero.heroClass, skillId)}>{combatSkillName(hero.heroClass, skillId)}</span>
 										</div>
 									{/each}
 								</div>
@@ -781,22 +787,23 @@
 								{#each availableCamping as skillId (skillId)}
 									{@const isSelected = campingSkillIds.includes(skillId)}
 									<Tooltip>
-										<TooltipTrigger class="w-full">
-											<button
-												type="button"
-												class="flex w-full items-center gap-2 rounded-none px-2 py-1 text-left text-[11px] transition-colors cursor-pointer
-													{isSelected ? 'bg-blue-500/10 hover:bg-blue-500/20' : 'hover:bg-muted'}"
-												onclick={() => handleToggleCamping(skillId)}
-												aria-pressed={isSelected}
-												aria-label={t('heroes.skillAction', { selected: isSelected ? 'yes' : 'no', name: campingSkillName(skillId) })}
-											>
-												{#if isSelected}
-													<span class="h-2 w-2 rounded-full bg-blue-400 shrink-0 ring-1 ring-blue-400"></span>
-												{:else}
-													<span class="h-2 w-2 rounded-full border border-blue-400 shrink-0"></span>
-												{/if}
-												<span lang={gameTextLocale()} class="truncate font-mono">{campingSkillName(skillId)}</span>
-											</button>
+										<TooltipTrigger>
+											{#snippet child({ props })}
+												<button {...mergeProps(props, { onclick: () => handleToggleCamping(skillId) })}
+													type="button"
+													class="flex w-full items-center gap-2 rounded-none px-2 py-1 text-left text-[11px] transition-colors cursor-pointer
+														{isSelected ? 'bg-blue-500/10 hover:bg-blue-500/20' : 'hover:bg-muted'}"
+													aria-pressed={isSelected}
+													aria-label={t('heroes.skillAction', { selected: isSelected ? 'yes' : 'no', name: campingSkillName(skillId) })}
+												>
+													{#if isSelected}
+														<span class="h-2 w-2 rounded-full bg-blue-400 shrink-0 ring-1 ring-blue-400"></span>
+													{:else}
+														<span class="h-2 w-2 rounded-full border border-blue-400 shrink-0"></span>
+													{/if}
+													<span lang={gameTextLocale()} class="truncate font-mono" title={campingSkillName(skillId)}>{campingSkillName(skillId)}</span>
+												</button>
+											{/snippet}
 										</TooltipTrigger>
 										<TooltipContent>
 											{#if isSelected}{t('heroes.clickToDeselect')}{:else}{t('heroes.clickToSelect')}{/if}
@@ -811,7 +818,7 @@
 									{#each campingSkillIds as skillId (skillId)}
 										<div class="flex items-center gap-2 px-2 py-1 text-[11px]">
 											<span class="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0"></span>
-											<span lang={gameTextLocale()} class="truncate font-mono">{campingSkillName(skillId)}</span>
+											<span lang={gameTextLocale()} class="truncate font-mono" title={campingSkillName(skillId)}>{campingSkillName(skillId)}</span>
 										</div>
 									{/each}
 								</div>
@@ -833,7 +840,7 @@
 				<Separator class="flex-1" />
 			</div>
 			<div class="mt-2 space-y-3">
-					<div class="flex gap-4">
+					<div class="flex flex-col gap-4 @md:flex-row">
 						<!-- Weapon Rank -->
 						<div class="flex-1">
 							<span class="text-muted-foreground mb-1 block text-[11px]">
@@ -883,7 +890,7 @@
 					<!-- D3: Trinket Slots -->
 					<div>
 						<span class="text-muted-foreground mb-1 block text-[11px] font-medium">{t('heroes.trinkets')}</span>
-						<div class="grid grid-cols-2 gap-2">
+						<div class="grid grid-cols-1 gap-2 @md:grid-cols-2">
 							<!-- Slot 0 -->
 							<div>
 								<span class="text-muted-foreground mb-1 block text-[10px]">{t('heroes.slot1')}</span>

@@ -1,6 +1,7 @@
 import { mockIPC, mockWindows } from '@tauri-apps/api/mocks';
 import { createHarnessProfile, applyFixtureEdits } from './fixture.js';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
+import { pseudoMessage } from './pseudo-locale.js';
 
 export interface ResponsePlan {
 	command: string;
@@ -50,6 +51,25 @@ export async function installHarness() {
 	if (installed === 'limited') plans.push({ command: 'available_game_text_languages', hold: 'installed-languages', value: ['english', 'russian'] });
 	if (installed === 'failed') plans.push({ command: 'available_game_text_languages', fail: 'fixture language list unavailable' });
 
+	// ?pseudoNames swaps the short fixture tokens for the real English game names,
+	// pseudo-expanded, so overflow states see the longer de/fr/ru/pl game names.
+	const pseudoNames = new URL(location.href).searchParams.has('pseudoNames');
+	const expandedNames = Object.fromEntries(Object.entries({
+		hero_class_name_crusader: 'Crusader', hero_class_name_vestal: 'Vestal',
+		str_inventory_title_trinketh1_trinket_a: 'Sun Ring of the Ancestral Crusade', str_inventory_title_trinketh1_trinket_b: 'Cleansing Crystal Pendant',
+		str_quirk_name_quick_reflexes: 'Quick Reflexes', str_quirk_name_warrior_of_light: 'Warrior of Light',
+		combat_skill_name_crusader_smite: 'Smite', camping_skill_name_encourage: 'Encourage',
+		town_name_abbey: 'Abbey', town_name_blacksmith: 'Blacksmith', town_activity_name_prayer: 'Meditation and Prayer',
+		'upgrade_tree_name_abbey.prayer': 'Transept', 'upgrade_tree_name_blacksmith.cost': 'Furnace and Anvil',
+		str_bank_title: 'Bank of the Hamlet', str_buskers_corner_title: 'Puppet Theatre', str_inventory_title_gold: 'Gold',
+		str_inventory_title_heirloombust: 'Bust', tutorial_popup_blueprints_title: 'Blueprint', str_inventory_title_shard: 'Shards',
+		str_inventory_title_estate_currencycrimson_court_invitation_A: "Baron's Invitation", str_inventory_title_estate_currencycrimson_court_invitation_B: "Viscount's Invitation",
+		str_inventory_title_estate_currencycrimson_court_invitation_C: "Countess' Invitation", str_inventory_title_estatethe_blood: 'The Blood',
+		str_dlc_title_crimson_court: 'The Crimson Court', str_dlc_title_shieldbreaker: 'The Shieldbreaker', str_dlc_title_color_of_madness: 'The Color of Madness',
+		str_dlc_title_musketeer: 'The Musketeer', dungeon_name_crypts: 'Ruins', town_quest_difficulty_1: 'Apprentice', town_quest_length_2: 'Medium',
+		str_inventory_title_supplymedicinal_herbs: 'Medicinal Herbs'
+	}).map(([key, name]) => [key, pseudoMessage(name.replaceAll("'", "''"))]));
+
 	mockWindows('main');
 	mockIPC(async (command, input) => {
 		const args = (input ?? {}) as Record<string, unknown>;
@@ -80,7 +100,7 @@ export async function installHarness() {
 		if (command === 'generate_name_table') return ['stage_coach.rostersize'];
 		if (command === 'set_name_table' || command === 'save_profile') return;
 		if (command === 'load_profile') return { data: structuredClone(fixture), name_table_version: 17 };
-		if (command === 'load_localization') return { table: {
+		if (command === 'load_localization') return { table: pseudoNames ? expandedNames : {
 			hero_class_name_crusader: `${args.language}:crusader`,
 			hero_class_name_vestal: `${args.language}:vestal`,
 			str_inventory_title_trinketh1_trinket_a: `${args.language}:trinket-a`,
@@ -116,7 +136,10 @@ export async function installHarness() {
 			str_quirk_name_warrior_of_light: 'Warrior of Light',
 			str_inventory_title_trinketh1_trinket_a: 'English Jewel Alpha', str_inventory_title_trinketh1_trinket_b: 'English Jewel Beta' } };
 		if (command === 'available_game_text_languages') return Object.keys(GAME_TEXT_LOCALES);
-		if (command === 'detect_save_locations') return [{ path: '/h1/profile_0', source: 'Manual', steam_user_id: null, profile_id: 'profile_0', has_active_raid: false }];
+		if (command === 'detect_save_locations') return [
+			{ path: '/h1/profile_0', source: 'Manual', steam_user_id: null, profile_id: 'profile_0', has_active_raid: false },
+			...(new URL(location.href).searchParams.has('profiles') ? [{ path: '/h1/profile_1', source: 'Steam', steam_user_id: 'h1-user', profile_id: 'profile_1', has_active_raid: true }] : [])
+		];
 		if (command === 'is_game_running') {
 			if (gameStatus === 'uncertain') throw new Error('fixture: game status unavailable');
 			return gameStatus;
@@ -138,6 +161,26 @@ export async function installHarness() {
 	const save = await import('#lib/api/save.js');
 	window.__h1 = {
 		calls, plans,
+		async catalog(locale: 'en' | 'de' | 'pseudo' | 'ja-pseudo') {
+			const { usePseudoLocale } = await import('./catalog-override.js');
+			const { setEditorLocale } = await import('#lib/i18n/index.svelte.js');
+			// ja-pseudo keeps expanded pseudo text but applies Japanese typography
+			// (lang ja and the cjk class: 12 px floor and the CJK font stack).
+			setEditorLocale(locale === 'de' ? 'de' : locale === 'ja-pseudo' ? 'ja' : 'en');
+			await usePseudoLocale(locale === 'pseudo' || locale === 'ja-pseudo');
+		},
+		blockRaidEstate() { Reflect.deleteProperty(store.getSaveData().estate!.base_root, 'trinkets'); },
+		deadHero(ids = ['96']) { for (const id of ids) store.getHeroRawData(id)!['roster.status'] = 3; },
+		vampireHero() {
+			store.addHeroQuirk('96', 'disease_vampire_passive', {
+				is_locked: false, is_new: false, mission_count: 0,
+				replaces_quirk: 0, replaces_quirk_viewed: false, evolution_duration_remaining: 0
+			});
+		},
+		longNames() {
+			store.setHeroName('96', 'VeryLongHeroName'.repeat(12));
+			store.setEstateName('VeryLongEstateName'.repeat(12));
+		},
 		persistedSettings: () => JSON.parse(JSON.stringify(values)),
 		release(id: string) { const resolve = held.get(id); if (!resolve) throw new Error(`No held response: ${id}`); held.delete(id); resolve(); },
 		held: () => [...held.keys()],
@@ -229,6 +272,11 @@ declare global {
 	interface Window {
 		__h1?: {
 			calls: IpcCall[];
+			catalog(locale: 'en' | 'de' | 'pseudo' | 'ja-pseudo'): Promise<void>;
+			blockRaidEstate(): void;
+			deadHero(ids?: string[]): void;
+			vampireHero(): void;
+			longNames(): void;
 			persistedSettings(): Record<string, unknown>;
 			plans: ResponsePlan[];
 			release(id: string): void;

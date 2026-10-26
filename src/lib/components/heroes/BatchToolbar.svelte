@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { mergeProps } from 'bits-ui';
 	import { t } from '#lib/i18n/index.svelte.js';
 	import { formatNumber } from '#lib/i18n/intl.js';
 	import ResolveLabel from './ResolveLabel.svelte';
@@ -62,21 +63,26 @@
 
 </script>
 
-<div class="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
+<!-- Wraps so every batch action stays reachable in a narrow window or a longer language. -->
+<div class="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-3 py-2">
 	<span class="text-muted-foreground shrink-0 text-[11px] font-medium">
 		{t('heroes.selected', { countText: formatNumber(selectedHeroes.length), totalText: formatNumber(totalCount) })}
 	</span>
 
 	{#if selectedHeroes.length > 0}
-		<Separator orientation="vertical" class="mx-1 h-4" />
+		<!-- Stretch to the separator's own flex line: the built-in h-full would take
+		     the whole wrapped toolbar height and push the second line out of the toolbar. -->
+		<Separator orientation="vertical" class="mx-1 self-stretch data-[orientation=vertical]:h-auto" />
 
 		<!-- Heal All -->
 		<Tooltip>
 			<TooltipTrigger>
-				<Button variant="outline" size="sm" class="h-7 gap-1.5 text-[11px]" onclick={handleHealAll}>
-					<HeartIcon size={12} class="text-red-500" />
-					{t('heroes.healAll')}
-				</Button>
+				{#snippet child({ props })}
+					<Button {...mergeProps(props, { onclick: handleHealAll })} variant="outline" size="sm" class="h-7 gap-1.5 text-[11px]">
+						<HeartIcon size={12} class="text-red-500" />
+						{t('heroes.healAll')}
+					</Button>
+				{/snippet}
 			</TooltipTrigger>
 			<TooltipContent>{t('heroes.healAllHelp')}</TooltipContent>
 		</Tooltip>
@@ -84,15 +90,16 @@
 		<!-- Clear Stress -->
 		<Tooltip>
 			<TooltipTrigger>
-				<Button
-					variant="outline"
-					size="sm"
-					class="h-7 gap-1.5 text-[11px]"
-					onclick={handleClearStress}
-				>
-					<BrainIcon size={12} class="text-yellow-500" />
-					{t('heroes.clearStress')}
-				</Button>
+				{#snippet child({ props })}
+					<Button {...mergeProps(props, { onclick: handleClearStress })}
+						variant="outline"
+						size="sm"
+						class="h-7 gap-1.5 text-[11px]"
+					>
+						<BrainIcon size={12} class="text-yellow-500" />
+						{t('heroes.clearStress')}
+					</Button>
+				{/snippet}
 			</TooltipTrigger>
 			<TooltipContent>{t('heroes.clearStressHelp')}</TooltipContent>
 		</Tooltip>
@@ -118,15 +125,16 @@
 		{#if allDead}
 			<Tooltip>
 				<TooltipTrigger>
-					<Button
-						variant="outline"
-						size="sm"
-						class="h-7 gap-1.5 text-[11px]"
-						onclick={() => (revivalOpen = true)}
-					>
-						<HeartIcon size={12} class="text-green-500" />
-						{t('heroes.revive')}
-					</Button>
+					{#snippet child({ props })}
+						<Button {...mergeProps(props, { onclick: () => (revivalOpen = true) })}
+							variant="outline"
+							size="sm"
+							class="h-7 gap-1.5 text-[11px]"
+						>
+							<HeartIcon size={12} class="text-green-500" />
+							{t('heroes.revive')}
+						</Button>
+					{/snippet}
 				</TooltipTrigger>
 				<TooltipContent>{t('heroes.reviveHelp')}</TooltipContent>
 			</Tooltip>

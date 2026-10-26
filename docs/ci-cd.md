@@ -6,7 +6,7 @@ Pushes to `main` and pull requests run frontend checking, building and tests, pl
 
 Weekly security checks run `cargo audit` and full `pnpm audit`, including frontend libraries compiled from dev dependencies. cargo-audit is installed from a checksum-verified prebuilt release through the pinned install action, with source-install fallback disabled. GitHub disables scheduled workflows in public repositories after 60 days without activity; check that the schedule remains enabled.
 
-Dependabot checks npm, Cargo and SHA-pinned GitHub Actions weekly. Action pins have version comments. Checkout never persists Git credentials. CI and audit have read-only repository tokens; the release workflow starts with no permissions. Draft creation and installer upload jobs receive `contents: write`; dry-run builds receive only `contents: read`. No signing secrets are needed.
+Dependabot checks npm, Cargo and SHA-pinned GitHub Actions weekly. Action pins have version comments. Checkout never persists Git credentials. CI and audit have read-only repository tokens; the release workflow starts with no permissions. Draft creation and installer upload jobs receive `contents: write`; the translation release gate and dry-run builds receive only `contents: read`. No signing secrets are needed.
 
 ## Before the first release
 
@@ -77,7 +77,7 @@ Publish only artifacts built by CI, which contain runner paths instead of local 
 ## Configuration
 
 - `.github/workflows/ci.yml`: PR/push checks.
-- `.github/workflows/release.yml`: tag validation, draft creation and manual dry-run entry point.
+- `.github/workflows/release.yml`: translation release gate (`pnpm i18n:check` in release mode, once on Linux, before draft creation and dry-run builds), tag validation, draft creation and manual dry-run entry point.
 - `.github/workflows/build.yml`: shared installer matrix for tags and dry runs.
 - `.github/workflows/audit.yml`: security audits.
 - `.github/dependabot.yml`: dependency updates.

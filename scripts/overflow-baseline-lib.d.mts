@@ -1,0 +1,20 @@
+// Types for overflow-baseline-lib.mjs, used by the TypeScript H1 helper.
+export type Finding = { kind: string; element: string; target?: string; detail: string };
+export type BaselineEntry = { state: string; kind: string; element: string; target?: string; locales: string[]; viewports: string[]; projects: string[]; reason: string };
+export type Run = { locale: string; viewport: string; project: string };
+export type Baseline = { $comment?: string; entries: BaselineEntry[] };
+export type Context = { state: string; locale: string; viewport: string; project: string };
+export type Report = Context & { unexpected: Finding[]; baselined: Finding[] };
+export declare const GATING_KINDS: readonly string[];
+export declare const INFORMATIONAL_KINDS: readonly string[];
+export declare const OVERFLOW_LOCALES: readonly ['pseudo', 'de', 'ja-pseudo'];
+export declare const OVERFLOW_VIEWPORTS: readonly ['800x600', '1366x768'];
+export declare const OVERFLOW_PROJECTS: readonly ['chromium', 'webkit'];
+export declare function findingKey(finding: Pick<Finding, 'kind' | 'element' | 'target'>): string;
+export declare function applies(entry: BaselineEntry, context: Context): boolean;
+export declare function acceptedKeys(entries: readonly BaselineEntry[], context: Context): Set<string>;
+export declare function scopeRuns(entry: BaselineEntry): Run[];
+export declare function coverRuns(runs: Run[]): Pick<BaselineEntry, 'locales' | 'viewports' | 'projects'>[];
+export declare function validateBaseline(file: unknown): string[];
+export declare function summarize(reports: Report[], baseline: Baseline): { reports: number; unexpected: (Context & Finding)[]; stale: BaselineEntry[]; staleRuns: { entry: BaselineEntry; runs: Run[] }[] };
+export declare function candidate(reports: Report[], baseline: Baseline): Baseline;

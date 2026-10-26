@@ -50,8 +50,8 @@
 				</div>
 			{/if}
 			<div class="min-w-0">
-				<p lang={gameTextLocale()} class="truncate text-sm font-medium" title={id}>{displayName}</p>
-				<p class="truncate text-xs text-muted-foreground">{id}</p>
+				<p lang={gameTextLocale()} class="truncate text-sm font-medium" title={displayName}>{displayName}</p>
+				<p class="truncate text-xs text-muted-foreground" title={id}>{id}</p>
 			</div>
 		</div>
 		<Button

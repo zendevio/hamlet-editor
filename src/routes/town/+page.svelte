@@ -106,7 +106,8 @@
 		description={t('town.noDataHelp')}
 	/>
 {:else}
-	<ScrollArea class="h-[calc(100vh-4rem)]">
+	<!-- Sized from main like Settings; see the note there. -->
+	<ScrollArea class="h-[calc(100%+1rem)]">
 		<div data-testid="town-page" class="min-w-0 space-y-8 p-6">
 			<!-- Treatment Buildings Section -->
 			<section>

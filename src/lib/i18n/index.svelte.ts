@@ -1,15 +1,17 @@
 import { formatNumber } from './intl.js';
-import en from './catalogs/en.json';
-import de from './catalogs/de.json';
-import ru from './catalogs/ru.json';
-import ja from './catalogs/ja.json';
+import { runtimeCatalogs as catalogs } from './catalogs.js';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
 import { createTranslator, type Params } from './core.js';
 import type { MessageKey, MessageParams, MessageDescriptor } from './messages.generated.js';
 
 export type { MessageKey, MessageParams, MessageDescriptor } from './messages.generated.js';
 export type EditorLocale = (typeof GAME_TEXT_LOCALES)[keyof typeof GAME_TEXT_LOCALES];
-const translator = createTranslator({ en, de, ru, ja });
+let translator = $state.raw(createTranslator(catalogs));
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+	void import('../dev/catalog-override.js').then(({ registerCatalogOverride }) => {
+		registerCatalogOverride((catalog) => { translator = createTranslator(catalog ? { en: catalog } : catalogs); });
+	});
+}
 let locale = $state<EditorLocale>('en');
 
 export function getEditorLocale(): EditorLocale {

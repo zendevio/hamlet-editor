@@ -11,12 +11,25 @@ fn catalog_source(locale: &str) -> Option<&'static str> {
 }
 #[cfg(any(target_os = "macos", test))]
 fn label(locale: &str, key: &str) -> String {
+    let fresh_keys: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../src/lib/i18n/fresh-keys.generated.json"
+    ))
+    .expect("bundled fresh keys JSON");
+    label_with_fresh_keys(locale, key, &fresh_keys)
+}
+#[cfg(any(target_os = "macos", test))]
+fn label_with_fresh_keys(locale: &str, key: &str, fresh_keys: &serde_json::Value) -> String {
+    let id = format!("native.{key}");
+    let current = locale == "en"
+        || fresh_keys[locale]
+            .as_array()
+            .is_some_and(|keys| keys.iter().any(|value| value.as_str() == Some(&id)));
     let source = catalog_source(locale).unwrap_or_else(|| catalog_source("en").unwrap());
     let catalog: serde_json::Value = serde_json::from_str(source).expect("bundled catalog JSON");
     catalog
-        .get(format!("native.{key}"))
+        .get(&id)
         .and_then(|value| value.as_str())
-        .filter(|value| !value.trim().is_empty())
+        .filter(|value| current && !value.trim().is_empty())
         .map(str::to_owned)
         .unwrap_or_else(|| {
             let english: serde_json::Value =
@@ -133,6 +146,29 @@ pub fn set_native_menu_language(app: tauri::AppHandle, locale: String) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn stale_native_keys_use_the_same_generated_fallback_as_the_frontend() {
+        let mut fresh_keys: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../src/lib/i18n/fresh-keys.generated.json"
+        ))
+        .unwrap();
+        fresh_keys["de"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|id| id != "native.edit");
+        assert_eq!(
+            label_with_fresh_keys("de", "edit", &fresh_keys),
+            label("en", "edit")
+        );
+        assert_eq!(
+            label_with_fresh_keys("de", "copy", &fresh_keys),
+            label("de", "copy")
+        );
+        assert_eq!(
+            label_with_fresh_keys("en", "edit", &serde_json::json!({})),
+            label("en", "edit")
+        );
+    }
     #[test]
     fn every_shipped_catalog_is_mapped_to_the_native_menu() {
         let directory =

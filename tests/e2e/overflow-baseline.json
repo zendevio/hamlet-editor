@@ -1,0 +1,4 @@
+{
+	"$comment": "Reviewed overflow findings that the H1 overflow gate accepts. Each entry needs a reason. Each entry lists its locales, viewports and projects explicitly and accepts only their combinations; an omitted list accepts nothing. Regenerate candidates with node scripts/overflow-baseline.mjs <H1 output dir>.",
+	"entries": []
+}

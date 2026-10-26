@@ -300,19 +300,20 @@
 									</GameAssetIcon>
 									<span class="text-sm font-medium">{t('estate.invitations')}</span>
 								</div>
-								<div class="grid grid-cols-3 gap-2">
+								<!-- Long game names wrap inside their column; inputs stay aligned at the bottom. -->
+								<div class="grid grid-cols-3 items-end gap-2">
 									<div class="space-y-1">
-										<label lang={gameTextLocale()} for="inv-a" class="text-xs text-muted-foreground">{estateItemName('crimson_court_invitation_A')}</label>
+										<label lang={gameTextLocale()} for="inv-a" class="inline-block max-w-full text-xs text-muted-foreground [overflow-wrap:anywhere]">{estateItemName('crimson_court_invitation_A')}</label>
 										<IntegerInput lang={gameTextLocale()} id="inv-a" label={estateItemName('crimson_court_invitation_A')} value={invitationA} class="h-8 tabular-nums"
 										onchange={(value) => setEstateItemAmount('crimson_court_invitation_A', value)} />
 									</div>
 									<div class="space-y-1">
-										<label lang={gameTextLocale()} for="inv-b" class="text-xs text-muted-foreground">{estateItemName('crimson_court_invitation_B')}</label>
+										<label lang={gameTextLocale()} for="inv-b" class="inline-block max-w-full text-xs text-muted-foreground [overflow-wrap:anywhere]">{estateItemName('crimson_court_invitation_B')}</label>
 										<IntegerInput lang={gameTextLocale()} id="inv-b" label={estateItemName('crimson_court_invitation_B')} value={invitationB} class="h-8 tabular-nums"
 										onchange={(value) => setEstateItemAmount('crimson_court_invitation_B', value)} />
 									</div>
 									<div class="space-y-1">
-										<label lang={gameTextLocale()} for="inv-c" class="text-xs text-muted-foreground">{estateItemName('crimson_court_invitation_C')}</label>
+										<label lang={gameTextLocale()} for="inv-c" class="inline-block max-w-full text-xs text-muted-foreground [overflow-wrap:anywhere]">{estateItemName('crimson_court_invitation_C')}</label>
 										<IntegerInput lang={gameTextLocale()} id="inv-c" label={estateItemName('crimson_court_invitation_C')} value={invitationC} class="h-8 tabular-nums"
 										onchange={(value) => setEstateItemAmount('crimson_court_invitation_C', value)} />
 									</div>
@@ -356,11 +357,12 @@
 
 		<!-- Trinket Storage Section -->
 		<section>
-			<div class="mb-4 flex items-center justify-between gap-3">
+			<!-- The tools wrap below the heading when the window or the labels do not fit. -->
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 				<h2 class="shrink-0 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 					{t('estate.storage')}
 				</h2>
-				<div class="flex items-center gap-2">
+				<div class="flex flex-wrap items-center gap-2">
 					{#if equippedTrinketCount > 0}
 						<Badge variant="outline" class="text-xs font-normal">
 							{t('estate.equipped', { count: equippedTrinketCount, countText: formatNumber(equippedTrinketCount) })}

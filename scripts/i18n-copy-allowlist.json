@@ -24,7 +24,6 @@
 			"gamePath": "Protocol parameter or envelope property name.",
 			"language": "Protocol parameter or envelope property name.",
 			"recoveryPath": "Protocol parameter or envelope property name.",
-			"backupPath": "Protocol parameter or envelope property name.",
 			"locale": "Protocol parameter or envelope property name.",
 			"folder": "Protocol parameter or envelope property name.",
 			"string": "Protocol parameter or envelope property name.",
@@ -35,8 +34,7 @@
 			"data": "Protocol parameter or envelope property name.",
 			"message": "Protocol parameter or envelope property name.",
 			"error.": "Protocol parameter or envelope property name.",
-			"save_stale": "Stable stale-save protocol code.",
-			"saveFile": "Structured save-file diagnostic context key."
+			"save_stale": "Stable stale-save protocol code."
 		},
 		"src/lib/save-workflow.ts": {
 			"hamlet-request-data-change": "Control-flow choice, severity or context identifier.",
@@ -60,7 +58,6 @@
 			"crimson_court": "Application route, raw installation/DLC id, aria-current token or JavaScript typeof token; visible copy uses the catalog.",
 			"musketeer": "Application route, raw installation/DLC id, aria-current token or JavaScript typeof token; visible copy uses the catalog.",
 			"shieldbreaker": "Application route, raw installation/DLC id, aria-current token or JavaScript typeof token; visible copy uses the catalog.",
-			"step": "Application route, raw installation/DLC id, aria-current token or JavaScript typeof token; visible copy uses the catalog.",
 			"string": "Application route, raw installation/DLC id, aria-current token or JavaScript typeof token; visible copy uses the catalog."
 		},
 		"src/lib/components/heroes/HeroDetail.svelte": {
@@ -75,7 +72,6 @@
 			"berserk": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
 			"color_madness": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
 			"depressed": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
-			"disease": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
 			"disease_vampire_": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
 			"fearful": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
 			"irrational": "Game hero class, affliction, quirk category or curse identifier; visible names use game tables.",
@@ -87,9 +83,7 @@
 			"virtue": "ICU select discriminator, never displayed directly.",
 			"border-amber-500/20 bg-amber-500/10": "Quirk visual style class tokens.",
 			"border-green-500/20 bg-green-500/5": "Quirk visual style class tokens.",
-			"border-red-500/20 bg-red-500/5": "Quirk visual style class tokens.",
-			"raid/skill_attributes/skill_attribute_heal.png": "Game icon asset path.",
-			"raid/skill_attributes/skill_attribute_stress.png": "Game icon asset path."
+			"border-red-500/20 bg-red-500/5": "Quirk visual style class tokens."
 		},
 		"src/lib/components/heroes/TrinketPicker.svelte": {
 			"inventory": "Trinket source identifier.",
@@ -163,7 +157,8 @@
 			"t": "Keyboard shortcut key or invariant version prefix.",
 			"v": "Keyboard shortcut key or invariant version prefix.",
 			"z": "Keyboard shortcut key or invariant version prefix.",
-			"zh-Hans": "Document language or typography class token."
+			"zh-Hans": "Document language or typography class token.",
+			"overflow": "Dev-only H1 query flag for production-shaped screenshots without invariant controls."
 		},
 		"src/routes/estate/+page.svelte": {
 			"shard": "Persisted currency/item identifier passed to the edit handler.",
@@ -180,23 +175,16 @@
 			"deed": "Persisted currency type or dirty-file identifier.",
 			"portrait": "Persisted currency type or dirty-file identifier.",
 			"persist.estate.json": "Persisted currency type or dirty-file identifier.",
-			"dlc/580100_crimson_court/features/crimson_court/panels/icons_equip/estate/inv_estate+the_blood.png": "Installed game asset relative path.",
-			"dlc/580100_crimson_court/features/crimson_court/panels/icons_equip/estate_currency/inv_estate_currency+crimson_court_invitation_A.png": "Installed game asset relative path.",
-			"dlc/580100_crimson_court/features/districts/shared/estate/currency.blueprint.icon.png": "Installed game asset relative path.",
 			"shared/estate/currency.bust.icon.png": "Installed game asset relative path.",
 			"shared/estate/currency.crest.icon.png": "Installed game asset relative path.",
 			"shared/estate/currency.deed.icon.png": "Installed game asset relative path.",
 			"shared/estate/currency.portrait.icon.png": "Installed game asset relative path.",
-			"shared/estate/currency.shard.icon.png": "Installed game asset relative path.",
 			"shared/estate/currency.gold.large_icon.png": "Installed game asset relative path."
 		},
 		"src/lib/components/GameAssetImage.svelte": {
 			"error": "Asset loading state identifier.",
 			"loaded": "Asset loading state identifier.",
 			"loading": "Asset loading state identifier."
-		},
-		"src/lib/components/LoadingScreen.svelte": {
-			"polite": "WAI-ARIA live region politeness token."
 		},
 		"src/lib/components/ValidationDialog.svelte": {
 			"error": "Validation severity identifier; visible labels are catalogued.",
@@ -306,12 +294,7 @@
 			"restore blocked": "Internal Symbol description for control flow; never rendered."
 		},
 		"src/lib/save-labels.ts": {
-			"DLC": "Legacy validation category identifier mapped to its catalog label.",
-			"Gear Rank": "Legacy validation category identifier mapped to its catalog label.",
-			"Treatment": "Legacy validation category identifier mapped to its catalog label.",
-			"camping_trainer": "Game entity localization key, prefix or id for the existing namespace fallback.",
 			"hero_class_name_": "Game entity localization key, prefix or id for the existing namespace fallback.",
-			"survivalist": "Game entity localization key, prefix or id for the existing namespace fallback.",
 			"town_name_": "Game entity localization key, prefix or id for the existing namespace fallback.",
 			"str_resolve_": "Verified game localization key namespace or virtue id.",
 			"combat_skill_name_": "Verified game localization key namespace or virtue id.",
@@ -351,7 +334,8 @@
 			"farmstead": "Verified raid game-key namespace, real dungeon id or legacy dungeon display alias; no save id is replaced.",
 			"ruins": "Verified raid game-key namespace, real dungeon id or legacy dungeon display alias; no save id is replaced.",
 			"town_quest_difficulty_": "Verified raid game-key namespace, real dungeon id or legacy dungeon display alias; no save id is replaced.",
-			"town_quest_length_": "Verified raid game-key namespace, real dungeon id or legacy dungeon display alias; no save id is replaced."
+			"town_quest_length_": "Verified raid game-key namespace, real dungeon id or legacy dungeon display alias; no save id is replaced.",
+			"en": "BCP 47 language of the corrected English game fallback."
 		},
 		"src/lib/stores/save-data.svelte.ts": {
 			"bg-gray-500": "Fallback status dot CSS class.",
@@ -382,9 +366,6 @@
 		},
 		"src/lib/components/heroes/HeroList.svelte": {
 			"name": "Internal sort field identifier."
-		},
-		"src/routes/heroes/+page.svelte": {
-			"horizontal": "Resizable pane direction token."
 		},
 		"src/lib/hero-order.ts": {
 			"class": "Internal sort field identifier.",
@@ -681,7 +662,6 @@
 			"abbey": "Persisted building or DLC identifier.",
 			"sanitarium": "Persisted building or DLC identifier.",
 			"tavern": "Persisted building or DLC identifier.",
-			"crimson_court": "Persisted building or DLC identifier.",
 			"yes": "ICU purchased-state selector token.",
 			"no": "ICU purchased-state selector token."
 		},

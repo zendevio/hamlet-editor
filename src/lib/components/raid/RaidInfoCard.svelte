@@ -10,7 +10,7 @@
 	} = $props();
 </script>
 
-<div class="flex flex-col gap-1 rounded-sm border px-3 py-2">
+<div class="flex min-w-0 flex-col gap-1 rounded-sm border px-3 py-2 wrap-anywhere">
 	<span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 		{label}
 	</span>

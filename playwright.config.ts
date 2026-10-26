@@ -7,6 +7,10 @@ export default defineConfig({
 	retries: 0,
 	workers: process.env.CI ? 2 : undefined,
 	outputDir: process.env.H1_OUTPUT_DIR ?? 'test-results/h1',
+	// Runs after the webServer answers and before any worker: waits until every
+	// route the suite mounts is compiled and ready, so a cold Vite cache cannot
+	// hand the first tests a blank page.
+	globalSetup: './tests/e2e/global-setup.ts',
 	reporter: [['list']],
 	use: { baseURL: 'http://127.0.0.1:4175', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
 	projects: [

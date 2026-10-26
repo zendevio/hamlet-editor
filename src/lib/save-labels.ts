@@ -115,16 +115,33 @@ export function raidDifficultyName(level: number): string {
 	return localize(`town_quest_difficulty_${level}`, RAID_DIFFICULTY_NAMES[level] ?? t('raid.unknownDifficulty', { level: String(level) }));
 }
 
+/** Unknown difficulty copy belongs to the editor catalog, unlike game labels. */
+export function raidDifficultyLang(level: number): string {
+	return getGameData().nameTable[`town_quest_difficulty_${level}`]?.trim()
+		? gameTextLocale() : RAID_DIFFICULTY_NAMES[level] ? 'en' : getEditorLocale();
+}
+
 export function raidLengthName(length: number): string {
 	return localize(`town_quest_length_${length}`, RAID_LENGTH_NAMES[length] ?? String(length));
 }
 
+export function raidLengthLang(length: number): string {
+	return getGameData().nameTable[`town_quest_length_${length}`]?.trim() ? gameTextLocale() : 'en';
+}
+
+function dungeonKey(id: string): string {
+	return id === 'ruins' ? 'crypts' : id === 'farmstead' ? 'farm' : id;
+}
+
 export function dungeonName(id: string): string {
 	// Older editor fixtures used these aliases; persisted ids are never replaced.
-	const key = id === 'ruins' ? 'crypts' : id === 'farmstead' ? 'farm' : id;
+	const key = dungeonKey(id);
 	return localize(`dungeon_name_${key}`, DUNGEON_DISPLAY_NAMES[key] ?? snakeToTitle(id));
 }
 
+export function dungeonNameLang(id: string): string {
+	return getGameData().nameTable[`dungeon_name_${dungeonKey(id)}`]?.trim() ? gameTextLocale() : 'en';
+}
 export function upgradeTreeName(id: string): string {
 	const tree = stripDsonPrefix(id);
 	const key = tree.includes('.') ? tree.substring(tree.indexOf('.') + 1) : tree;
