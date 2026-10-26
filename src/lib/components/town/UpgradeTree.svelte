@@ -1,75 +1,71 @@
 <script lang="ts">
+	import { t, tWithLocaleParams } from '#lib/i18n/index.svelte.js';
+	import { compareNames, formatList } from '#lib/i18n/intl.js';
+	import { gameTextLocale, upgradeTreeName } from '#lib/save-labels.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { Switch } from '#lib/components/ui/switch/index.js';
 	import { toast } from 'svelte-sonner';
-	import { snakeToTitle, stripDsonPrefix } from '#lib/utils.js';
+	import { stripDsonPrefix } from '#lib/utils.js';
 	import {
 		type BuildingUpgradeGroup,
 		type UpgradePurchase,
 		toggleUpgrade
 	} from '#lib/stores/save-data.svelte.js';
 
-	let {
-		group
-	}: {
-		group: BuildingUpgradeGroup;
-	} = $props();
+	let { group }: { group: BuildingUpgradeGroup } = $props();
 
-	// Group upgrades by their upgrade key (the part after the building name dot)
-	let upgradesByKey = $derived.by(() => {
-		const map: Record<string, UpgradePurchase[]> = {};
-		for (const upgrade of group.upgrades) {
-			const treeId = stripDsonPrefix(upgrade.tree_id);
-			const dotIndex = treeId.indexOf('.');
-			const key = dotIndex >= 0 ? treeId.substring(dotIndex + 1) : treeId;
-			if (!map[key]) map[key] = [];
-			map[key].push(upgrade);
+	// The store orders tiers by requirement code and purchase dictionary id.
+	let upgradesByTree = $derived.by(() => {
+		const map = new Map<string, { purchase: UpgradePurchase; id: number }[]>();
+		for (const [id, purchase] of group.upgrades.entries()) {
+			const tree = stripDsonPrefix(purchase.tree_id);
+			const entries = map.get(tree) ?? [];
+			entries.push({ purchase, id });
+			map.set(tree, entries);
 		}
-		// Sort each group by requirement_code
-		for (const key of Object.keys(map)) {
-			map[key].sort((a, b) => a.requirement_code.localeCompare(b.requirement_code));
-		}
-		return map;
+		return [...map.entries()].sort(([a], [b]) =>
+			compareNames(upgradeTreeName(a), a, upgradeTreeName(b), b, gameTextLocale()));
 	});
 
 	/** Purchased tiers above this one, which the store turns off together with it. */
 	function higherPurchased(purchase: UpgradePurchase): UpgradePurchase[] {
-		const treeId = stripDsonPrefix(purchase.tree_id);
-		const dotIndex = treeId.indexOf('.');
-		const key = dotIndex >= 0 ? treeId.substring(dotIndex + 1) : treeId;
-		return (upgradesByKey[key] ?? []).filter(
-			(s) => s.requirement_code > purchase.requirement_code && s.is_purchased
-		);
+		const tree = stripDsonPrefix(purchase.tree_id);
+		return (upgradesByTree.find(([id]) => id === tree)?.[1] ?? [])
+			.map(({ purchase }) => purchase)
+			.filter((other) => other.requirement_code > purchase.requirement_code && other.is_purchased);
 	}
 
 	function handleToggle(purchase: UpgradePurchase) {
 		const cascaded = purchase.is_purchased ? higherPurchased(purchase) : [];
 		toggleUpgrade(purchase);
 		// Only report the cascade when the store actually applied it.
-		if (cascaded.length > 0 && cascaded.every((s) => !s.is_purchased)) {
-			toast.info(
-				`Also turned off ${cascaded.length === 1 ? 'tier' : 'tiers'} ${cascaded.map((s) => s.requirement_code).join(', ')}, which need tier ${purchase.requirement_code}.`
-			);
+		if (cascaded.length > 0 && cascaded.every((other) => !other.is_purchased)) {
+			toast.info(tWithLocaleParams('town.cascade', (locale) => ({
+				count: cascaded.length,
+				tiers: formatList(cascaded.map((other) => other.requirement_code), {}, locale),
+				requiredTier: purchase.requirement_code
+			})));
 		}
 	}
 </script>
 
 <div class="space-y-3">
-	<h4 class="text-sm font-medium text-muted-foreground">Upgrades</h4>
+	<h4 class="text-sm font-medium text-muted-foreground">{t('town.upgrades')}</h4>
 
-	{#each Object.entries(upgradesByKey) as [key, upgrades] (key)}
+	{#each upgradesByTree as [tree, upgrades] (tree)}
 		<div class="space-y-1.5">
-			<p class="text-xs font-medium text-muted-foreground/80">{snakeToTitle(key)}</p>
+			<p lang={gameTextLocale()} class="text-xs font-medium text-muted-foreground/80">{upgradeTreeName(tree)}</p>
 			<div class="flex flex-wrap gap-3">
-				{#each upgrades as purchase (purchase.tree_id + purchase.requirement_code)}
+				{#each upgrades as { purchase, id } (id)}
 					<div class="flex items-center gap-2">
 						<Switch
+							aria-label={t('town.toggleTier', { name: upgradeTreeName(tree), tier: purchase.requirement_code })}
 							checked={purchase.is_purchased}
 							size="sm"
 							onCheckedChange={(checked) => commitChangedValue(purchase.is_purchased, checked, () => handleToggle(purchase))}
 						/>
 						<span class="text-xs text-muted-foreground">
-							Tier {purchase.requirement_code}
+							{t('town.tier', { tier: purchase.requirement_code })}
 						</span>
 					</div>
 				{/each}

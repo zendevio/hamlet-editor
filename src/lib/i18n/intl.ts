@@ -3,9 +3,8 @@ import { getEditorLocale } from './index.svelte.js';
 const formatters = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat>();
 
 function cached<T extends Intl.NumberFormat | Intl.DateTimeFormat | Intl.ListFormat>(
-	kind: string, options: object, create: (locale: string) => T
+	kind: string, options: object, create: (locale: string) => T, locale: string = getEditorLocale()
 ): T {
-	const locale = getEditorLocale();
 	const key = `${locale}:${kind}:${JSON.stringify(options)}`;
 	let formatter = formatters.get(key);
 	if (!formatter) {
@@ -25,8 +24,16 @@ export function formatDate(value: string | Date, options: Intl.DateTimeFormatOpt
 	return cached('date', options, (locale) => new Intl.DateTimeFormat(locale, options)).format(date);
 }
 
-export function formatList(values: Iterable<string>, options: Intl.ListFormatOptions = {}): string {
-	return cached('list', options, (locale) => new Intl.ListFormat(locale, options)).format(values);
+export function formatList(values: Iterable<string>, options: Intl.ListFormatOptions = {}, locale: string = getEditorLocale()): string {
+	const items = [...values];
+	try {
+		if (typeof Intl.ListFormat === 'function') {
+			return cached('list', options, (candidate) => new Intl.ListFormat(candidate, options), locale).format(items);
+		}
+	} catch {
+		// Preserve the notification if this webview cannot construct or use ListFormat.
+	}
+	return items.join(', ');
 }
 
 const collators = new Map<string, Intl.Collator>();

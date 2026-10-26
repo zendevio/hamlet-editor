@@ -88,9 +88,26 @@ export async function installHarness() {
 			str_quirk_name_quick_reflexes: `${args.language}:quick-reflexes`,
 			str_quirk_name_warrior_of_light: `${args.language}:warrior-of-light`,
 			combat_skill_name_crusader_smite: `${args.language}:smite`,
-			camping_skill_name_encourage: `${args.language}:encourage`
+			camping_skill_name_encourage: `${args.language}:encourage`,
+			town_name_abbey: `${args.language}:abbey`,
+			town_name_blacksmith: `${args.language}:blacksmith`,
+			town_activity_name_prayer: `${args.language}:prayer`,
+			'upgrade_tree_name_abbey.prayer': `${args.language}:transept`,
+			'upgrade_tree_name_blacksmith.cost': `${args.language}:furnace`,
+			str_bank_title: `${args.language}:bank`,
+			str_buskers_corner_title: `${args.language}:puppet-theatre`,
+			str_inventory_title_gold: `${args.language}:gold`,
+			str_inventory_title_heirloombust: `${args.language}:bust`,
+			tutorial_popup_blueprints_title: `${args.language}:blueprint`,
+			str_inventory_title_shard: `${args.language}:shards`,
+			str_inventory_title_estate_currencycrimson_court_invitation_A: `${args.language}:baron-invitation`,
+			str_inventory_title_estate_currencycrimson_court_invitation_B: `${args.language}:viscount-invitation`,
+			str_inventory_title_estate_currencycrimson_court_invitation_C: `${args.language}:countess-invitation`,
+			str_inventory_title_estatethe_blood: `${args.language}:blood`,
+			str_dlc_title_crimson_court: `${args.language}:crimson-court`
 		}, english: args.language === 'english' ? null : { str_quirk_name_quick_reflexes: 'english:quick-reflexes',
-			str_quirk_name_warrior_of_light: 'Warrior of Light' } };
+			str_quirk_name_warrior_of_light: 'Warrior of Light',
+			str_inventory_title_trinketh1_trinket_a: 'English Jewel Alpha', str_inventory_title_trinketh1_trinket_b: 'English Jewel Beta' } };
 		if (command === 'available_game_text_languages') return Object.keys(GAME_TEXT_LOCALES);
 		if (command === 'detect_save_locations') return [{ path: '/h1/profile_0', source: 'Manual', steam_user_id: null, profile_id: 'profile_0', has_active_raid: false }];
 		if (command === 'is_game_running') {
@@ -122,6 +139,34 @@ export async function installHarness() {
 		loadProfile: store.loadProfileFromBackend,
 		gameStatus(status: boolean | 'uncertain') { gameStatus = status; },
 
+		estateTownData() {
+			// Only the S4 cases opt into this in-memory fixture. Existing paired saves stay unchanged.
+			const data = store.getSaveData();
+			data.estate!.base_root.wallet['5'] = { type: 'shard', amount: 1234 };
+			data.estate!.base_root.wallet['6'] = { type: 'blueprint', amount: 12 };
+			data.estate!.base_root.estate_items.items = {
+				'0': { type: 'estate_currency', id: 'crimson_court_invitation_A', amount: 2 },
+				'1': { type: 'estate', id: 'the_blood', amount: 15 }
+			};
+			data.town!.base_root.buildings = { abbey: { activities: { prayer: {
+				'0': { hero: 96, visitsRemaining: 1, resident_occupied: 0, is_side_effect_result: false }
+			} } } };
+			data.town!.base_root.districts = { buildings: {
+				bank: { built: true, saved_counter: 17 }, buskers_corner: { built: false }
+			} };
+			data.upgrades!.base_root.purchases = {
+				'0': { instance_number: 0, tree_id: '###abbey.prayer', requirement_code: 'a', is_purchased: true },
+				'1': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'a', is_purchased: true },
+				'2': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'b', is_purchased: true },
+				'3': { instance_number: 0, tree_id: '###blacksmith.cost', requirement_code: 'c', is_purchased: true },
+				'4': { instance_number: 1234, tree_id: -123456789, requirement_code: 'opaque', is_purchased: true }
+			};
+			const hero = store.getHeroRawData('96')!;
+			hero['roster.status'] = 2;
+			hero['roster.building_name'] = 'abbey';
+			store.setWalletAmount('gold', 1234567);
+			for (const file of ['persist.estate.json', 'persist.town.json', 'persist.upgrades.json', 'persist.roster.json'] as const) store.markDirty(file);
+		},
 		validationCounts(errors: number, warnings: number) {
 			for (const { slot } of store.getTreatmentSlots()) slot.hero = 0;
 			for (const [index, hero] of store.getHeroes().entries()) {
@@ -163,6 +208,7 @@ declare global {
 			resetProfile(): void;
 			loadProfile(path: string): Promise<void>;
 			gameStatus(status: boolean | 'uncertain'): void;
+			estateTownData(): void;
 			validationCounts(errors: number, warnings: number): void;
 			snapshot(): { dirty: Record<string, unknown>; data: Record<string, unknown>; dirtyFiles: string[]; profilePath: string; gamePath: string; version: number; heroes: { id: string; name: string; heroClass: string }[]; loaded: boolean; stale: boolean };
 			save(): Promise<void>;

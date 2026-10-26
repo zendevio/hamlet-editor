@@ -126,3 +126,48 @@ Hero UI and safety messages are now catalogued. New P2 keys fall back to English
 | Escape during hero-name IME composition cancelled the edit | Composing Escape and keyCode 229 retain the draft | The IME can handle Escape without closing the name editor. An ordinary non-composing Escape still cancels. |
 
 Hero classes, quirks and descriptions, trinkets, resolve titles, combat and camping skills, afflictions, virtues and treatment-reference labels now follow the game-text language. Curse state labels and UI chrome follow the editor language. The Houndmaster fallback already corrected in S2 is retained. Localization never replaces ids or user-entered names in save data.
+
+## S4 estate and town text (2026-10-26)
+
+Estate and town chrome, accessible labels and upgrade-cascade messages now use the editor catalog. New P2 entries fall back to English until P3. Game labels resolve from the installed game text language at render; the editor ships only corrected English fallback constants. Other extracted English copy retains its wording, including the existing "1 heroes in treatment" total, which now has a numeric plural contract ready for translations.
+
+| Previous rendering or behavior | Current rendering or behavior | Reason |
+| --- | --- | --- |
+| Meditation, Prayer, Flagellation, Gambling, Disease Treatment, Quirk Treatment | Cloister, Transept, Penance Hall, Gambling Hall, Medical Ward, Treatment Ward | Verified game activity names. Bar and Brothel retain their names. Treatment warning fallbacks use the same corrected constants. |
+| Busts, Portraits, Deeds, Crests, Shards, Blueprints, Blood | Busts, Portraits, Deeds, Crests, Comet Shards, Blueprints, The Blood | Heirloom count captions keep their English plurals as editor catalog messages (estate.heirloomCaption, editor language), because the game's plural names only occur in excluded format strings; translators take them from those strings. Blueprints uses the plain tutorial count title; shard and blood use verified inventory names. Gold stays Gold; Memory is the verified memory fallback. |
+| Baron, Viscount, Countess; raw invitation ids as accessible input names | Baron's Invitation, Viscount's Invitation, Countess' Invitation | Verified Crimson Court item names used for both visible labels and accessible names. |
+| Blood amount | The Blood amount | Whole accessible-name catalog message with the verified game item name. Blueprints amount follows the plural count caption. |
+| Geologic Study Hall, Spire of Hope, Illuminator's Guild, Busker's Corner, Altar of Light, Puppet Theatre under the theater id, Outsider's Bonfire as missing-table fallbacks | Geologic Studyhall, The Red Hook, Cartographer's Camp, Puppet Theatre under buskers_corner, Altar of the Light, Performance Hall under theater, Outsiders Bonfire | All 16 district keys exist in the current installed XML. Corrected fallbacks agree with them; no speculative key alias is used. Loaded tables already preferred these names. |
+| Id-derived upgrade headings such as Cost, Armour, Weapon, Numrecruits and Rostersize | Verified game names such as Furnace, Armorsmithing, Weaponsmithing, Stagecoach Network and Hero Barracks | The full upgrade_tree_name_{building}.{key} is resolved at render. Corrected fallbacks cover all 20 verified building upgrade trees. Unknown trees keep a readable id; unresolved numeric hashes stay raw read-only diagnostics. |
+| Unknown building ids rendered verbatim | Readable title-case ids | D4's final fallback; the real Survivalist id remains camping_trainer and uses town_name_camping_trainer. No survivalist alias is introduced. |
+| Host-locale wallet amounts; ungrouped highscore, equipped/treatment counts, upgrade progress, slot numbers | Editor-locale Intl formatting | Display quantities use the shared module. Numeric input text, parsing, bounds, stored amounts and opaque tier/hash and hero/instance ids are unchanged. |
+| Cascade lists separated only with commas | Message-catalog-locale Intl.ListFormat conjunctions, such as "b and c" for English fallback; comma fallback if unavailable | One whole numeric-plural toast retains the tier/tiers wording and the existing informational lifetime. |
+| Host-locale estate trinket sorting, insertion-order treatment buildings and districts, id-order upgrade tree headings | Effective game-text-locale sorting with stable raw-id ties | Stored data and dependency/slot ordering stay unchanged. Duplicate trinket ids use the original storage key for a final identity tie and stable mounted cards. |
+| Case-only estate trinket search | Shared normalized display-name, English-name and raw-id matching, including accents and full-width text | Reuse the S3 normalizer and English aliases. Missing trinket labels now consistently use the readable id without the localization namespace prefix. |
+| Estate name has a placeholder only; search has a placeholder only; district and tier switches have no explicit name | Estate Name and Search trinkets... accessible names; Toggle {district}; Toggle {upgrade}, tier {tier} | Catalogue the accessible controls and identify their game entities. |
+| Enter during estate-name IME composition can commit the draft; Escape cancels the edit | Composing Enter and keyCode 229 retain the draft | A subsequent ordinary Enter commits, as in the hero name field. Composing Escape also retains the draft; ordinary Escape cancels. |
+| Districts heading carries a Crimson Court DLC badge | Districts heading without a DLC badge | The list also includes Color of Madness districts, so the old badge was incomplete. |
+
+Building, activity, district, upgrade tree, currency, heirloom, invitation, blood, trinket and shown DLC name containers carry the effective game-text lang. The Districts section drops its Crimson Court DLC badge because it also includes Color of Madness districts. Persistent estate name and wallet errors retain descriptors and re-render with the editor language. Unused English status metadata was removed from STATUS_MAP; existing status labels render through heroStatusLabel without a wording change. Localization never replaces saved ids or user-entered names.
+
+Every corrected building-upgrade heading is listed here. The Bar, Brothel and Gambling tree headings keep their English names; the activity label for gambling separately becomes Gambling Hall.
+
+| Tree id | Previous id-derived heading | Corrected game heading |
+| --- | --- | --- |
+| abbey.flagellation | Flagellation | Penance Hall |
+| abbey.meditation | Meditation | Cloister |
+| abbey.prayer | Prayer | Transept |
+| blacksmith.armour | Armour | Armorsmithing |
+| blacksmith.cost | Cost | Furnace |
+| blacksmith.weapon | Weapon | Weaponsmithing |
+| camping_trainer.cost | Cost | Bonfire |
+| guild.cost | Cost | Training Regimen |
+| guild.skill_levels | Skill Levels | Instructor Mastery |
+| nomad_wagon.cost | Cost | Merchant Network |
+| nomad_wagon.numitems | Numitems | Wagon Size |
+| sanitarium.cost | Cost | Treatment Library |
+| sanitarium.disease_quirk_cost | Disease Quirk Cost | Medical Devices |
+| sanitarium.slots | Slots | Patient Cells |
+| stage_coach.numrecruits | Numrecruits | Stagecoach Network |
+| stage_coach.rostersize | Rostersize | Hero Barracks |
+| stage_coach.upgraded_recruits | Upgraded Recruits | Experienced Recruits |

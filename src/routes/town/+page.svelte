@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { localize } from '#lib/stores/game-data.svelte.js';
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { compareNames, formatNumber } from '#lib/i18n/intl.js';
+	import { gameTextLocale, buildingDisplayName, districtName } from '#lib/save-labels.js';
 	import { commitChangedValue } from '#lib/control-events.js';
 	import { readDistricts } from '#lib/districts.js';
-	import { snakeToTitle } from '#lib/utils.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import BuildingCard from '#lib/components/town/BuildingCard.svelte';
 	import { Badge } from '#lib/components/ui/badge/index.js';
@@ -22,7 +23,6 @@
 		getUnknownUpgrades,
 		setDistrictBuilt,
 		TREATMENT_BUILDINGS,
-		DISTRICT_DISPLAY_NAMES,
 		type BuildingUpgradeGroup
 	} from '#lib/stores/save-data.svelte.js';
 
@@ -53,7 +53,7 @@
 		for (const group of upgradeGroups) {
 			names.add(group.buildingName);
 		}
-		return Array.from(names);
+		return Array.from(names).sort((a, b) => compareNames(buildingDisplayName(a), a, buildingDisplayName(b), b, gameTextLocale()));
 	});
 
 	// Split into treatment and non-treatment buildings
@@ -81,7 +81,7 @@
 		}
 	}
 
-	let districts = $derived(readDistricts(saveData.town));
+	let districts = $derived(readDistricts(saveData.town).sort((a, b) => compareNames(districtName(a.id), a.id, districtName(b.id), b.id, gameTextLocale())));
 
 	function handleDistrictToggle(districtId: string, checked: boolean) {
 		setDistrictBuilt(districtId, checked);
@@ -91,29 +91,29 @@
 {#if !saveData.isLoaded}
 	<div class="flex flex-col items-center gap-4">
 		<EmptyState
-			title="No profile loaded"
-			description="Load a save profile to view and edit town buildings, upgrades, and treatment slots."
+			title={t('shell.noProfile')}
+			description={t('town.noProfileHelp')}
 		/>
 		{#if import.meta.env.DEV}
 			<Button variant="outline" size="sm" onclick={loadMockData}>
-				Load Mock Data (Dev)
+				{t('heroes.loadMock')}
 			</Button>
 		{/if}
 	</div>
 {:else if !saveData.town && !saveData.upgrades}
 	<EmptyState
-		title="No town data"
-		description="The loaded profile does not contain town or upgrade data. The files may be missing or corrupted."
+		title={t('town.noData')}
+		description={t('town.noDataHelp')}
 	/>
 {:else}
 	<ScrollArea class="h-[calc(100vh-4rem)]">
-		<div class="min-w-0 space-y-8 p-6">
+		<div data-testid="town-page" class="min-w-0 space-y-8 p-6">
 			<!-- Treatment Buildings Section -->
 			<section>
 				<div class="mb-4 flex flex-wrap items-center gap-2">
-					<h2 class="text-lg font-semibold">Treatment Buildings</h2>
+					<h2 class="text-lg font-semibold">{t('town.treatmentBuildings')}</h2>
 					<Badge variant="secondary" class="text-xs">
-						{abbeyHeroes.length + tavernHeroes.length + sanitariumHeroes.length} heroes in treatment
+						{t('town.treatmentCount', { count: abbeyHeroes.length + tavernHeroes.length + sanitariumHeroes.length, countText: formatNumber(abbeyHeroes.length + tavernHeroes.length + sanitariumHeroes.length) })}
 					</Badge>
 				</div>
 				<div class="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -131,7 +131,7 @@
 
 			<!-- Building Upgrades Section -->
 			<section>
-				<h2 class="mb-4 text-lg font-semibold">Building Upgrades</h2>
+				<h2 class="mb-4 text-lg font-semibold">{t('town.buildingUpgrades')}</h2>
 				<div class="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{#each otherBuildings as buildingName (buildingName)}
 						<BuildingCard
@@ -142,17 +142,17 @@
 				</div>
 				{#if otherBuildings.length === 0}
 					<p class="text-sm text-muted-foreground italic">
-						No building upgrade data loaded. Upgrade data comes from persist.upgrades.json.
+						{t('town.noUpgrades')}
 					</p>
 				{/if}
 			</section>
 
 			{#if unknownUpgrades.length > 0}
 				<section class="space-y-2">
-					<h2 class="text-lg font-semibold">Unknown / Modded Upgrades</h2>
-					<p class="text-xs text-muted-foreground">These raw identifiers are preserved and cannot be edited without matching game data.</p>
+					<h2 class="text-lg font-semibold">{t('town.unknownUpgrades')}</h2>
+					<p class="text-xs text-muted-foreground">{t('town.unknownUpgradesHelp')}</p>
 					{#each unknownUpgrades as purchase}
-						<p class="text-sm tabular-nums">{purchase.tree_id} · Hero / instance {purchase.instance_number} · Tier {purchase.requirement_code} · {purchase.is_purchased ? 'Purchased' : 'Not purchased'}</p>
+						<p class="text-sm tabular-nums">{t('town.unknownUpgrade', { tree: String(purchase.tree_id), instance: String(purchase.instance_number), tier: purchase.requirement_code, purchased: purchase.is_purchased ? 'yes' : 'no' })}</p>
 					{/each}
 				</section>
 			{/if}
@@ -160,28 +160,28 @@
 			{#if districts.length > 0}
 			<Separator />
 
-			<!-- Districts Section (Crimson Court DLC) -->
+			<!-- Districts Section -->
 			<section>
 				<div class="mb-4 flex flex-wrap items-center gap-2">
-					<h2 class="text-lg font-semibold">Districts</h2>
-					<Badge variant="outline" class="text-xs">Crimson Court DLC</Badge>
+					<h2 class="text-lg font-semibold">{t('town.districts')}</h2>
 				</div>
 				<p class="mb-4 text-xs text-muted-foreground">
-					Existing districts from this save. Toggle to mark a district as built or not built.
+					{t('town.districtsHelp')}
 				</p>
 				<div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
 					{#each districts as district (district.id)}
-						<Card class="p-0">
+						<Card data-testid="district-{district.id}" class="p-0">
 							<CardContent class="flex items-center justify-between px-4 py-3">
-								<span class="text-sm font-medium">
-									{localize('str_' + district.id + '_title', DISTRICT_DISPLAY_NAMES[district.id] ?? snakeToTitle(district.id))}
+								<span lang={gameTextLocale()} class="text-sm font-medium">
+									{districtName(district.id)}
 								</span>
 								<div class="flex items-center gap-2">
 									<span class="text-xs text-muted-foreground">
-										{district.built ? 'Built' : 'Not Built'}
+										{district.built ? t('town.built') : t('town.notBuilt')}
 									</span>
 									<Switch
 										size="sm"
+										aria-label={t('town.toggleDistrict', { name: districtName(district.id) })}
 										checked={district.built}
 										onCheckedChange={(checked) => commitChangedValue(district.built, checked, (value) => handleDistrictToggle(district.id, value))}
 									/>

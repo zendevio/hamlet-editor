@@ -29,6 +29,11 @@ export function t<K extends MessageKey>(id: K, ...args: Arguments<K>): string {
 	return translator.text(locale, id, args[0] as Params | undefined);
 }
 
+/** Format locale-sensitive slots in the catalog locale, including per-key fallback. */
+export function tWithLocaleParams<K extends MessageKey>(id: K, params: (locale: string) => MessageParams[K]): string {
+	return translator.text(locale, id, (candidate) => params(candidate) as Params);
+}
+
 function displayParams(params: Params = {}): Params {
 	return Object.fromEntries(Object.entries(params).map(([key, value]) =>
 		[key, key.endsWith('Text') && typeof value === 'number' ? formatNumber(value) : value]));

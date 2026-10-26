@@ -28,34 +28,60 @@ export const BUILDING_DISPLAY_NAMES: Record<string, string> = {
 };
 
 export const ACTIVITY_DISPLAY_NAMES: Record<string, string> = {
-	meditation: 'Meditation',
-	prayer: 'Prayer',
-	flagellation: 'Flagellation',
+	meditation: 'Cloister',
+	prayer: 'Transept',
+	flagellation: 'Penance Hall',
 	bar: 'Bar',
-	gambling: 'Gambling',
+	gambling: 'Gambling Hall',
 	brothel: 'Brothel',
-	disease_treatment: 'Disease Treatment',
-	treatment: 'Quirk Treatment'
+	disease_treatment: 'Medical Ward',
+	treatment: 'Treatment Ward'
 };
 
-/** District keys verified against the Crimson Court districts definitions. */
+/** Corrected English fallbacks only; labels resolve from game tables at render. */
 export const DISTRICT_DISPLAY_NAMES: Record<string, string> = {
 	the_mill: 'The Mill',
-	geologic_studyhall: 'Geologic Study Hall',
+	geologic_studyhall: 'Geologic Studyhall',
 	tainted_well: 'Tainted Well',
 	miasmal_orchard: 'Miasmal Orchard',
-	spire_of_hope: 'Spire of Hope',
+	spire_of_hope: 'The Red Hook',
 	bank: 'Bank',
-	illuminators_guild: "Illuminator's Guild",
+	illuminators_guild: "Cartographer's Camp",
 	granary: 'Granary',
-	buskers_corner: "Busker's Corner",
+	buskers_corner: 'Puppet Theatre',
 	house_of_the_yellow_hand: 'House of the Yellow Hand',
-	altar_of_light: 'Altar of Light',
+	altar_of_light: 'Altar of the Light',
 	training_ring: 'Training Ring',
 	library: 'Athenaeum',
-	theater: 'Puppet Theatre',
-	outsiders_bonfire: "Outsider's Bonfire",
+	theater: 'Performance Hall',
+	outsiders_bonfire: 'Outsiders Bonfire',
 	blood_bank: 'Sanguine Vintners'
+};
+
+/** Corrected English fallbacks for estate inventory names. */
+export const CURRENCY_DISPLAY_NAMES: Record<string, string> = {
+	gold: 'Gold',
+	shard: 'Comet Shards', memory: 'Memory', blueprint: 'Blueprints'
+};
+
+export const ESTATE_ITEM_DISPLAY_NAMES: Record<string, string> = {
+	crimson_court_invitation_A: "Baron's Invitation",
+	crimson_court_invitation_B: "Viscount's Invitation",
+	crimson_court_invitation_C: "Countess' Invitation",
+	the_blood: 'The Blood'
+};
+
+export const DLC_DISPLAY_NAMES: Record<string, string> = { crimson_court: 'Crimson Court' };
+
+/** Verified building upgrade names, used only when game tables lack the key. */
+export const UPGRADE_TREE_DISPLAY_NAMES: Record<string, string> = {
+	'abbey.flagellation': 'Penance Hall', 'abbey.meditation': 'Cloister', 'abbey.prayer': 'Transept',
+	'blacksmith.armour': 'Armorsmithing', 'blacksmith.cost': 'Furnace', 'blacksmith.weapon': 'Weaponsmithing',
+	'camping_trainer.cost': 'Bonfire', 'guild.cost': 'Training Regimen', 'guild.skill_levels': 'Instructor Mastery',
+	'nomad_wagon.cost': 'Merchant Network', 'nomad_wagon.numitems': 'Wagon Size',
+	'sanitarium.cost': 'Treatment Library', 'sanitarium.disease_quirk_cost': 'Medical Devices', 'sanitarium.slots': 'Patient Cells',
+	'stage_coach.numrecruits': 'Stagecoach Network', 'stage_coach.rostersize': 'Hero Barracks', 'stage_coach.upgraded_recruits': 'Experienced Recruits',
+	'tavern.bar': 'Bar', 'tavern.brothel': 'Brothel', 'tavern.gambling': 'Gambling'
 };
 
 /** Known building name prefixes for upgrade tree_ids. */
@@ -88,13 +114,13 @@ export const RESOLVE_LEVEL_NAMES = [
 
 // ── Status Constants ──
 
-/** Status code labels and colors. */
-export const STATUS_MAP: Record<number, { label: string; color: string; dotClass: string }> = {
-	0: { label: 'Available', color: 'green', dotClass: 'bg-green-500' },
-	1: { label: 'In party', color: 'teal', dotClass: 'bg-teal-500' },
-	2: { label: 'In Treatment', color: 'blue', dotClass: 'bg-blue-500' },
-	3: { label: 'Dead', color: 'red', dotClass: 'bg-red-500' },
-	4: { label: 'Missing', color: 'orange', dotClass: 'bg-orange-500' }
+/** Status presentation tokens; visible status text comes from the UI catalog. */
+export const STATUS_MAP: Record<number, { dotClass: string }> = {
+	0: { dotClass: 'bg-green-500' },
+	1: { dotClass: 'bg-teal-500' },
+	2: { dotClass: 'bg-blue-500' },
+	3: { dotClass: 'bg-red-500' },
+	4: { dotClass: 'bg-orange-500' }
 };
 
 // ── HP Table ──

@@ -114,7 +114,7 @@ test('building collation uses game locale rather than editor locale and finishes
 	assert.equal(JSON.stringify(store.getSaveData().upgrades), before);
 	game.setNameTable({ town_name_camping_trainer: 'Тренер' }, 'russian');
 	assert.equal(labels.buildingDisplayName('camping_trainer'), 'Тренер');
-	assert.equal(labels.buildingDisplayName('survivalist'), 'survivalist');
+	assert.equal(labels.buildingDisplayName('survivalist'), 'Survivalist');
 });
 
 test('save workflow refuses the shared descriptor without backing up or writing', async () => {

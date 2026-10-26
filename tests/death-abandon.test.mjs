@@ -13,6 +13,7 @@ const server = await createServer({
 });
 after(() => server.close());
 const { describeMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
+const { heroStatusLabel } = await server.ssrLoadModule('/src/lib/save-labels.ts');
 const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const gameData = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const safety = await server.ssrLoadModule('/src/lib/hero-safety.ts');
@@ -219,8 +220,8 @@ test('dead heroes cannot equip, replace or unequip trinkets through helpers or s
 		}
 	}
 	assert.equal(store.hasDirtyFiles(), false);
-	assert.equal(store.STATUS_MAP[1].label, 'In party');
-	assert.equal(store.STATUS_MAP[4].label, 'Missing');
+	assert.equal(heroStatusLabel(1), 'In party');
+	assert.equal(heroStatusLabel(4), 'Missing');
 });
 
 

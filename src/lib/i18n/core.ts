@@ -11,7 +11,7 @@ const tags: RichTag[] = ['emphasis', 'code', 'link'];
 export function createTranslator(catalogs: Readonly<Record<string, Catalog>>) {
 	const cache = new Map<string, IntlMessageFormat>();
 
-	function format(locale: string, id: string, params: Params = {}): RichPart[] {
+	function format(locale: string, id: string, params: Params | ((locale: string) => Params) = {}): RichPart[] {
 		for (const candidate of new Set([locale, 'en'])) {
 			const source = catalogs[candidate]?.[id];
 			if (!source?.trim()) continue;
@@ -25,7 +25,7 @@ export function createTranslator(catalogs: Readonly<Record<string, Catalog>>) {
 				const slots = Object.fromEntries(tags.map((tag) => [
 					tag, (children: RichPart[]) => ({ tag, children })
 				]));
-				const value = formatter.format<Exclude<RichPart, string>>({ ...params, ...slots });
+				const value = formatter.format<Exclude<RichPart, string>>({ ...(typeof params === 'function' ? params(candidate) : params), ...slots });
 				const parts = Array.isArray(value) ? value : [value];
 				if (parts.length && parts.some((part) => typeof part !== 'string' || part.trim())) {
 					return parts.map((part) => typeof part === 'number' ? String(part) : part);
@@ -37,7 +37,7 @@ export function createTranslator(catalogs: Readonly<Record<string, Catalog>>) {
 		return [readableId(id)];
 	}
 
-	function text(locale: string, id: string, params?: Params): string {
+	function text(locale: string, id: string, params?: Params | ((locale: string) => Params)): string {
 		const flatten = (parts: RichPart[]): string => parts.map((part) =>
 			typeof part === 'string' ? part : flatten(part.children)
 		).join('');

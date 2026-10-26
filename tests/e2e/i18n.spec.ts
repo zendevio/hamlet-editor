@@ -1343,7 +1343,12 @@ test('S3: IME Enter and keyCode 229 retain the hero name draft without committin
 	const before = await snapshot(page);
 	const node = await input.elementHandle();
 	for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
-		await input.dispatchEvent('keydown', { key: 'Enter', bubbles: true, ...init });
+		for (const key of ['Enter', 'Escape']) {
+			await input.dispatchEvent('keydown', { key, bubbles: true, ...init });
+			await expect(input).toHaveValue('名前の途中');
+			await expect(input).toBeFocused();
+			expect(await snapshot(page)).toEqual(before);
+		}
 		await expect(input).toHaveValue('名前の途中');
 		expect(await snapshot(page)).toEqual(before);
 		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
@@ -1357,3 +1362,186 @@ test('S3: IME Enter and keyCode 229 retain the hero name draft without committin
 	roster.base_root.heroes[selected.id].hero_file_data.raw_data.base_root.actor.name = '名前の途中';
 	expect(after.data).toEqual(expected);
 });
+
+test('S4: dirty estate names, wallet errors, invitations and trinkets stay mounted through both real pickers', async ({ page }, info) => {
+	await page.goto('/estate?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => window.__h1!.estateTownData());
+	const estate = page.getByTestId('estate-page');
+	await estate.getByRole('button', { name: 'Edit english:gold: 1,234,567', exact: true }).click();
+	const amount = estate.getByRole('spinbutton').first();
+	await amount.fill('-1');
+	await amount.press('Enter');
+	await expect(estate.getByRole('alert')).toBeVisible();
+	const search = estate.getByRole('textbox', { name: 'Search trinkets...', exact: true });
+	await search.fill('ＴＲＩＮＫＥＴ');
+	const name = estate.getByRole('textbox', { name: 'Estate Name', exact: true });
+	await name.fill('名前の途中');
+	const trinket = estate.getByTestId('estate-trinket-h1_trinket_a');
+	const nodes = await Promise.all([estate, name, amount, trinket].map((locator) => locator.elementHandle()));
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of allLocales) {
+		await switchEditor(page, locale);
+		const messages = await catalog(['en', 'de', 'ru', 'ja'].includes(locale) ? locale : 'en');
+		await expect(page.locator('label[for=editor-language]')).toHaveText(messages['settings.editorLanguage']);
+		await expect(estate.getByRole('heading', { name: 'Wallet', exact: true })).toBeVisible();
+		await expect(estate.getByRole('alert')).toContainText(new Intl.NumberFormat(locale).format(999999999));
+		await expect(estate.getByText('english:baron-invitation', { exact: true })).toBeVisible();
+		await expect(name).toHaveValue('名前の途中');
+		await expect(amount).toHaveValue('-1');
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	for (const language of gameLanguages) {
+		await switchGame(page, language);
+		const locale = GAME_TEXT_LOCALES[language as keyof typeof GAME_TEXT_LOCALES];
+		for (const suffix of ['gold', 'shards', 'blueprint', 'blood', 'baron-invitation']) {
+			const label = estate.getByText(`${language}:${suffix}`, { exact: true });
+			await expect(label).toBeVisible();
+			await expect(label.locator('xpath=ancestor-or-self::*[@lang][1]')).toHaveAttribute('lang', locale);
+		}
+		await expect(trinket.getByText(`${language}:trinket-a`, { exact: true })).toHaveAttribute('lang', locale);
+		await expect(amount).toHaveAttribute('lang', locale);
+		for (const [id, suffix] of [['inv-a', 'baron-invitation'], ['inv-b', 'viscount-invitation'], ['inv-c', 'countess-invitation']]) {
+			await expect(estate.locator(`#${id}`)).toHaveAttribute('aria-label', `${language}:${suffix}`);
+			await expect(estate.locator(`#${id}`)).toHaveAttribute('lang', locale);
+		}
+		for (const suffix of ['blood', 'blueprint']) {
+			const caption = estate.getByText(`${language}:${suffix}`, { exact: true });
+			await expect(caption.locator('..')).toHaveAttribute('lang', locale);
+		}
+		await expect(estate.getByText('Busts', { exact: true })).toBeVisible();
+		await expect(name).toHaveValue('名前の途中');
+		await expect(amount).toHaveValue('-1');
+		await expect(search).toHaveValue('ＴＲＩＮＫＥＴ');
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+	expect(await persistedSettings(page)).toEqual(persisted);
+	await evidence(info, 's4-estate-dirty.aria.txt', await estate.ariaSnapshot(), 'text/plain');
+	// The spaced English alias occurs in neither the current display label nor the raw id.
+	await search.fill('English Jewel');
+	await expect(estate.getByTestId('estate-trinket-h1_trinket_a')).toBeVisible();
+	await expect(estate.getByTestId('estate-trinket-h1_trinket_b')).toBeVisible();
+	await search.fill('missing-jewel');
+	await expect(estate.getByText('No trinkets match your search.', { exact: true })).toBeVisible();
+});
+
+test('S4: dirty town treatment, upgrade and district names follow game text while expanded cards survive editor switches', async ({ page }, info) => {
+	await page.goto('/town?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => window.__h1!.estateTownData());
+	const town = page.getByTestId('town-page');
+	const abbey = town.getByTestId('building-abbey');
+	const forge = town.getByTestId('building-blacksmith');
+	await abbey.getByRole('button').first().click();
+	await forge.getByRole('button').first().click();
+	const district = town.getByTestId('district-bank');
+	const nodes = await Promise.all([town, abbey, forge, district, abbey.getByRole('button', { name: 'Release', exact: true })].map((locator) => locator.elementHandle()));
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of allLocales) {
+		await switchEditor(page, locale);
+		const messages = await catalog(['en', 'de', 'ru', 'ja'].includes(locale) ? locale : 'en');
+		await expect(page.locator('label[for=editor-language]')).toHaveText(messages['settings.editorLanguage']);
+		await expect(town.getByRole('heading', { name: 'Treatment Buildings', exact: true })).toBeVisible();
+		await expect(abbey.getByRole('button', { name: 'Release', exact: true })).toBeVisible();
+		await expect(town.getByText('-123456789 · Hero / instance 1234 · Tier opaque · Purchased', { exact: true })).toBeVisible();
+		await expect(abbey.getByText('english:prayer', { exact: true })).toBeVisible();
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	for (const language of gameLanguages) {
+		await switchGame(page, language);
+		const locale = GAME_TEXT_LOCALES[language as keyof typeof GAME_TEXT_LOCALES];
+		for (const [container, suffix] of [[abbey, 'abbey'], [abbey, 'prayer'], [abbey, 'transept'], [forge, 'furnace'], [district, 'bank'], [town, 'puppet-theatre']] as const) {
+			const label = container.getByText(`${language}:${suffix}`, { exact: true });
+			await expect(label).toBeVisible();
+			await expect(label).toHaveAttribute('lang', locale);
+		}
+		await expect(abbey.getByRole('button', { name: 'Release', exact: true })).toBeVisible();
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+	expect(await persistedSettings(page)).toEqual(persisted);
+	await evidence(info, 's4-town-dirty.aria.txt', await town.ariaSnapshot(), 'text/plain');
+	// The existing store cascade still changes only this raw tree, with a list in the English fallback message locale.
+	await forge.getByRole('switch', { name: 'Toggle koreana:furnace, tier a', exact: true }).click();
+	await expect(page.getByText(`Also turned off tiers ${new Intl.ListFormat('en').format(['b', 'c'])}, which need tier a.`, { exact: true })).toBeVisible();
+	const after = await snapshot(page);
+	const expected = structuredClone(before.data);
+	const purchases = (expected.upgrades as { base_root: { purchases: Record<string, { is_purchased: boolean }> } }).base_root.purchases;
+	for (const id of ['1', '2', '3']) purchases[id].is_purchased = false;
+	expect(after.data).toEqual(expected);
+});
+
+test('S4: estate name ignores composing Enter, Escape and keyCode 229, then commits ordinary Enter exactly once', async ({ page }) => {
+	await page.goto('/estate?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await page.evaluate(() => window.__h1!.edit());
+	const input = page.getByRole('textbox', { name: 'Estate Name', exact: true });
+	await input.fill('名前の途中');
+	const before = await snapshot(page);
+	const node = await input.elementHandle();
+	for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+		for (const key of ['Enter', 'Escape']) {
+			await input.dispatchEvent('keydown', { key, bubbles: true, ...init });
+			await expect(input).toHaveValue('名前の途中');
+			await expect(input).toBeFocused();
+			expect(await snapshot(page)).toEqual(before);
+		}
+		await expect(input).toHaveValue('名前の途中');
+		await expect(input).toBeFocused();
+		expect(await snapshot(page)).toEqual(before);
+		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	await input.press('Enter');
+	const expected = structuredClone(before.data);
+	(expected.game as { base_root: { estatename: string } }).base_root.estatename = '名前の途中';
+	expect((await snapshot(page)).data).toEqual(expected);
+	await input.press('Enter');
+	expect((await snapshot(page)).data).toEqual(expected);
+});
+
+for (const route of ['estate', 'town'] as const) {
+	test(`S4/D7: /${route} entity ordering changes with game labels while identities and dirty data survive`, async ({ page }) => {
+		await page.goto(`/${route}?h1`);
+		await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+		await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+		await page.evaluate(() => window.__h1!.estateTownData());
+		const screen = page.getByTestId(`${route}-page`);
+		const identity = screen.getByTestId(route === 'estate' ? 'estate-trinket-h1_trinket_a' : 'building-abbey');
+		if (route === 'town') await identity.getByRole('button').first().click();
+		const node = await identity.elementHandle();
+		const selector = route === 'estate' ? '[data-testid^="estate-trinket-"]' : '[data-testid^="district-"]';
+		const order = () => screen.locator(selector).evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
+		const prefix = route === 'estate' ? 'estate-trinket-' : 'district-';
+		const a = route === 'estate' ? 'h1_trinket_a' : 'bank';
+		const b = route === 'estate' ? 'h1_trinket_b' : 'buskers_corner';
+		expect(await order()).toEqual([prefix + a, prefix + b]);
+		const before = await snapshot(page);
+		const persisted = await persistedSettings(page);
+		const marker = await page.evaluate(() => window.__h1!.calls.length);
+		await page.evaluate(() => window.__h1!.plans.push({ command: 'load_localization', language: 'japanese', value: {
+			table: { ...window.__h1!.gameNames(), str_inventory_title_trinketh1_trinket_a: 'Zulu', str_inventory_title_trinketh1_trinket_b: 'Alpha',
+				str_bank_title: 'Zulu', str_buskers_corner_title: 'Alpha', town_name_abbey: 'Zulu', town_name_tavern: 'Alpha' }, english: {}
+		} }));
+		await switchGame(page, 'japanese');
+		await expect.poll(order).toEqual([prefix + b, prefix + a]);
+		if (route === 'town') {
+			await expect(identity.getByRole('button', { name: 'Release', exact: true })).toBeVisible();
+			const buildings = await screen.locator('[data-testid^="building-"]').evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
+			expect(buildings.indexOf('building-tavern')).toBeLessThan(buildings.indexOf('building-abbey'));
+		}
+		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+		expect(await snapshot(page)).toEqual(before);
+		expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+	});
+}

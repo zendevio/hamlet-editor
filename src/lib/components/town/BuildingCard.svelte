@@ -1,6 +1,9 @@
 <script lang="ts">
-	import { heroClassName, gameTextLocale, buildingDisplayName } from '#lib/save-labels.js';
+	import { heroClassName, gameTextLocale, buildingDisplayName, activityDisplayName } from '#lib/save-labels.js';
 
+	import Message from '#lib/i18n/Message.svelte';
+	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatNumber } from '#lib/i18n/intl.js';
 	import { Badge } from '#lib/components/ui/badge/index.js';
 	import { Button } from '#lib/components/ui/button/index.js';
 	import {
@@ -19,7 +22,6 @@
 	import UserCircleIcon from 'phosphor-svelte/lib/UserCircleIcon';
 	import SignOutIcon from 'phosphor-svelte/lib/SignOutIcon';
 	import {
-		ACTIVITY_DISPLAY_NAMES,
 		BUILDING_ACTIVITIES,
 		TREATMENT_BUILDINGS,
 		type TreatmentBuildingName,
@@ -53,7 +55,7 @@
 	);
 	let upgradeProgress = $derived(
 		upgradeGroup
-			? `${upgradeGroup.purchasedCount}/${upgradeGroup.totalCount}`
+			? t('town.upgradeProgress', { purchasedText: formatNumber(upgradeGroup.purchasedCount), totalText: formatNumber(upgradeGroup.totalCount) })
 			: null
 	);
 
@@ -61,16 +63,12 @@
 		releaseHeroFromTreatment(hero.guid);
 	}
 
-	function getActivityDisplayName(activity: string): string {
-		return ACTIVITY_DISPLAY_NAMES[activity] ?? activity;
-	}
-
 	let treatmentSlots = $derived(
 		isTreatmentBuilding ? getTreatmentSlots(buildingName as TreatmentBuildingName) : []
 	);
 </script>
 
-<Card class="min-w-0">
+<Card data-testid="building-{buildingName}" class="min-w-0">
 	<Collapsible class="min-w-0" bind:open={isOpen}>
 		<CollapsibleTrigger class="min-w-0 w-full text-left">
 			<CardHeader class="cursor-pointer select-none">
@@ -86,12 +84,12 @@
 					<div class="flex min-w-0 flex-wrap items-center gap-2">
 						{#if isTreatmentBuilding && treatmentHeroes.length > 0}
 							<Badge variant="secondary">
-								{treatmentHeroes.length} in treatment
+								{t('town.inTreatment', { count: treatmentHeroes.length, countText: formatNumber(treatmentHeroes.length) })}
 							</Badge>
 						{/if}
 						{#if upgradeProgress}
 							<Badge variant="outline">
-								Upgrades: {upgradeProgress}
+								{upgradeProgress}
 							</Badge>
 						{/if}
 					</div>
@@ -104,7 +102,7 @@
 				<!-- Treatment Slots -->
 				{#if isTreatmentBuilding}
 					<div class="space-y-2">
-						<h4 class="text-sm font-medium text-muted-foreground">Activity Slots</h4>
+						<h4 class="text-sm font-medium text-muted-foreground">{t('town.activitySlots')}</h4>
 						<div class="grid gap-2">
 							{#each activities as activity (activity)}
 								{#each treatmentSlots.filter((slot) => slot.activityType === activity) as slot (slot.slotIndex)}
@@ -114,7 +112,11 @@
 									>
 										<div class="flex min-w-0 flex-1 flex-wrap items-center gap-3">
 											<Badge variant="outline" class="h-auto min-h-5 max-w-full whitespace-normal break-words text-xs">
-												{getActivityDisplayName(activity)} {Number(slot.slotIndex) + 1}
+												<Message id="town.activitySlot" params={{ name: activityDisplayName(activity), slotText: formatNumber(Number(slot.slotIndex) + 1) }}>
+													{#snippet code(children)}{@render children()}{/snippet}
+													{#snippet link(children)}{@render children()}{/snippet}
+													{#snippet emphasis(children)}<span lang={gameTextLocale()}>{@render children()}</span>{/snippet}
+												</Message>
 											</Badge>
 											{#if hero}
 												<div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -129,7 +131,7 @@
 												</div>
 											{:else}
 												<span class="text-sm text-muted-foreground italic">
-													Empty
+													{t('town.emptySlot')}
 												</span>
 											{/if}
 										</div>
@@ -141,7 +143,7 @@
 												onclick={() => handleRelease(hero)}
 											>
 												<SignOutIcon size={14} />
-												Release
+												{t('town.release')}
 											</Button>
 										{/if}
 									</div>

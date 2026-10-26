@@ -1496,7 +1496,7 @@
 		"slots": []
 	},
 	"shell.noProfile": {
-		"context": "Header backup refusal and tooltip before a profile is loaded.",
+		"context": "Header backup refusal and tooltip, and Estate and Town page empty-state titles before a save profile is loaded. Does not mean a loaded profile has no data.",
 		"lengthHint": "Keep close to the English length; allow wrapping in dialogs.",
 		"tone": "Neutral and direct.",
 		"slots": []
@@ -2840,7 +2840,7 @@
 		"slots": []
 	},
 	"heroes.loadMock": {
-		"context": "Development-only Heroes page button loading synthetic fixture data for editing. Not a real save profile.",
+		"context": "Development-only Heroes, Estate and Town page button that loads fixture data for editing. Never shown in production.",
 		"lengthHint": "Compact control or section label.",
 		"tone": "Neutral, factual editor UI.",
 		"slots": []
@@ -2911,5 +2911,346 @@
 		"lengthHint": "Compact hero control; allow wrapping in help and dialogs.",
 		"tone": "Neutral, factual editor UI.",
 		"slots": []
+	},
+	"estate.noProfileHelp": {
+		"context": "Estate unloaded-state description.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.noData": {
+		"context": "Estate missing-data heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.noDataHelp": {
+		"context": "Estate missing-data description; filename is literal.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.name": {
+		"context": "Estate name section and accessible input name; user-entered value stays verbatim.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.namePlaceholder": {
+		"context": "Estate name input placeholder.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.endless": {
+		"context": "Estate endless-mode section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.highscore": {
+		"context": "Caption before the endless-mode numeric record.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.wallet": {
+		"context": "Estate wallet section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.currencies": {
+		"context": "Estate Crimson Court inventory section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.invitations": {
+		"context": "Estate invitation group heading and icon accessible name.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.amount": {
+		"context": "Estate item amount field caption.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.amountFor": {
+		"context": "Accessible integer input name; name is a nominative game item label.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"name"
+		]
+	},
+	"estate.storage": {
+		"context": "Estate stored-trinket section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.equipped": {
+		"context": "Badge counting equipped trinkets; count selects grammar, countText is formatted.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"estate.addTrinket": {
+		"context": "Estate trinket picker trigger.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.noTrinkets": {
+		"context": "Estate empty-storage state heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.noTrinketsHelp": {
+		"context": "Estate empty-storage instruction, quotes refer to the trigger.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.noMatches": {
+		"context": "Estate filtered-storage empty state.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.clickToEdit": {
+		"context": "Wallet amount edit button tooltip.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.editAmount": {
+		"context": "Wallet amount button accessible name; name is a nominative game currency label and amountText is formatted.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"amountText",
+			"name"
+		]
+	},
+	"estate.trinketInitial": {
+		"context": "Fallback trinket icon letter, short form for trinket.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.removeTrinket": {
+		"context": "Estate trinket remove button tooltip.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.removeTrinketAction": {
+		"context": "Estate trinket remove button accessible name; name is a nominative game label.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"name"
+		]
+	},
+	"town.noProfileHelp": {
+		"context": "Town unloaded-state description.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.noData": {
+		"context": "Town missing-data heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.noDataHelp": {
+		"context": "Town missing-data description.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.treatmentBuildings": {
+		"context": "Town treatment section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.treatmentCount": {
+		"context": "Town treatment total badge; preserve existing English wording; count selects grammar and countText is formatted.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"town.buildingUpgrades": {
+		"context": "Town non-treatment building section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.noUpgrades": {
+		"context": "Town empty building-upgrade state; filename is literal.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.unknownUpgrades": {
+		"context": "Town unresolved-upgrade section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.unknownUpgradesHelp": {
+		"context": "Town read-only unresolved-upgrade explanation.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.unknownUpgrade": {
+		"context": "Whole read-only unknown upgrade row; tree, tier and instance are opaque raw identifiers. instance is a hero roster/instance id, never a formatted quantity. Keep diagnostics verbatim.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"instance",
+			"purchased",
+			"tier",
+			"tree"
+		]
+	},
+	"town.districts": {
+		"context": "Town district section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.districtsHelp": {
+		"context": "Town district editing explanation.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.built": {
+		"context": "District constructed status.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.notBuilt": {
+		"context": "District unconstructed status.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.toggleDistrict": {
+		"context": "District switch accessible name; name is a nominative game district name.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"name"
+		]
+	},
+	"town.inTreatment": {
+		"context": "Building badge counting treated heroes; countText is formatted.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"count",
+			"countText"
+		]
+	},
+	"town.upgradeProgress": {
+		"context": "Building upgrade badge; both numeric quantities are formatted.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"purchasedText",
+			"totalText"
+		]
+	},
+	"town.activitySlots": {
+		"context": "Expanded treatment building slots heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.release": {
+		"context": "Release hero from treatment action.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.upgrades": {
+		"context": "Expanded building upgrade section heading.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"town.tier": {
+		"context": "Upgrade tier caption; tier is an opaque requirement code.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"tier"
+		]
+	},
+	"town.toggleTier": {
+		"context": "Upgrade switch accessible name; name is a nominative game upgrade tree name and tier is an opaque code.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"name",
+			"tier"
+		]
+	},
+	"town.cascade": {
+		"context": "Whole upgrade cascade informational toast; numeric count selects grammar, tiers is an Intl-formatted list in the locale of the catalog supplying this message (English on fallback); requiredTier is the dependency code.",
+		"lengthHint": "Short label or wrapping sentence in estate/town cards.",
+		"tone": "Neutral editing interface.",
+		"slots": [
+			"count",
+			"requiredTier",
+			"tiers"
+		]
+	},
+	"town.activitySlot": {
+		"context": "Treatment slot badge; name is the nominative game activity name, slotText is the formatted slot number. The emphasis slot supplies game-text lang, without bold styling.",
+		"lengthHint": "Short wrapping badge.",
+		"tone": "Neutral identification.",
+		"slots": [
+			"name",
+			"slotText",
+			"emphasis"
+		]
+	},
+	"town.emptySlot": {
+		"context": "Placeholder for an unoccupied hero treatment slot in a Town activity, with no hero assigned. Refers to a place for a person, not an equipment slot.",
+		"lengthHint": "Short label.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.searchStorage": {
+		"context": "Estate trinket storage filter placeholder and accessible input name. Typing filters stored trinket cards and does not equip, add or remove anything.",
+		"lengthHint": "Short label.",
+		"tone": "Neutral editing interface.",
+		"slots": []
+	},
+	"estate.heirloomCaption": {
+		"context": "Wallet card caption for an heirloom currency amount (busts, portraits, deeds, crests). Use the game's plural heirloom names as in its estate bar tooltips (town_estate_bar_tooltip_*), without a count.",
+		"lengthHint": "One or two words; fits a small card title.",
+		"tone": "Game vocabulary, plural noun.",
+		"slots": [
+			"kind"
+		]
 	}
 }
