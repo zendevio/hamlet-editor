@@ -167,7 +167,7 @@ Language detection reads your system language preferences and only the language 
 
 Translations are machine-drafted and reviewed, but not by native speakers. [Report mistakes here.](https://github.com/zendevio/hamlet-editor/issues)
 
-All eleven non-English editor languages listed above have complete catalogs. Each string was reviewed by a separate model session from the one that drafted it, and warnings about saves, backups and deletions got a third separate check. Packaged-platform acceptance remains pending; see [translation platform coverage](docs/translation-platform-coverage.md).
+All eleven non-English editor languages listed above have complete catalogs. Each string was reviewed by a separate model session from the one that drafted it, and warnings about saves, backups and deletions got a third separate check. The packaged macOS app was checked by hand; Windows and Linux packages were not. See [translation platform coverage](docs/translation-platform-coverage.md).
 
 On Linux, Chinese, Japanese and Korean need system CJK fonts, for example the `fonts-noto-cjk` package on Debian/Ubuntu or `noto-fonts-cjk` on Arch. CJK fonts are not bundled; this prerequisite does not imply tested glyph coverage. App-owned macOS menu items and native dialog titles supplied by the editor follow the editor language. Items macOS adds or manages and native panel buttons follow the system language; installers follow the OS language or English.
 
