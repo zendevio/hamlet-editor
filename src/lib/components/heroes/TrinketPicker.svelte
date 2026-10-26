@@ -120,10 +120,10 @@
 			</Button>
 		{/snippet}
 	</PopoverTrigger>
-	<PopoverContent data-testid="trinket-picker" class="w-72 p-0" align="start">
-		<Command shouldFilter={false}>
+	<PopoverContent data-testid="trinket-picker" class="w-72 max-h-(--bits-popover-content-available-height) p-0" align="start">
+		<Command shouldFilter={false} class="min-h-0">
 			<CommandInput bind:value={search} placeholder={t('heroes.searchTrinkets')} class="h-8 text-xs" />
-			<CommandList class="max-h-64">
+			<CommandList class="max-h-64 min-h-0">
 				<CommandEmpty>{t('heroes.noTrinketFound')}</CommandEmpty>
 
 				{#if heroClass}

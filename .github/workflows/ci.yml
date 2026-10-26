@@ -54,9 +54,14 @@ jobs:
           if-no-files-found: warn
 
   mounted-i18n:
-    name: Mounted i18n invariants
+    # The full suite needs about 90 minutes on one runner, so it runs in four shards.
+    name: Mounted i18n invariants (${{ matrix.shard }}/4)
     timeout-minutes: 45
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -82,22 +87,52 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Mounted invariants in Chromium and WebKit
-        run: pnpm test:h1
+        run: pnpm test:h1 --shard=${{ matrix.shard }}/4
         env:
           H1_OUTPUT_DIR: test-results/h1
-
-      - name: Summarise overflow findings against the reviewed baseline
-        if: always()
-        run: node scripts/overflow-baseline.mjs test-results/h1
 
       - name: Upload mounted i18n evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mounted-i18n-evidence
+          name: mounted-i18n-evidence-${{ matrix.shard }}
           retention-days: 14
           path: test-results/h1
           if-no-files-found: warn
+
+  overflow-summary:
+    # Summarise every shard's overflow reports together, so the baseline sees the whole run.
+    name: Overflow summary
+    needs: mounted-i18n
+    if: ${{ !cancelled() }}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: mounted-i18n-evidence-*
+          path: test-results/h1
+          merge-multiple: true
+
+      - name: Summarise overflow findings against the reviewed baseline
+        run: node scripts/overflow-baseline.mjs test-results/h1
+
+      # A failed or missing shard leaves the reports incomplete, so this summary cannot pass.
+      - name: Require every shard to have passed
+        if: always() && needs.mounted-i18n.result != 'success'
+        env:
+          RESULT: ${{ needs.mounted-i18n.result }}
+        run: |
+          echo "::error::Mounted i18n shards did not all pass (result: $RESULT); the overflow summary covers an incomplete run"
+          exit 1
 
   rust:
     name: Rust checks
