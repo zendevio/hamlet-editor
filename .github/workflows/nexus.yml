@@ -126,10 +126,13 @@ jobs:
           zip -j "HamletEditor-$VERSION-macOS.zip" dl/*.dmg
           zip -j "HamletEditor-$VERSION-Linux.zip" dl/*.AppImage dl/*.deb dl/*.rpm
           ls -l HamletEditor-*.zip
-          # The changelog is the bullet points of the curated release notes.
+          # The changelog is the bullet points of the curated release notes, as plain text:
+          # Nexus shows changelogs verbatim, so bold markers go and links become "text: url".
           notes=".github/release-notes/$TAG.md"
           changelog=""
-          [ -f "$notes" ] && changelog=$( { grep -E '^- ' "$notes" || true; } | sed 's/^- //')
+          [ -f "$notes" ] && changelog=$( { grep -E '^- ' "$notes" || true; } | sed -E \
+            -e 's/^- //' -e 's/\*\*//g' \
+            -e 's/\[([^]]*)\.\]\(([^)]*)\)/\1: \2/g' -e 's/\[([^]]*)\]\(([^)]*)\)/\1: \2/g')
           [ -n "$changelog" ] || changelog="Release $TAG."
           printf 'Changelog to post:\n%s\n' "$changelog"
           delim="NEXUS_EOF_$(openssl rand -hex 16)"
@@ -175,7 +178,7 @@ jobs:
           filename: HamletEditor-${{ steps.config.outputs.version }}-macOS.zip
           version: ${{ steps.config.outputs.version }}
           display_name: Hamlet Editor for macOS
-          description: macOS 11 or later, Intel and Apple Silicon. Contains the .dmg; drag Hamlet Editor to Applications. Not notarized, so macOS asks you to allow it once; see the description for the steps.
+          description: macOS 11 or later with Safari 16.4 or newer, Intel and Apple Silicon. Contains the .dmg; drag Hamlet Editor to Applications. Not notarized, so macOS asks you to allow it once; see the description for the steps.
           archive_existing_version: true
           primary_mod_manager_download: false
           allow_mod_manager_download: false
