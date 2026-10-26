@@ -4,6 +4,7 @@ import { parseInteger, validTorchlight } from '#lib/input-validation.js';
 import type { EstateData, GameData, InventoryItem, RaidData, RosterData } from '#lib/types/save-data.js';
 import { clearHeroCombatState } from '#lib/hero-safety.js';
 import { returnTrinkets, storageItems } from '#lib/trinkets.js';
+import type { MessageDescriptor } from '#lib/i18n/index.svelte.js';
 
 export function updateTorchlight(raid: RaidData, value: unknown): boolean {
 	if (!validTorchlight(value) || raid.base_root.torchlight === value) return false;
@@ -31,28 +32,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Validate every reference and inventory transfer before changing any file. */
-export function abandonRaidBlockReason(game: GameData | null, raid: RaidData | null, roster: RosterData | null, estate: EstateData | null): string | null {
-	if (!game || !raid || !roster) return 'Game, active raid and roster data must be loaded before abandoning a raid.';
-	if (!game.base_root.inraid) return 'There is no active raid to abandon.';
+export function abandonRaidBlockReason(game: GameData | null, raid: RaidData | null, roster: RosterData | null, estate: EstateData | null): MessageDescriptor | null {
+	if (!game || !raid || !roster) return { id: 'raid.block.loaded' };
+	if (!game.base_root.inraid) return { id: 'raid.block.inactive' };
 	const party = raid.base_root?.party;
 	const heroes = roster.base_root?.heroes;
 	const lastParty = roster.base_root?.last_party?.last_party_guids;
 	if (!Array.isArray(party?.heroes) || party.heroes.length > 4 || !isRecord(heroes)
 		|| !party.heroes.every((guid) => Number.isInteger(guid) && heroes[String(guid)])
 		|| !Array.isArray(lastParty) || lastParty.length !== 4 || !lastParty.every(Number.isInteger)
-		|| !isRecord(party.inventory?.items)) return 'Active raid or roster data is incomplete. Reload the complete profile.';
+		|| !isRecord(party.inventory?.items)) return { id: 'raid.block.party' };
 	for (const guid of new Set([...party.heroes, ...lastParty.filter((guid) => guid !== -1)])) {
 		const hero = heroes[String(guid)]?.hero_file_data?.raw_data?.base_root;
-		if (!hero || !isRecord(hero.actor) || !Number.isInteger(hero['roster.status'])) return 'Active raid or roster hero data is incomplete. Reload the complete profile.';
+		if (!hero || !isRecord(hero.actor) || !Number.isInteger(hero['roster.status'])) return { id: 'raid.block.hero' };
 	}
 	const items = Object.values(party.inventory.items);
 	if (!items.every((item) => isRecord(item) && typeof item.id === 'string' && typeof item.type === 'string'
-		&& Number.isInteger(item.amount) && item.amount >= 0 && item.amount <= 2147483647)) return 'Active raid inventory data is incomplete. Reload the complete profile.';
+		&& Number.isInteger(item.amount) && item.amount >= 0 && item.amount <= 2147483647)) return { id: 'raid.block.inventory' };
 	const trinkets = items.filter((item) => item.type === 'trinket');
 	const storage = storageItems(estate);
 	if (trinkets.length && (!storage || trinkets.some((item) => !item.id || item.amount < 1)
 		|| Math.max(-1, ...Object.keys(storage).map(Number)) + trinkets.length >= 2147483647)) {
-		return 'Estate trinket inventory data is missing or incomplete. Reload the complete profile before abandoning the raid.';
+		return { id: 'raid.block.estate' };
 	}
 	return null;
 }
@@ -118,6 +119,5 @@ export function abandonRaidData(game: GameData, raid: RaidData, roster: RosterDa
 /** Inventory localization keys concatenate the type and optional ID. */
 export function raidItemLabel(item: InventoryItem): string {
 	const key = `str_inventory_title_${item.type}${item.id}`;
-	const name = localize(key);
-	return name === snakeToTitle(key) ? snakeToTitle(item.id || item.type) : name;
+	return localize(key, snakeToTitle(item.id || item.type));
 }

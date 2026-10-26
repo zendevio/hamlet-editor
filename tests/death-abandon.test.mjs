@@ -165,7 +165,7 @@ test('abandon returns inventory trinkets once, reports loss counts and Discard r
 	assert.equal(data.raid.base_root.party.inventory.items['7'], undefined);
 	assert.deepEqual(Object.values(data.estate.base_root.trinkets.items).at(-1), before.raid.base_root.party.inventory.items['7']);
 	assert.deepEqual(Object.keys(store.getDirtyData()).sort(), ['persist.estate.json', 'persist.game.json', 'persist.raid.json', 'persist.roster.json']);
-	assert.match(store.abandonRaid(), /no active raid/);
+	assert.deepEqual(store.abandonRaid(), { id: 'raid.block.inactive' });
 	store.discardAllChanges();
 	assert.deepEqual(snapshot(data), before);
 });

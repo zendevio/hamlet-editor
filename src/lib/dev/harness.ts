@@ -104,7 +104,14 @@ export async function installHarness() {
 			str_inventory_title_estate_currencycrimson_court_invitation_B: `${args.language}:viscount-invitation`,
 			str_inventory_title_estate_currencycrimson_court_invitation_C: `${args.language}:countess-invitation`,
 			str_inventory_title_estatethe_blood: `${args.language}:blood`,
-			str_dlc_title_crimson_court: `${args.language}:crimson-court`
+			str_dlc_title_crimson_court: `${args.language}:crimson-court`,
+			str_dlc_title_shieldbreaker: `${args.language}:shieldbreaker`,
+			str_dlc_title_color_of_madness: `${args.language}:color-of-madness`,
+			str_dlc_title_musketeer: `${args.language}:musketeer`,
+			dungeon_name_crypts: `${args.language}:ruins`,
+			town_quest_difficulty_1: `${args.language}:apprentice`,
+			town_quest_length_2: `${args.language}:medium`,
+			str_inventory_title_supplymedicinal_herbs: `${args.language}:herbs`
 		}, english: args.language === 'english' ? null : { str_quirk_name_quick_reflexes: 'english:quick-reflexes',
 			str_quirk_name_warrior_of_light: 'Warrior of Light',
 			str_inventory_title_trinketh1_trinket_a: 'English Jewel Alpha', str_inventory_title_trinketh1_trinket_b: 'English Jewel Beta' } };
@@ -138,6 +145,28 @@ export async function installHarness() {
 		resetProfile: store.resetSaveData,
 		loadProfile: store.loadProfileFromBackend,
 		gameStatus(status: boolean | 'uncertain') { gameStatus = status; },
+		raidData(inconsistent = false) {
+			// Opt-in S5 data does not change the shared paired-save fixture.
+			const data = store.getSaveData();
+			data.game!.base_root.inraid = true;
+			store.setGameInRaid(true);
+			if (!inconsistent) {
+				store.loadRaid({ base_root: {
+					raid_instance: { id: 'h1_quest', is_plot_quest: false, type: 'explore', dungeon: 'crypts', difficulty: 1, length: 2,
+						goal_ids: ['###goal_a', '###goal_b', 'mod_goal'], completion_reward: { resolve_xp: 2, items_definition: { items: {} } } },
+					torchlight: 79.5, in_area: 1234, areatile: 0, last_room_id: 0,
+					in_doorway: { area_to: 0, tile_to: 0, implied: false }, start_elapsed_time: 0,
+					inbattle: false, stat_database: {}, raid_finish_quirk_monster_class_ids: [],
+					party: { heroes: [96, 7], start_heroes_size: 2, 'IsMovingLeft()': false, retreat_room: 0, hunger_room_buffer: 2,
+						inventory: { items: { '0': { id: 'medicinal_herbs', type: 'supply', amount: 1234 },
+							'1': { id: 'h1_trinket_a', type: 'trinket', amount: 2 }, '2': { id: 'unknown_mod_item', type: 'supply', amount: 1 } } } }
+				} });
+				for (const id of ['96', '7']) store.getHeroRawData(id)!['roster.status'] = 1;
+				store.setRaidHungerBuffer(1234);
+			}
+			store.markDirty('persist.game.json');
+			store.markDirty('persist.roster.json');
+		},
 
 		estateTownData() {
 			// Only the S4 cases opt into this in-memory fixture. Existing paired saves stay unchanged.
@@ -208,6 +237,7 @@ declare global {
 			resetProfile(): void;
 			loadProfile(path: string): Promise<void>;
 			gameStatus(status: boolean | 'uncertain'): void;
+			raidData(inconsistent?: boolean): void;
 			estateTownData(): void;
 			validationCounts(errors: number, warnings: number): void;
 			snapshot(): { dirty: Record<string, unknown>; data: Record<string, unknown>; dirtyFiles: string[]; profilePath: string; gamePath: string; version: number; heroes: { id: string; name: string; heroClass: string }[]; loaded: boolean; stale: boolean };

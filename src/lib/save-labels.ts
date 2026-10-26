@@ -1,5 +1,5 @@
 import { snakeToTitle, stripDsonPrefix } from '#lib/utils.js';
-import { CLASS_DISPLAY_NAMES, BUILDING_DISPLAY_NAMES, ACTIVITY_DISPLAY_NAMES, RESOLVE_LEVEL_NAMES, DISTRICT_DISPLAY_NAMES, CURRENCY_DISPLAY_NAMES, ESTATE_ITEM_DISPLAY_NAMES, DLC_DISPLAY_NAMES, UPGRADE_TREE_DISPLAY_NAMES } from '#lib/data/constants.js';
+import { CLASS_DISPLAY_NAMES, BUILDING_DISPLAY_NAMES, ACTIVITY_DISPLAY_NAMES, RESOLVE_LEVEL_NAMES, DISTRICT_DISPLAY_NAMES, CURRENCY_DISPLAY_NAMES, ESTATE_ITEM_DISPLAY_NAMES, DLC_DISPLAY_NAMES, UPGRADE_TREE_DISPLAY_NAMES, RAID_DIFFICULTY_NAMES, RAID_LENGTH_NAMES, DUNGEON_DISPLAY_NAMES } from '#lib/data/constants.js';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
 import { getGameData, localize, localizeEnglish } from '#lib/stores/game-data.svelte.js';
 import { getEditorLocale, t } from '#lib/i18n/index.svelte.js';
@@ -102,8 +102,27 @@ export function estateItemName(id: string): string {
 	return localize(`str_inventory_title_${prefix}${id}`, ESTATE_ITEM_DISPLAY_NAMES[id] ?? snakeToTitle(id));
 }
 
-export function dlcName(id: string): string {
-	return localize(`str_dlc_title_${id}`, DLC_DISPLAY_NAMES[id] ?? snakeToTitle(id));
+export function dlcName(id: string, fallback = DLC_DISPLAY_NAMES[id] ?? snakeToTitle(id)): string {
+	return localize(`str_dlc_title_${id}`, fallback);
+}
+
+/** Setup passes a catalog fallback before any game table is available. */
+export function dlcNameLang(id: string): string {
+	return getGameData().nameTable[`str_dlc_title_${id}`]?.trim() ? gameTextLocale() : getEditorLocale();
+}
+
+export function raidDifficultyName(level: number): string {
+	return localize(`town_quest_difficulty_${level}`, RAID_DIFFICULTY_NAMES[level] ?? t('raid.unknownDifficulty', { level: String(level) }));
+}
+
+export function raidLengthName(length: number): string {
+	return localize(`town_quest_length_${length}`, RAID_LENGTH_NAMES[length] ?? String(length));
+}
+
+export function dungeonName(id: string): string {
+	// Older editor fixtures used these aliases; persisted ids are never replaced.
+	const key = id === 'ruins' ? 'crypts' : id === 'farmstead' ? 'farm' : id;
+	return localize(`dungeon_name_${key}`, DUNGEON_DISPLAY_NAMES[key] ?? snakeToTitle(id));
 }
 
 export function upgradeTreeName(id: string): string {

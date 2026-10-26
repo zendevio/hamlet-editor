@@ -3252,5 +3252,492 @@
 		"slots": [
 			"kind"
 		]
+	},
+	"raid.emptyTitle": {
+		"context": "Raid empty-state heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.emptyDescription": {
+		"context": "Raid empty-state explanation.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.inconsistentTitle": {
+		"context": "Safety warning when an active raid file is missing.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.inconsistent": {
+		"context": "Complete safety warning. The code slot is app-owned markup; filenames and inraid are exact diagnostic identifiers.",
+		"slots": [
+			"code"
+		],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.backup": {
+		"context": "Raid warning action to back up the current profile.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.riskTitle": {
+		"context": "Persistent active-expedition warning heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.risk": {
+		"context": "Complete raid editing safety warning; filenames remain literal.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.info": {
+		"context": "Raid metadata section heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.abandon": {
+		"context": "Destructive action and confirmation heading for returning the party to town.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.dungeon": {
+		"context": "Raid metadata caption above the game dungeon name.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.difficulty": {
+		"context": "Raid metadata caption above the complete game difficulty label.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.length": {
+		"context": "Raid metadata caption for expedition length.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.questType": {
+		"context": "Raid caption for the raw saved quest type identifier.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.location": {
+		"context": "Raid caption for the raw saved area identifier.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.inBattle": {
+		"context": "Raid caption for the saved combat-state flag.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.unknown": {
+		"context": "Missing raid metadata value.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.yes": {
+		"context": "Raid in-battle flag is true.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.no": {
+		"context": "Raid in-battle flag is false.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.goals": {
+		"context": "Caption preceding a locale-formatted list of untranslated quest goal ids.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.party": {
+		"context": "Expedition party section heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.partyPositions": {
+		"context": "Hint explaining party position order; numbers describe fixed positions.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.moveLeft": {
+		"context": "Accessible name for moving a hero one party position left.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.moveRight": {
+		"context": "Accessible name for moving a hero one party position right.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.reorderHint": {
+		"context": "Party reorder help.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.parameters": {
+		"context": "Expedition parameter section heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.torchlight": {
+		"context": "Editor control caption; use the game glossary for this term.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.lightHint": {
+		"context": "Torchlight control range help.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.hungerBuffer": {
+		"context": "Visible caption for expedition hunger buffer.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.hungerInput": {
+		"context": "Accessible name for integer hunger buffer input.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.hungerHint": {
+		"context": "Hunger buffer control help.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.inventory": {
+		"context": "Raid inventory section heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.emptyInventory": {
+		"context": "Empty raid inventory message.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.abandonDescription": {
+		"context": "Complete abandon confirmation explanation.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.abandonWarning": {
+		"context": "Abandon warning; quoted game action should follow the game glossary.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.noLoot": {
+		"context": "Empty abandon-loss list entry.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.confirm": {
+		"context": "Abandon confirmation checkbox label.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.cancel": {
+		"context": "Cancel the abandon confirmation dialog.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.abandoned": {
+		"context": "Short informational success toast.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.abandonedDescription": {
+		"context": "Short-lived abandon success toast detail.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.empty": {
+		"context": "Empty party portrait and fallback hero name.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.noHero": {
+		"context": "Empty party slot caption.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.unknownDifficulty": {
+		"context": "Unknown saved difficulty; level is an opaque numeric identifier, kept verbatim.",
+		"slots": [
+			"level"
+		],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.itemCount": {
+		"context": "Raid inventory stack count badge. count chooses grammar; countText is editor-formatted.",
+		"slots": [
+			"count",
+			"countText"
+		],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.returnedTrinkets": {
+		"context": "Complete abandon inventory summary. Keep numeric plural branches in translations; English deliberately retains the existing trinket(s) wording. countText is editor-formatted.",
+		"slots": [
+			"count",
+			"countText"
+		],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.partySlot": {
+		"context": "Accessible party slot group name. name is a user-entered hero name or localized empty placeholder; position is editor-formatted.",
+		"slots": [
+			"position",
+			"name"
+		],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.position": {
+		"context": "Compact party position badge. Pos abbreviates Position; choose a clear local short form. position is editor-formatted.",
+		"slots": [
+			"position"
+		],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.block.loaded": {
+		"context": "Retained abandon-raid safety refusal for loaded data; render on every locale change.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.block.inactive": {
+		"context": "Retained abandon-raid safety refusal for inactive data; render on every locale change.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.block.party": {
+		"context": "Retained abandon-raid safety refusal for party data; render on every locale change.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.block.hero": {
+		"context": "Retained abandon-raid safety refusal for hero data; render on every locale change.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.block.inventory": {
+		"context": "Retained abandon-raid safety refusal for inventory data; render on every locale change.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"raid.block.estate": {
+		"context": "Retained abandon-raid safety refusal for estate data; render on every locale change.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.gameTitle": {
+		"context": "Setup step 1 heading, before a game path exists.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.gameDescription": {
+		"context": "Setup step 1 introduction. Darkest Dungeon is the game title; DLC means downloadable content.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.detecting": {
+		"context": "Setup path detection in progress.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.detectGame": {
+		"context": "Setup game installation detection action.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.noGame": {
+		"context": "Setup game detection empty result heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.noGameHelp": {
+		"context": "Setup game detection empty result instructions.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.retry": {
+		"context": "Retry setup path detection.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.browse": {
+		"context": "Open a native folder picker during setup.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.modded": {
+		"context": "Setup badge for an installation containing mods.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.redetect": {
+		"context": "Repeat setup game or save discovery.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.next": {
+		"context": "Advance to the next setup step.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.saveTitle": {
+		"context": "Setup step 2 heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.saveDescription": {
+		"context": "Setup step 2 introduction.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.cloudWarning": {
+		"context": "Setup warning about Steam Cloud and edited saves; Steam is a platform brand.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.detectSave": {
+		"context": "Setup save-folder detection action.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.noSave": {
+		"context": "Setup save discovery empty result heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.noSaveHelp": {
+		"context": "Setup save discovery empty result instructions.",
+		"slots": [],
+		"lengthHint": "Sentence",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.inRaid": {
+		"context": "Setup profile badge indicating an active expedition.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.back": {
+		"context": "Return to the previous setup step.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.confirmation": {
+		"context": "Setup step 3 heading.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.confirmationHelp": {
+		"context": "Setup step 3 introduction.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.gameInstallation": {
+		"context": "Selected game installation summary caption.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.saveProfile": {
+		"context": "Selected campaign profile summary caption.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.openProfile": {
+		"context": "Finish setup and open the selected save profile.",
+		"slots": [],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.source": {
+		"context": "Setup installation/save source. Steam, GOG and Epic are platform brands; Manual is user-selected. Unknown source values use Manual.",
+		"slots": [
+			"source"
+		],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
+	},
+	"setup.dlcName": {
+		"context": "App-owned DLC name fallback before setup has any game data, or for a missing game key. Use the game glossary for each title; the runtime game table takes precedence.",
+		"slots": [
+			"dlc"
+		],
+		"lengthHint": "Short label",
+		"tone": "Direct, consistent with existing editor copy."
 	}
 }

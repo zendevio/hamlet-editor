@@ -72,11 +72,3 @@ export function showMessageError(descriptor: MessageDescriptor) {
 		id: freshId(notificationId(undefined, descriptor)), componentProps: { descriptor }
 	});
 }
-
-/** Transitional callers may still receive strings from logic owned by later slices. */
-export function showActionError(message: import('./index.svelte.js').ActionMessage) {
-	if (typeof message === 'string') return toast.error(message);
-	return toast.error(PersistentError, {
-		id: freshId(notificationId(undefined, message)), componentProps: { descriptor: message }
-	});
-}

@@ -745,7 +745,7 @@ export function setDistrictBuilt(districtId: string, built: boolean) {
 }
 
 /** Minimal town return for any active expedition, retaining its raid file. */
-export function abandonRaid(): string | null {
+export function abandonRaid(): MessageDescriptor | null {
 	const reason = abandonRaidBlockReason(game, raid, roster, estate);
 	if (reason) return reason;
 	for (const filename of abandonRaidData(game!, raid!, roster!, estate)) {

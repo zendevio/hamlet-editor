@@ -1,10 +1,12 @@
 <script lang="ts">
 	let {
 		label,
-		value
+		value,
+		valueLang
 	}: {
 		label: string;
 		value: string;
+		valueLang?: string;
 	} = $props();
 </script>
 
@@ -12,5 +14,5 @@
 	<span class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 		{label}
 	</span>
-	<span class="text-sm font-semibold">{value}</span>
+	<span class="text-sm font-semibold" lang={valueLang}>{value}</span>
 </div>

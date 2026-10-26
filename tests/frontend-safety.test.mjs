@@ -132,7 +132,7 @@ test('abandon refuses incomplete data and no-op setters never dirty unchanged fi
 	store.setDistrictBuilt('bank', false);
 	assert.equal(store.hasDirtyFiles(), false);
 	store.resetSaveData();
-	assert.match(store.abandonRaid(), /must be loaded/);
+	assert.deepEqual(store.abandonRaid(), { id: 'raid.block.loaded' });
 	assert.deepEqual(store.getDirtyData(), {});
 });
 

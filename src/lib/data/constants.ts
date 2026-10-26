@@ -71,7 +71,23 @@ export const ESTATE_ITEM_DISPLAY_NAMES: Record<string, string> = {
 	the_blood: 'The Blood'
 };
 
-export const DLC_DISPLAY_NAMES: Record<string, string> = { crimson_court: 'Crimson Court' };
+export const DLC_DISPLAY_NAMES: Record<string, string> = {
+	crimson_court: 'Crimson Court', shieldbreaker: 'Shieldbreaker',
+	color_of_madness: 'Color of Madness', musketeer: 'Musketeer'
+};
+
+/** Complete game labels, including the difficulty level qualifier. */
+export const RAID_DIFFICULTY_NAMES: Record<number, string> = {
+	1: 'Apprentice (Lvl 1)', 3: 'Veteran (Lvl 3)', 5: 'Champion (Lvl 5)', 6: 'Darkest (Lvl 6)'
+};
+export const RAID_LENGTH_NAMES: Record<number, string> = {
+	1: 'Short', 2: 'Medium', 3: 'Long', 4: 'Exhausting', 5: 'Epic'
+};
+export const DUNGEON_DISPLAY_NAMES: Record<string, string> = {
+	crypts: 'Ruins', weald: 'Weald', cove: 'Cove', warrens: 'Warrens',
+	darkestdungeon: 'Darkest Dungeon', farm: 'Farmstead', courtyard: 'Courtyard',
+	town: 'Hamlet', tutorial: 'The Old Road', old_road: 'The Old Road'
+};
 
 /** Verified building upgrade names, used only when game tables lack the key. */
 export const UPGRADE_TREE_DISPLAY_NAMES: Record<string, string> = {

@@ -15,11 +15,11 @@ const store = await server.ssrLoadModule('/src/lib/stores/save-data.svelte.ts');
 const game = await server.ssrLoadModule('/src/lib/stores/game-data.svelte.ts');
 const { createMockRoster, createMockUpgrades } = await server.ssrLoadModule('/src/lib/data/mock.ts');
 const labels = await server.ssrLoadModule('/src/lib/save-labels.ts');
-const { setEditorLocale, t, describeMessage, describeActionMessage, richMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
+const { setEditorLocale, t, describeMessage, richMessage } = await server.ssrLoadModule('/src/lib/i18n/index.svelte.ts');
 const { compareNames, formatDate, formatNumber } = await server.ssrLoadModule('/src/lib/i18n/intl.ts');
 const { profileSaveBlockReason, createSaveWorkflow } = await server.ssrLoadModule('/src/lib/save-workflow.ts');
 const { withCurrentProfile } = await server.ssrLoadModule('/src/lib/profiles.ts');
-const { showActionError } = await server.ssrLoadModule('/src/lib/i18n/notifications.ts');
+const { showMessageError } = await server.ssrLoadModule('/src/lib/i18n/notifications.ts');
 const { toast } = await server.ssrLoadModule('svelte-sonner');
 
 beforeEach(() => {
@@ -168,28 +168,16 @@ test('manual profile metadata never stores a localized fallback name', () => {
 	assert.equal(withCurrentProfile([], '/fixture/profile_0', '', false)[0].profile_id, 'profile_0');
 });
 
-test('descriptor and legacy action errors both keep the default short toast lifetime', () => {
+test('descriptor action errors keep the default short toast lifetime', () => {
 	const original = toast.error;
 	const calls = [];
 	toast.error = (component, options) => { calls.push([component, options]); return 1; };
 	try {
-		showActionError({ id: 'store.heroMissing' });
+		showMessageError({ id: 'store.heroMissing' });
 		assert.deepEqual(calls[0][1].componentProps, { descriptor: { id: 'store.heroMissing' } });
 		assert.equal(calls[0][1].duration, undefined);
 		assert.equal(calls[0][1].closeButton, undefined);
-		showActionError('legacy lane-owned refusal');
-		assert.equal(calls[1][0], 'legacy lane-owned refusal');
-		assert.equal(calls[1][1]?.duration, undefined);
 	} finally { toast.error = original; }
-});
-
-test('the transitional action renderer handles unexpected typed errors and malformed values safely', () => {
-	assert.equal(describeActionMessage('legacy refusal'), 'legacy refusal');
-	assert.equal(describeActionMessage({ id: 'store.heroMissing' }), 'This hero is no longer in the roster.');
-	assert.match(describeActionMessage({ code: 'save_stale', params: {}, detail: 'fixture bytes changed' }), /fixture bytes changed/);
-	for (const value of [null, undefined, {}, { id: undefined }, { id: 42 }]) {
-		assert.match(describeActionMessage(value), /An unexpected error occurred\./);
-	}
 });
 
 test('About markup remains approved emphasis slots; backup time uses editor Intl', () => {

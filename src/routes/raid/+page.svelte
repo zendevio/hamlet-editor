@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { localize } from '#lib/stores/game-data.svelte.js';
+	import { t, describeMessage } from '#lib/i18n/index.svelte.js';
+	import Message from '#lib/i18n/Message.svelte';
+	import { formatList, formatNumber } from '#lib/i18n/intl.js';
+	import { heroClassName, dungeonName, raidDifficultyName, raidLengthName, gameTextLocale } from '#lib/save-labels.js';
 	import { sliderControl, sliderValueLabel } from '#lib/control-events.js';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import PartySlot from '#lib/components/raid/PartySlot.svelte';
@@ -15,7 +18,6 @@
 	import {
 		getSaveData,
 		getHeroes,
-		CLASS_DISPLAY_NAMES,
 		setRaidTorchlight,
 		setRaidHungerBuffer,
 		setRaidItemAmount,
@@ -31,34 +33,10 @@
 	import ArrowUpIcon from 'phosphor-svelte/lib/ArrowUpIcon';
 	import ArrowDownIcon from 'phosphor-svelte/lib/ArrowDownIcon';
 	import SkullIcon from 'phosphor-svelte/lib/SkullIcon';
-	import { showError } from '#lib/i18n/notifications.js';
+	import { showError, showMessageError } from '#lib/i18n/notifications.js';
 	import { toast } from 'svelte-sonner';
 	import { createBackup } from '#lib/api/backup.js';
 	import { getSettings } from '#lib/stores/settings.svelte.js';
-
-	// ── Constants ──
-
-	const DIFFICULTY_LABELS: Record<number, string> = {
-		1: 'Apprentice',
-		3: 'Veteran',
-		5: 'Champion'
-	};
-
-	const LENGTH_LABELS: Record<number, string> = {
-		1: 'Short',
-		2: 'Medium',
-		3: 'Long'
-	};
-
-	const DUNGEON_LABELS: Record<string, string> = {
-		ruins: 'Ruins',
-		weald: 'Weald',
-		cove: 'Cove',
-		warrens: 'Warrens',
-		darkestdungeon: 'Darkest Dungeon',
-		farmstead: 'Farmstead',
-		courtyard: 'Courtyard'
-	};
 
 	// ── State ──
 
@@ -68,11 +46,11 @@
 	let abandonDialogOpen = $state(false);
 	let abandonConfirmChecked = $state(false);
 
-	/** Raid data from persist.raid.json — sourced from the shared save-data store. */
+	/** Raid data from persist.raid.json; sourced from the shared save-data store. */
 	let raidData = $derived(saveData.raid as RaidData | null);
 	let abandonBlockedReason = $derived(abandonRaidBlockReason(saveData.game, raidData, saveData.roster, saveData.estate));
 
-	/** Whether persist.game.json reports inraid: true — sourced from the shared save-data store. */
+	/** Whether persist.game.json reports inraid: true; sourced from the shared save-data store. */
 	let gameInRaid = $derived(saveData.gameInRaid);
 
 	// ── Derived ──
@@ -85,23 +63,10 @@
 	let party = $derived(raidData?.base_root.party ?? null);
 	let heroes = $derived(getHeroes());
 
-	let dungeonLabel = $derived(
-		raidInstance ? (DUNGEON_LABELS[raidInstance.dungeon] ?? raidInstance.dungeon) : ''
-	);
-
-	let difficultyLabel = $derived(
-		raidInstance
-			? `${DIFFICULTY_LABELS[raidInstance.difficulty] ?? 'Unknown'} (${raidInstance.difficulty})`
-			: ''
-	);
-
-	let lengthLabel = $derived(
-		raidInstance ? (LENGTH_LABELS[raidInstance.length] ?? `${raidInstance.length}`) : ''
-	);
-
-	let goalDisplay = $derived(
-		raidInstance ? raidInstance.goal_ids.map((g) => stripDsonPrefix(g)).join(', ') : ''
-	);
+	let dungeonLabel = $derived(raidInstance ? dungeonName(raidInstance.dungeon) : '');
+	let difficultyLabel = $derived(raidInstance ? raidDifficultyName(raidInstance.difficulty) : '');
+	let lengthLabel = $derived(raidInstance ? raidLengthName(raidInstance.length) : '');
+	let goalDisplay = $derived(formatList(raidInstance?.goal_ids.map(stripDsonPrefix) ?? []));
 
 	let locationDisplay = $derived(raidData?.base_root.in_area ?? '');
 	let inBattle = $derived(raidData?.base_root.inbattle ?? false);
@@ -122,7 +87,7 @@
 				name: hero?.name ?? null,
 				heroClass: hero?.heroClass ?? null,
 				classDisplayName: hero
-					? (localize('hero_class_name_' + hero.heroClass, CLASS_DISPLAY_NAMES[hero.heroClass] ?? hero.heroClass))
+					? heroClassName(hero.heroClass)
 					: null
 			};
 		});
@@ -144,7 +109,7 @@
 		if (!settings.savePath) return;
 		try {
 			await createBackup(settings.savePath);
-			toast.success('Backup created');
+			toast.success(t('settings.backupCreated'));
 		} catch (err) {
 			showError(err, { id: 'error.backupFailed' });
 		}
@@ -157,91 +122,76 @@
 
 	function handleAbandonRaid() {
 		const reason = abandonRaid();
-		if (reason) { toast.error(reason); return; }
+		if (reason) { showMessageError(reason); return; }
 		abandonDialogOpen = false;
-		toast.success('Raid abandoned', {
-			description: 'Party returned to town. Save to apply changes, or Discard to restore the expedition.'
+		toast.success(t('raid.abandoned'), {
+			description: t('raid.abandonedDescription')
 		});
 	}
 </script>
 
-<!-- No raid, no inconsistency — show empty state -->
+<!-- No raid, no inconsistency; show empty state -->
 {#if !gameInRaid}
 	<EmptyState
-		title="No active raid"
-		description="Start a dungeon in-game to see raid data here. Raid editing is available only during an active expedition."
+		title={t('raid.emptyTitle')}
+		description={t('raid.emptyDescription')}
 	/>
 
-<!-- Inconsistent state — raid file exists but inraid disagrees (or vice versa) -->
+<!-- Inconsistent state; raid file exists but inraid disagrees (or vice versa) -->
 {:else if isInconsistent}
 	<div class="mx-auto max-w-2xl space-y-4 p-6">
 		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
 			<WarningIcon size={16} class="text-amber-500" />
-			<Alert.Title class="text-amber-700 dark:text-amber-400">
-				Raid State Inconsistent
-			</Alert.Title>
+			<Alert.Title class="text-amber-700 dark:text-amber-400">{t('raid.inconsistentTitle')}</Alert.Title>
 			<Alert.Description class="text-amber-600 dark:text-amber-400/80">
-				persist.game.json reports <code class="text-xs">inraid: true</code> but
-				persist.raid.json was not found.
-				Backup recommended before editing.
+				<Message id="raid.inconsistent" params={{}}>
+					{#snippet code(children)}<code class="text-xs">{@render children()}</code>{/snippet}
+					{#snippet emphasis(children)}<em>{@render children()}</em>{/snippet}
+					{#snippet link(children)}<span>{@render children()}</span>{/snippet}
+				</Message>
 			</Alert.Description>
 			<Alert.Action>
-				<Button variant="outline" size="sm" onclick={handleCreateBackup}>
-					Create Backup Now
-				</Button>
+				<Button variant="outline" size="sm" onclick={handleCreateBackup}>{t('raid.backup')}</Button>
 			</Alert.Action>
 		</Alert.Root>
 	</div>
 
-<!-- Active raid — full view -->
+<!-- Active raid; full view -->
 {:else}
-	<ScrollArea class="h-full">
+	<ScrollArea class="h-full" data-testid="raid-page">
 	<div class="space-y-6 p-6">
 		<!-- Warning Banner (always visible, not dismissable) -->
 		<Alert.Root class="border-amber-500/50 bg-amber-500/5">
 			<WarningIcon size={16} class="text-amber-500" />
-			<Alert.Title class="text-amber-700 dark:text-amber-400">
-				High-Risk Editing
-			</Alert.Title>
-			<Alert.Description class="text-amber-600 dark:text-amber-400/80">
-				Editing during a raid is high-risk. Changes must remain consistent across
-				persist.raid.json and persist.roster.json. Incorrect edits may corrupt your save.
-			</Alert.Description>
+			<Alert.Title class="text-amber-700 dark:text-amber-400">{t('raid.riskTitle')}</Alert.Title>
+			<Alert.Description class="text-amber-600 dark:text-amber-400/80">{t('raid.risk')}</Alert.Description>
 			<Alert.Action>
-				<Button variant="outline" size="sm" onclick={handleCreateBackup}>
-					Create Backup Now
-				</Button>
+				<Button variant="outline" size="sm" onclick={handleCreateBackup}>{t('raid.backup')}</Button>
 			</Alert.Action>
 		</Alert.Root>
 
 		<!-- Raid Info Section -->
 		<section>
 			<div class="mb-3 flex items-center justify-between">
-				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-					Raid Info
-				</h2>
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('raid.info')}</h2>
 				<Button variant="destructive" size="sm" class="gap-1.5 text-xs" disabled={!!abandonBlockedReason} onclick={openAbandonDialog}>
 					<SkullIcon size={14} />
-					Abandon Raid
+					{t('raid.abandon')}
 				</Button>
 			</div>
-			{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{abandonBlockedReason}</p>{/if}
+			{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{describeMessage(abandonBlockedReason)}</p>{/if}
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-				<RaidInfoCard label="Dungeon" value={dungeonLabel || 'Unknown'} />
-				<RaidInfoCard label="Difficulty" value={difficultyLabel || 'Unknown'} />
-				<RaidInfoCard label="Length" value={lengthLabel || 'Unknown'} />
-				<RaidInfoCard label="Quest Type" value={raidInstance?.type ?? 'Unknown'} />
-				<RaidInfoCard label="Location" value={String(locationDisplay || 'Unknown')} />
-				<RaidInfoCard label="In Battle" value={inBattle ? 'Yes' : 'No'} />
+				<RaidInfoCard label={t('raid.dungeon')} valueLang={gameTextLocale()} value={dungeonLabel || t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.difficulty')} valueLang={gameTextLocale()} value={difficultyLabel || t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.length')} valueLang={gameTextLocale()} value={lengthLabel || t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.questType')} value={raidInstance?.type ?? t('raid.unknown')} />
+				<RaidInfoCard label={t('raid.location')} value={String(locationDisplay || t('raid.unknown'))} />
+				<RaidInfoCard label={t('raid.inBattle')} value={inBattle ? t('raid.yes') : t('raid.no')} />
 			</div>
 			{#if goalDisplay}
 				<div class="mt-3 flex items-center gap-2">
-					<span class="text-xs font-medium text-muted-foreground">Goals:</span>
-					{#each (raidInstance?.goal_ids ?? []) as goalId}
-						<Badge variant="outline" class="text-[11px] font-normal">
-							{stripDsonPrefix(goalId)}
-						</Badge>
-					{/each}
+					<span class="text-xs font-medium text-muted-foreground">{t('raid.goals')}</span>
+					<Badge variant="outline" class="text-[11px] font-normal">{goalDisplay}</Badge>
 				</div>
 			{/if}
 		</section>
@@ -249,14 +199,10 @@
 		<!-- Party Section -->
 		<section>
 			<div class="mb-3 flex items-center gap-2">
-				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-					Party
-				</h2>
-				<span class="text-[10px] text-muted-foreground/70">
-					Left-to-right = positions 1-4 (index 0 = back rank)
-				</span>
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('raid.party')}</h2>
+				<span class="text-[10px] text-muted-foreground/70">{t('raid.partyPositions')}</span>
 			</div>
-			<div class="flex gap-3">
+			<div class="flex flex-wrap gap-3">
 				{#each partyHeroes as slot, index (slot.guid)}
 					<div class="flex flex-col items-center gap-1">
 						<PartySlot
@@ -274,7 +220,7 @@
 								class="h-6 w-6"
 								disabled={index === 0}
 								onclick={() => swapPartyPositions(index - 1, index)}
-								aria-label="Move left"
+								aria-label={t('raid.moveLeft')}
 							>
 								<ArrowUpIcon size={12} class="-rotate-90" />
 							</Button>
@@ -284,7 +230,7 @@
 								class="h-6 w-6"
 								disabled={index === partyHeroes.length - 1}
 								onclick={() => swapPartyPositions(index, index + 1)}
-								aria-label="Move right"
+								aria-label={t('raid.moveRight')}
 							>
 								<ArrowDownIcon size={12} class="-rotate-90" />
 							</Button>
@@ -300,25 +246,19 @@
 					/>
 				{/each}
 			</div>
-			<p class="mt-2 text-[10px] text-muted-foreground/70">
-				Use arrow buttons to reorder heroes within the party.
-			</p>
+			<p class="mt-2 text-[10px] text-muted-foreground/70">{t('raid.reorderHint')}</p>
 		</section>
 
 		<!-- Raid Parameters Section -->
 		<section>
-			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-				Raid Parameters
-			</h2>
+			<h2 class="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('raid.parameters')}</h2>
 			<Card.Root>
 				<Card.Content class="pt-0">
 					<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
 						<!-- Torchlight Slider -->
 						<div class="space-y-2">
 							<div class="flex items-center justify-between">
-								<label for="torchlight" class="text-xs font-medium">
-									Torchlight
-								</label>
+								<label for="torchlight" class="text-xs font-medium">{t('raid.torchlight')}</label>
 								<span class="text-xs tabular-nums text-muted-foreground">
 									{sliderValueLabel(torchlightValue, { min: 0, max: 100, step: 0.5 })}
 								</span>
@@ -327,21 +267,15 @@
 								type="single"
 								{...sliderControl(torchlightValue, { min: 0, max: 100, step: 0.5 }, setRaidTorchlight)}
 							/>
-							<p class="text-[10px] text-muted-foreground/70">
-								Light level from 0 to 100.
-							</p>
+							<p class="text-[10px] text-muted-foreground/70">{t('raid.lightHint')}</p>
 						</div>
 
 						<!-- Hunger Room Buffer -->
 						<div class="space-y-2">
-							<label for="hunger-buffer" class="text-xs font-medium">
-								Hunger Room Buffer
-							</label>
-							<IntegerInput id="hunger-buffer" label="Hunger room buffer" value={hungerBufferValue}
+							<label for="hunger-buffer" class="text-xs font-medium">{t('raid.hungerBuffer')}</label>
+							<IntegerInput id="hunger-buffer" label={t('raid.hungerInput')} value={hungerBufferValue}
 								onchange={setRaidHungerBuffer} class="h-8 tabular-nums" />
-							<p class="text-[10px] text-muted-foreground/70">
-								Integer. Rooms until next hunger check.
-							</p>
+							<p class="text-[10px] text-muted-foreground/70">{t('raid.hungerHint')}</p>
 						</div>
 					</div>
 				</Card.Content>
@@ -351,12 +285,10 @@
 		<!-- Raid Inventory Section -->
 		<section>
 			<div class="mb-3 flex items-center gap-2">
-				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-					Inventory
-				</h2>
+				<h2 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t('raid.inventory')}</h2>
 				{#if inventoryItems.length > 0}
 					<Badge variant="outline" class="text-[10px] font-normal">
-						{inventoryItems.length} item{inventoryItems.length !== 1 ? 's' : ''}
+						{t('raid.itemCount', { count: inventoryItems.length, countText: formatNumber(inventoryItems.length) })}
 					</Badge>
 				{/if}
 			</div>
@@ -364,24 +296,24 @@
 				<Card.Root>
 					<Card.Content class="pt-0">
 						<div class="flex min-h-20 items-center justify-center">
-							<p class="text-sm text-muted-foreground">No items in raid inventory</p>
+							<p class="text-sm text-muted-foreground">{t('raid.emptyInventory')}</p>
 						</div>
 					</Card.Content>
 				</Card.Root>
 			{:else}
-				{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{abandonBlockedReason}</p>{/if}
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+				{#if abandonBlockedReason}<p class="mb-3 text-xs text-muted-foreground">{describeMessage(abandonBlockedReason)}</p>{/if}
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
 					{#each inventoryItems as item (item.key)}
 						<Card.Root class="gap-2 p-3">
 							<div class="flex items-center gap-2">
 								<BackpackIcon size={14} class="shrink-0 text-muted-foreground" />
-								<span class="truncate text-xs font-medium">{item.id}</span>
+								<span class="truncate text-xs font-medium" lang={gameTextLocale()}>{raidItemLabel(item)}</span>
 							</div>
 							<div class="flex items-center gap-2">
 								<Badge variant="outline" class="text-[10px] font-normal">
 									{item.type}
 								</Badge>
-								<IntegerInput label={`${item.id} amount`} value={item.amount}
+								<IntegerInput label={t('estate.amountFor', { name: raidItemLabel(item) })} lang={gameTextLocale()} value={item.amount}
 									onchange={(value) => setRaidItemAmount(item.key, value)} class="h-6 w-24 text-xs tabular-nums" />
 							</div>
 						</Card.Root>
@@ -399,39 +331,33 @@
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2 text-sm text-destructive">
 				<SkullIcon size={18} />
-				Abandon Raid
+				{t('raid.abandon')}
 			</Dialog.Title>
-			<Dialog.Description>
-				This returns surviving party heroes to town and keeps the raid save and its path. Discard restores the expedition before saving.
-			</Dialog.Description>
+			<Dialog.Description>{t('raid.abandonDescription')}</Dialog.Description>
 		</Dialog.Header>
 
 		<div class="space-y-3">
 			<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3">
 				<WarningIcon size={14} class="mt-0.5 shrink-0 text-amber-500" />
-				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-					The week will not advance. Quest results, campaign logging and post-expedition quirk processing will not happen. Use “Regroup in the Hamlet!” in the game for the complete return process.
-				</p>
+				<p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">{t('raid.abandonWarning')}</p>
 			</div>
 
-			<p class="text-xs">{abandonInventory.returnedTrinkets} party inventory trinket(s) will return to estate storage. Other supplies and loot will be lost:</p>
+			<p class="text-xs">{t('raid.returnedTrinkets', { count: abandonInventory.returnedTrinkets, countText: formatNumber(abandonInventory.returnedTrinkets) })}</p>
 			<ul class="list-disc pl-5 text-xs">
 				{#each abandonInventory.lost as item}
-					<li>{raidItemLabel(item)}: {item.amount}</li>
+					<li><span lang={gameTextLocale()}>{raidItemLabel(item)}</span>: {formatNumber(item.amount)}</li>
 				{:else}
-					<li>No supplies or loot.</li>
+					<li>{t('raid.noLoot')}</li>
 				{/each}
 			</ul>
 			<label class="flex items-center gap-2">
 				<Checkbox bind:checked={abandonConfirmChecked} />
-				<span class="text-[11px]">I understand this will abandon the active raid</span>
+				<span class="text-[11px]">{t('raid.confirm')}</span>
 			</label>
 		</div>
 
-		<Dialog.Footer class="flex-row justify-end gap-2 sm:justify-end">
-			<Button variant="outline" size="sm" onclick={() => (abandonDialogOpen = false)}>
-				Cancel
-			</Button>
+		<Dialog.Footer class="flex-row flex-wrap justify-end gap-2 sm:justify-end">
+			<Button variant="outline" size="sm" onclick={() => (abandonDialogOpen = false)}>{t('raid.cancel')}</Button>
 			<Button
 				variant="destructive"
 				size="sm"
@@ -439,7 +365,7 @@
 				onclick={handleAbandonRaid}
 			>
 				<SkullIcon size={14} class="mr-1" />
-				Abandon Raid
+				{t('raid.abandon')}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

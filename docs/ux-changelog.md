@@ -171,3 +171,21 @@ Every corrected building-upgrade heading is listed here. The Bar, Brothel and Ga
 | stage_coach.numrecruits | Numrecruits | Stagecoach Network |
 | stage_coach.rostersize | Rostersize | Hero Barracks |
 | stage_coach.upgraded_recruits | Upgraded Recruits | Experienced Recruits |
+
+## S5 raid and setup text (2026-10-26)
+
+Raid and setup chrome, accessibility labels, safety refusals and confirmations now use the editor catalog. New P2 keys fall back per key to English until P3. Existing English sentences and capitalization are retained, including the abandon dialog's literal "trinket(s)" wording in both English plural branches. The native game/save folder dialog titles keep their existing catalog keys.
+
+| Previous rendering or behavior | Current rendering or behavior | Reason |
+| --- | --- | --- |
+| Apprentice (1), Veteran (3), Champion (5); Unknown (6) | Apprentice (Lvl 1), Veteran (Lvl 3), Champion (Lvl 5), Darkest (Lvl 6) | Use the complete verified town_quest_difficulty_N game label, including its level qualifier, without appending a duplicate number. The complete label suits the metadata card and can translate as a unit. Unknown difficulty ids retain Unknown ({level}). |
+| Lengths 4 and 5 displayed as raw numbers | Exhausting and Epic | Verified town_quest_length_4 and town_quest_length_5 game names. Short, Medium and Long retain their English names. |
+| Real dungeon ids crypts and farm, and unknown dungeon ids, displayed verbatim | Ruins and Farmstead; readable title-case fallback for unknown ids | Verified dungeon_name_crypts and dungeon_name_farm. The older ruins/farmstead display aliases resolve through these same keys without replacing saved ids. Town is Hamlet; tutorial and old_road are The Old Road. Existing named dungeons retain their English spelling. |
+| Raw item ids, including an empty title when the item id is empty, and raw-id amount accessible labels | Game inventory names and complete {name} amount labels; readable item/type fallback | Reuse raidItemLabel and the verified str_inventory_title_{type}{id} namespace for inventory cards as well as the loss list. Item types remain raw diagnostic identifiers. |
+| Goal ids in separate badges; an unused comma-joined goal summary | A visible editor-locale Intl.ListFormat list in one badge, such as goal_a, goal_b, and mod_goal in English | Preserve the raw goal ids after the existing ### display-prefix stripping; conjunctions follow the editor locale. |
+| Ungrouped loss amounts and count/position labels | Editor-locale Intl number formatting | Numeric input text, parsing, bounds, saved values and opaque area/difficulty ids remain unchanged. Torchlight already uses the shared slider formatter. |
+| Party row and abandon dialog footer use an unwrapped flex row | Party slots and footer actions can wrap | Keep controls usable when translated labels need more room. |
+
+Dungeon, difficulty, length, hero class and inventory name containers carry the effective game-text language. Before setup has any game path or table, all DLC titles come from an app-catalog select. The existing dlcName helper prefers str_dlc_title_* when an entry exists and accepts that catalog fallback when it does not; the title's language tag follows the source used. Crimson Court, Shieldbreaker, Color of Madness and Musketeer keep their English names. Steam, GOG and Epic remain brands; Manual uses the editor catalog. Setup steps, selections, and an open raid dialog remain mounted during language switches. Localization never replaces saved ids or user-entered names.
+
+The app-wide copy ratchet now has zero occurrences. Remaining protocol strings, asset paths, language autonyms, mock payload names and raw diagnostic details have explicit per-file reasons; they are not substituted for UI catalog messages. The unused transitional ActionMessage string adapter was removed after raid became descriptor-only.

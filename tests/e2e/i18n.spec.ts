@@ -1545,3 +1545,157 @@ for (const route of ['estate', 'town'] as const) {
 		expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
 	});
 }
+
+test('S5: dirty raid, invalid buffer, same party slots and checked abandon dialog survive both real picker cycles', async ({ page }, info) => {
+	await page.goto('/raid?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => { window.__h1!.edit(); window.__h1!.raidData(); });
+	const raid = page.getByTestId('raid-page');
+	const buffer = raid.locator('#hunger-buffer');
+	await buffer.fill('-1');
+	await buffer.dispatchEvent('change');
+	await expect(raid.locator('p[role=alert]')).toBeVisible();
+	await page.getByLabel('Harness uncommitted name').fill('未確定 raid draft');
+	await page.getByLabel('Harness selected hero').selectOption('7');
+	await raid.getByRole('button', { name: 'Abandon Raid', exact: true }).click();
+	const dialog = page.getByRole('dialog');
+	await dialog.getByRole('checkbox').check();
+	const nodes = await Promise.all([raid, buffer, raid.getByRole('group', { includeHidden: true }).first(), dialog, dialog.getByRole('checkbox')].map((locator) => locator.elementHandle()));
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of allLocales) {
+		await switchEditor(page, locale);
+		await expect(dialog.getByRole('heading', { name: 'Abandon Raid', exact: true })).toBeVisible();
+		await expect(dialog.getByRole('checkbox')).toBeChecked();
+		await expect(dialog.getByRole('button', { name: 'Abandon Raid', exact: true })).toBeEnabled();
+		await expect(dialog).toContainText('2 party inventory trinket(s) will return to estate storage.');
+		await expect(raid.locator('p[role=alert]')).toContainText(new Intl.NumberFormat(locale).format(2147483647));
+		await expect(raid.getByText(new Intl.ListFormat(locale).format(['goal_a', 'goal_b', 'mod_goal']), { exact: true })).toHaveCount(1);
+		await expect(buffer).toHaveValue('-1');
+		await expect(page.getByLabel('Harness uncommitted name')).toHaveValue('未確定 raid draft');
+		await expect(page.getByLabel('Harness selected hero')).toHaveValue('7');
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	for (const language of gameLanguages) {
+		await switchGame(page, language);
+		const locale = GAME_TEXT_LOCALES[language as keyof typeof GAME_TEXT_LOCALES];
+		for (const name of ['ruins', 'apprentice', 'medium', 'crusader']) {
+			await expect(raid.getByText(`${language}:${name}`, { exact: true })).toHaveAttribute('lang', locale);
+		}
+		await expect(raid.getByText(`${language}:herbs`, { exact: true })).toHaveAttribute('lang', locale);
+		await expect(dialog.getByText(`${language}:herbs`, { exact: true })).toHaveAttribute('lang', locale);
+		await expect(raid.getByText('Unknown Mod Item', { exact: true })).toHaveCount(1);
+		await expect(buffer).toHaveValue('-1');
+		await expect(dialog.getByRole('checkbox')).toBeChecked();
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+	expect(await persistedSettings(page)).toEqual(persisted);
+	await evidence(info, 's5-raid-dirty.aria.txt', await dialog.ariaSnapshot(), 'text/plain');
+});
+
+test('S5: inconsistent raid warning keeps its code slot mounted through editor changes without data IPC', async ({ page }) => {
+	await page.goto('/raid?h1');
+	await expect.poll(() => page.evaluate(() => window.__h1?.snapshot().loaded)).toBe(true);
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await page.evaluate(() => window.__h1!.raidData(true));
+	const code = page.locator('code').filter({ hasText: 'inraid: true' });
+	await expect(code).toHaveCount(1);
+	const node = await code.elementHandle();
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of ['en', 'de', 'ru']) {
+		await switchEditor(page, locale);
+		await expect(code).toHaveText('inraid: true');
+		await expect(page.getByText('Raid State Inconsistent', { exact: true }).last()).toBeVisible();
+		expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+		expect(await snapshot(page)).toEqual(before);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+});
+
+const setupInstall = { path: '/h1/detected-game', source: 'Gog', has_crimson_court: true, has_shieldbreaker: true,
+	has_color_of_madness: true, has_musketeer: true, has_mods: true };
+const setupSave = { path: '/h1/detected-profile', source: 'Epic', steam_user_id: null, profile_id: 'raw_profile_id', has_active_raid: true };
+async function detectSetup(page: Page) {
+	await page.evaluate(({ install, save }) => window.__h1!.plans.push(
+		{ command: 'detect_game_installations', value: [install] }, { command: 'detect_save_locations', value: [save] }
+	), { install: setupInstall, save: setupSave });
+	await page.getByTestId('setup-wizard').getByRole('button', { name: 'Auto-detect Game Installation', exact: true }).click();
+	await expect(page.getByTestId('setup-wizard').getByText('/h1/detected-game', { exact: true })).toBeVisible();
+}
+
+test('S5: all wizard steps render with no game path in en and de; selections and payload stay mounted through real pickers', async ({ page }, info) => {
+	await page.goto('/heroes?h1&preSetup&emptyPaths');
+	const wizard = page.getByTestId('setup-wizard');
+	await expect(wizard).toBeVisible();
+	await expect(page.locator('#editor-language')).toHaveCount(1);
+	await detectSetup(page);
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const wizardNode = await wizard.elementHandle();
+	for (const [step, heading] of [[1, 'Game Installation Path'], [2, 'Save File Location'], [3, 'Confirmation']] as const) {
+		if (step === 2) {
+			await wizard.getByRole('button', { name: 'Next', exact: true }).click();
+			await wizard.getByRole('button', { name: 'Auto-detect Save Files', exact: true }).click();
+		}
+		if (step === 3) await wizard.getByRole('button', { name: 'Next', exact: true }).click();
+		const stepNode = await wizard.getByRole('heading', { name: heading, exact: true }).elementHandle();
+		const marker = await page.evaluate(() => window.__h1!.calls.length);
+		for (const locale of ['en', 'de']) {
+			await switchEditor(page, locale);
+			await expect(wizard.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+			if (step !== 2) for (const dlc of ['Crimson Court', 'Shieldbreaker', 'Color of Madness', 'Musketeer']) {
+				await expect(wizard.getByText(dlc, { exact: true })).toBeVisible();
+				await expect(wizard.getByText(dlc, { exact: true })).toHaveAttribute('lang', locale);
+			}
+			if (step !== 1) await expect(wizard.getByText('In Raid', { exact: true })).toBeVisible();
+			if (step === 3) await expect(wizard.getByRole('button', { name: 'Open Profile', exact: true })).toBeEnabled();
+			expect(await wizardNode!.evaluate((element) => element.isConnected)).toBe(true);
+			expect(await stepNode!.evaluate((element) => element.isConnected)).toBe(true);
+			expect(await snapshot(page)).toEqual(before);
+			expect(await page.evaluate(() => window.__h1!.getSettings().gamePath)).toBe('');
+		}
+		for (const language of ['german', 'english']) await switchGame(page, language);
+		const calls = await page.evaluate((start) => window.__h1!.calls.slice(start), marker);
+		expectSwitchCalls(calls, persisted);
+		expect(calls.filter(({ command }) => command === 'load_localization')).toEqual([]);
+		await evidence(info, `s5-wizard-no-path-step-${step}.aria.txt`, await wizard.ariaSnapshot(), 'text/plain');
+	}
+	expect(await persistedSettings(page)).toEqual(persisted);
+	expect(await page.evaluate(() => window.__h1!.calls.filter(({ command }) => ['load_profile', 'set_name_table', 'save_profile'].includes(command)))).toEqual([]);
+});
+
+test('S5: wizard DLC names follow both real picker cycles with an available table and retain selected install', async ({ page }) => {
+	await page.goto('/heroes?h1&preSetup');
+	const wizard = page.getByTestId('setup-wizard');
+	await expect(wizard).toBeVisible();
+	await expect.poll(() => page.evaluate(() => window.__h1!.gameText().loading)).toBe(false);
+	await detectSetup(page);
+	const nodes = await Promise.all([wizard, wizard.getByRole('button').filter({ hasText: '/h1/detected-game' })].map((locator) => locator.elementHandle()));
+	const before = await snapshot(page);
+	const persisted = await persistedSettings(page);
+	const marker = await page.evaluate(() => window.__h1!.calls.length);
+	for (const locale of allLocales) {
+		await switchEditor(page, locale);
+		await expect(wizard.getByRole('heading', { name: 'Game Installation Path', exact: true })).toBeVisible();
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	for (const language of gameLanguages) {
+		await switchGame(page, language);
+		for (const dlc of ['crimson-court', 'shieldbreaker', 'color-of-madness', 'musketeer']) {
+			await expect(wizard.getByText(`${language}:${dlc}`, { exact: true })).toHaveAttribute('lang', GAME_TEXT_LOCALES[language as keyof typeof GAME_TEXT_LOCALES]);
+		}
+		expect(await snapshot(page)).toEqual(before);
+		for (const node of nodes) expect(await node!.evaluate((element) => element.isConnected)).toBe(true);
+	}
+	expectSwitchCalls(await page.evaluate((start) => window.__h1!.calls.slice(start), marker), persisted);
+	expect(await persistedSettings(page)).toEqual(persisted);
+	await expect(wizard.getByRole('button', { name: 'Next', exact: true })).toBeEnabled();
+});

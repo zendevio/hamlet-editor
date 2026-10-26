@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t } from '#lib/i18n/index.svelte.js';
+	import { formatNumber } from '#lib/i18n/intl.js';
+	import { dlcName, dlcNameLang } from '#lib/save-labels.js';
 	import {
 		Dialog,
 		DialogContent,
@@ -39,12 +41,12 @@
 	let step = $state(1);
 	let detecting = $state(false);
 
-	// Step 1 — Game Installation
+	// Step 1: Game Installation
 	let gameInstalls = $state<GameInstall[]>([]);
 	let selectedGameInstall = $state<GameInstall | null>(null);
 	let gameDetectRan = $state(false);
 
-	// Step 2 — Save Locations
+	// Step 2: Save Locations
 	let saveLocations = $state<SaveLocation[]>([]);
 	let selectedSave = $state<SaveLocation | null>(null);
 	let saveDetectRan = $state(false);
@@ -57,10 +59,10 @@
 	let dlcTags = $derived.by(() => {
 		if (!selectedGameInstall) return [];
 		const tags: string[] = [];
-		if (selectedGameInstall.has_crimson_court) tags.push('Crimson Court');
-		if (selectedGameInstall.has_shieldbreaker) tags.push('Shieldbreaker');
-		if (selectedGameInstall.has_color_of_madness) tags.push('Color of Madness');
-		if (selectedGameInstall.has_musketeer) tags.push('Musketeer');
+		if (selectedGameInstall.has_crimson_court) tags.push('crimson_court');
+		if (selectedGameInstall.has_shieldbreaker) tags.push('shieldbreaker');
+		if (selectedGameInstall.has_color_of_madness) tags.push('color_of_madness');
+		if (selectedGameInstall.has_musketeer) tags.push('musketeer');
 		return tags;
 	});
 
@@ -161,18 +163,7 @@
 		completeSetup();
 	}
 
-	function sourceLabel(source: string): string {
-		switch (source) {
-			case 'Steam':
-				return 'Steam';
-			case 'Gog':
-				return 'GOG';
-			case 'Epic':
-				return 'Epic';
-			default:
-				return 'Manual';
-		}
-	}
+
 
 
 </script>
@@ -180,6 +171,7 @@
 <Dialog open={true}>
 	<DialogContent
 		class="overflow-hidden sm:max-w-lg"
+		data-testid="setup-wizard"
 		showCloseButton={false}
 		onInteractOutside={(e) => e.preventDefault()}
 		onEscapeKeydown={(e) => e.preventDefault()}
@@ -198,7 +190,7 @@
 							? 'bg-primary/20 text-primary'
 							: 'bg-muted text-muted-foreground'}"
 				>
-					{s}
+					{formatNumber(s)}
 				</div>
 				{#if s < 3}
 					<div
@@ -213,12 +205,8 @@
 			<DialogHeader>
 				<DialogTitle class="flex items-center gap-2">
 					<GameControllerIcon size={20} />
-					Game Installation Path
-				</DialogTitle>
-				<DialogDescription class="wrap-break-word">
-					Locate your Darkest Dungeon installation so the editor can read game data, icons, and
-					detect installed DLCs.
-				</DialogDescription>
+					{t('setup.gameTitle')}</DialogTitle>
+				<DialogDescription class="wrap-break-word">{t('setup.gameDescription')}</DialogDescription>
 			</DialogHeader>
 
 			<div class="space-y-3">
@@ -226,10 +214,10 @@
 					<Button onclick={detectGamePaths} disabled={detecting} class="w-full">
 						{#if detecting}
 							<SpinnerIcon size={16} class="mr-2 animate-spin" />
-							Detecting...
+							{t('setup.detecting')}
 						{:else}
 							<MagnifyingGlassIcon size={16} class="mr-2" />
-							Auto-detect Game Installation
+							{t('setup.detectGame')}
 						{/if}
 					</Button>
 				{:else if gameInstalls.length === 0}
@@ -238,11 +226,8 @@
 					>
 						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 						<div>
-							<p class="font-medium text-foreground">No installations found</p>
-							<p class="mt-1">
-								Use "Browse..." to manually select your Darkest Dungeon folder, or try
-								auto-detect again.
-							</p>
+							<p class="font-medium text-foreground">{t('setup.noGame')}</p>
+							<p class="mt-1">{t('setup.noGameHelp')}</p>
 						</div>
 					</div>
 					<div class="flex gap-2">
@@ -253,11 +238,11 @@
 							class="flex-1"
 						>
 							<MagnifyingGlassIcon size={16} class="mr-2" />
-							Retry
+							{t('setup.retry')}
 						</Button>
 						<Button variant="outline" onclick={browseGamePath} class="flex-1">
 							<FolderOpenIcon size={16} class="mr-2" />
-							Browse...
+							{t('setup.browse')}
 						</Button>
 					</div>
 				{:else}
@@ -281,26 +266,26 @@
 												class="shrink-0 text-green-600 dark:text-green-400"
 											/>
 										{/if}
-										<span class="text-xs font-medium">{sourceLabel(install.source)}</span>
+										<span class="text-xs font-medium">{t('setup.source', { source: install.source })}</span>
 									</div>
 									{#if install.has_mods}
-										<Badge variant="outline" class="text-[10px]">Modded</Badge>
+										<Badge variant="outline" class="text-[10px]">{t('setup.modded')}</Badge>
 									{/if}
 								</div>
 								<p class="mt-1 break-all text-[11px] text-muted-foreground">{install.path}</p>
 								{#if isSelected}
 									<div class="mt-2 flex flex-wrap gap-1">
 										{#if install.has_crimson_court}
-											<Badge variant="secondary" class="text-[10px]">Crimson Court</Badge>
+											<Badge variant="secondary" class="text-[10px]" lang={dlcNameLang('crimson_court')}>{dlcName('crimson_court', t('setup.dlcName', { dlc: 'crimson_court' }))}</Badge>
 										{/if}
 										{#if install.has_shieldbreaker}
-											<Badge variant="secondary" class="text-[10px]">Shieldbreaker</Badge>
+											<Badge variant="secondary" class="text-[10px]" lang={dlcNameLang('shieldbreaker')}>{dlcName('shieldbreaker', t('setup.dlcName', { dlc: 'shieldbreaker' }))}</Badge>
 										{/if}
 										{#if install.has_color_of_madness}
-											<Badge variant="secondary" class="text-[10px]">Color of Madness</Badge>
+											<Badge variant="secondary" class="text-[10px]" lang={dlcNameLang('color_of_madness')}>{dlcName('color_of_madness', t('setup.dlcName', { dlc: 'color_of_madness' }))}</Badge>
 										{/if}
 										{#if install.has_musketeer}
-											<Badge variant="secondary" class="text-[10px]">Musketeer</Badge>
+											<Badge variant="secondary" class="text-[10px]" lang={dlcNameLang('musketeer')}>{dlcName('musketeer', t('setup.dlcName', { dlc: 'musketeer' }))}</Badge>
 										{/if}
 									</div>
 								{/if}
@@ -314,15 +299,13 @@
 						class="w-full text-xs text-muted-foreground"
 					>
 						<MagnifyingGlassIcon size={14} class="mr-1" />
-						Re-detect
+						{t('setup.redetect')}
 					</Button>
 				{/if}
 			</div>
 
 			<DialogFooter>
-				<Button onclick={nextStep} disabled={!canAdvanceFromStep1}>
-					Next
-					<ArrowRightIcon size={16} class="ml-1" />
+				<Button onclick={nextStep} disabled={!canAdvanceFromStep1}>{t('setup.next')}<ArrowRightIcon size={16} class="ml-1" />
 				</Button>
 			</DialogFooter>
 
@@ -331,30 +314,24 @@
 			<DialogHeader>
 				<DialogTitle class="flex items-center gap-2">
 					<FolderOpenIcon size={20} />
-					Save File Location
-				</DialogTitle>
-				<DialogDescription class="wrap-break-word">
-					Select a save profile to edit. Each profile is a separate campaign playthrough.
-				</DialogDescription>
+					{t('setup.saveTitle')}</DialogTitle>
+				<DialogDescription class="wrap-break-word">{t('setup.saveDescription')}</DialogDescription>
 			</DialogHeader>
 
 			<div class="space-y-3">
 				<div class="flex items-start gap-2 border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
 					<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
-					<p class="wrap-break-word text-amber-700 dark:text-amber-400">
-						If Steam Cloud sync is on for Darkest Dungeon, it can overwrite or conflict with
-						edited saves. Disable it for the game, or close Steam before saving.
-					</p>
+					<p class="wrap-break-word text-amber-700 dark:text-amber-400">{t('setup.cloudWarning')}</p>
 				</div>
 
 				{#if !saveDetectRan}
 					<Button onclick={detectSavePaths} disabled={detecting} class="w-full">
 						{#if detecting}
 							<SpinnerIcon size={16} class="mr-2 animate-spin" />
-							Detecting...
+							{t('setup.detecting')}
 						{:else}
 							<MagnifyingGlassIcon size={16} class="mr-2" />
-							Auto-detect Save Files
+							{t('setup.detectSave')}
 						{/if}
 					</Button>
 				{:else if saveLocations.length === 0}
@@ -363,11 +340,8 @@
 					>
 						<WarningIcon size={16} class="mt-0.5 shrink-0 text-amber-500" />
 						<div>
-							<p class="font-medium text-foreground">No save files found</p>
-							<p class="mt-1">
-								Make sure you have launched Darkest Dungeon at least once. Use "Browse..." to
-								manually select your save folder.
-							</p>
+							<p class="font-medium text-foreground">{t('setup.noSave')}</p>
+							<p class="mt-1">{t('setup.noSaveHelp')}</p>
 						</div>
 					</div>
 					<div class="flex gap-2">
@@ -378,11 +352,11 @@
 							class="flex-1"
 						>
 							<MagnifyingGlassIcon size={16} class="mr-2" />
-							Retry
+							{t('setup.retry')}
 						</Button>
 						<Button variant="outline" onclick={browseSavePath} class="flex-1">
 							<FolderOpenIcon size={16} class="mr-2" />
-							Browse...
+							{t('setup.browse')}
 						</Button>
 					</div>
 				{:else}
@@ -408,15 +382,14 @@
 										{/if}
 										<span class="text-xs font-medium">{loc.profile_id}</span>
 										<Badge variant="outline" class="text-[10px]"
-											>{sourceLabel(loc.source)}</Badge
+											>{t('setup.source', { source: loc.source })}</Badge
 										>
 									</div>
 									<div class="flex items-center gap-2">
 										{#if loc.has_active_raid}
 											<Badge variant="destructive" class="text-[10px]">
 												<SwordIcon size={10} class="mr-0.5" />
-												In Raid
-											</Badge>
+												{t('setup.inRaid')}</Badge>
 										{/if}
 									</div>
 								</div>
@@ -432,7 +405,7 @@
 						class="w-full text-xs text-muted-foreground"
 					>
 						<MagnifyingGlassIcon size={14} class="mr-1" />
-						Re-detect
+						{t('setup.redetect')}
 					</Button>
 				{/if}
 			</div>
@@ -440,11 +413,9 @@
 			<DialogFooter class="flex-row justify-between sm:justify-between">
 				<Button variant="outline" onclick={prevStep}>
 					<ArrowLeftIcon size={16} class="mr-1" />
-					Back
+					{t('setup.back')}
 				</Button>
-				<Button onclick={nextStep} disabled={!canAdvanceFromStep2}>
-					Next
-					<ArrowRightIcon size={16} class="ml-1" />
+				<Button onclick={nextStep} disabled={!canAdvanceFromStep2}>{t('setup.next')}<ArrowRightIcon size={16} class="ml-1" />
 				</Button>
 			</DialogFooter>
 
@@ -453,17 +424,14 @@
 			<DialogHeader>
 				<DialogTitle class="flex items-center gap-2">
 					<CheckCircleIcon size={20} />
-					Confirmation
-				</DialogTitle>
-				<DialogDescription class="wrap-break-word">
-					Review your selections and open the profile to start editing.
-				</DialogDescription>
+					{t('setup.confirmation')}</DialogTitle>
+				<DialogDescription class="wrap-break-word">{t('setup.confirmationHelp')}</DialogDescription>
 			</DialogHeader>
 
 			<div class="space-y-4">
 				<!-- Game Install Summary -->
 				<div class="space-y-1">
-					<p class="text-xs font-medium text-muted-foreground">Game Installation</p>
+					<p class="text-xs font-medium text-muted-foreground">{t('setup.gameInstallation')}</p>
 					<div class="border border-border bg-muted/30 p-3 overflow-x-hidden">
 						<div class="flex items-center gap-2">
 							<CheckCircleIcon
@@ -472,7 +440,7 @@
 								class="shrink-0 text-green-600 dark:text-green-400"
 							/>
 							<span class="text-xs font-medium"
-								>{sourceLabel(selectedGameInstall?.source ?? 'Manual')}</span
+								>{t('setup.source', { source: selectedGameInstall?.source ?? 'Manual' })}</span
 							>
 						</div>
 						<p class="mt-1 break-all text-[11px] text-muted-foreground">
@@ -481,7 +449,7 @@
 						{#if dlcTags.length > 0}
 							<div class="mt-2 flex flex-wrap gap-1">
 								{#each dlcTags as tag}
-									<Badge variant="secondary" class="text-[10px]">{tag}</Badge>
+									<Badge variant="secondary" class="text-[10px]" lang={dlcNameLang(tag)}>{dlcName(tag, t('setup.dlcName', { dlc: tag }))}</Badge>
 								{/each}
 							</div>
 						{/if}
@@ -490,7 +458,7 @@
 
 				<!-- Save Profile Summary -->
 				<div class="space-y-1">
-					<p class="text-xs font-medium text-muted-foreground">Save Profile</p>
+					<p class="text-xs font-medium text-muted-foreground">{t('setup.saveProfile')}</p>
 					<div class="border border-border bg-muted/30 p-3 overflow-x-hidden">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
@@ -501,14 +469,13 @@
 								/>
 								<span class="text-xs font-medium">{selectedSave?.profile_id}</span>
 								<Badge variant="outline" class="text-[10px]"
-									>{sourceLabel(selectedSave?.source ?? 'Manual')}</Badge
+									>{t('setup.source', { source: selectedSave?.source ?? 'Manual' })}</Badge
 								>
 							</div>
 							{#if selectedSave?.has_active_raid}
 								<Badge variant="destructive" class="text-[10px]">
 									<SwordIcon size={10} class="mr-0.5" />
-									In Raid
-								</Badge>
+									{t('setup.inRaid')}</Badge>
 							{/if}
 						</div>
 						<p class="mt-1 break-all text-[11px] text-muted-foreground">
@@ -521,11 +488,11 @@
 			<DialogFooter class="flex-row justify-between sm:justify-between">
 				<Button variant="outline" onclick={prevStep}>
 					<ArrowLeftIcon size={16} class="mr-1" />
-					Back
+					{t('setup.back')}
 				</Button>
 				<Button onclick={finish}>
 					<GameControllerIcon size={16} class="mr-1" />
-					Open Profile
+					{t('setup.openProfile')}
 				</Button>
 			</DialogFooter>
 		{/if}

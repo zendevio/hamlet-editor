@@ -6,7 +6,6 @@ import ja from './catalogs/ja.json';
 import { GAME_TEXT_LOCALES } from '#lib/data/game-text-languages.js';
 import { createTranslator, type Params } from './core.js';
 import type { MessageKey, MessageParams, MessageDescriptor } from './messages.generated.js';
-import { describeError } from '#lib/errors.js';
 
 export type { MessageKey, MessageParams, MessageDescriptor } from './messages.generated.js';
 export type EditorLocale = (typeof GAME_TEXT_LOCALES)[keyof typeof GAME_TEXT_LOCALES];
@@ -45,15 +44,4 @@ export function describeMessage(descriptor: MessageDescriptor): string {
 
 export function richMessage<K extends MessageKey>(id: K, params: MessageParams[K]) {
 	return translator.format(locale, id, displayParams(params as Params));
-}
-
-/** Compatibility for logic owned by later slices that still returns English. */
-export type ActionMessage = string | MessageDescriptor;
-export function describeActionMessage(message: ActionMessage): string {
-	if (typeof message === 'string') return message;
-	if (message && typeof message === 'object' && 'id' in message && typeof message.id === 'string') {
-		return describeMessage(message);
-	}
-	const error = describeError(message);
-	return [describeMessage(error.message), error.detail, ...error.recovery.map(describeMessage)].filter(Boolean).join('\n');
 }
