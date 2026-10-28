@@ -149,8 +149,9 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      # Windows carries the mod version and the changelog. It leaves the primary flag
-      # untouched (Windows stays the page's main download); the check below confirms it.
+      # Windows carries the mod version and the changelog, and should be the page's primary file.
+      # Omitting the flag left 1.1.0 not primary; whether this input sets it is not documented,
+      # so the check below confirms it.
       - name: Upload Windows
         if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true' && steps.nexus.outputs.windows_done != 'true'
         timeout-minutes: 20
@@ -164,6 +165,7 @@ jobs:
           display_name: Hamlet Editor for Windows
           description: Windows 10/11 (x64). Contains the installer (.exe, no admin rights needed) and the .msi. Not code-signed, so Windows may warn on first launch; see the description for the steps.
           archive_existing_version: true
+          primary_mod_manager_download: true
           allow_mod_manager_download: false
           update_mod_version: true
           changelog: ${{ env.changelog }}
@@ -198,7 +200,7 @@ jobs:
           primary_mod_manager_download: false
           allow_mod_manager_download: false
 
-      - name: Verify Windows is still the primary file
+      - name: Verify Windows is the primary file
         if: steps.config.outputs.skip != 'true' && env.DRY_RUN != 'true'
         timeout-minutes: 5
         env:
@@ -216,4 +218,4 @@ jobs:
             fi
             sleep 10
           done
-          echo "::error::Windows $VERSION is not the primary file on the mod page"; exit 1
+          echo "::error::Windows $VERSION is not the primary file on the mod page; on Nexus, Files, More actions, choose Set as primary"; exit 1
